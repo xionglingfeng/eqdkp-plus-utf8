@@ -21,7 +21,7 @@ if (!defined('EQDKP_INC')) {
 //File: lang_install
 //Source-Language: german07
 
-$alang = array( 
+$lang = array( 
 "page_title" => "EQDKP-PLUS %s Installation",
 "back" => "Save and back",
 "continue" => "Proceed",
@@ -158,6 +158,6 @@ $alang = array(
 'encryptkey_too_short'	=> 'The encryption key is too short. Minimum length is 6 chars.',
 
  );
-$lang = (is_array($lang))? $lang : array();
-$lang = array_merge($lang, $alang);
+//$lang = (is_array($lang))? $lang : array();
+//$lang = array_merge($lang, $alang);
 ?>

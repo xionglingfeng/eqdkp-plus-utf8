@@ -75,14 +75,14 @@ $lang = array(
 "start_update" => "Process all necessary Updates!",
 "only_this_update" => "Only process this update: ",
 "start_single_update" => "Process Update",
-"splash_welcome" => "Welcome to the maintenance Area of your EQDKP-PLUS system!",
-"splash_desc" => "You can update your EQdkp Plus or import older version of EQdkp Plus in this area.",
-"splash_new" => "You are new to EQdkp Plus? You never added DKP or added raids?",
-"start_tour" => "Start tour",
-"jump_tour" => "Skip tour",
-"06_import" => "Import old 0.6 data",
-"guild_import" => "Import a guild from external Database",
-"guild_import_info" => "* if supported by your game",
+"splash_welcome" => "欢迎来到你的 EQDKP-PLUS 系统的维护区！",
+"splash_desc" => "你可以在这个区域中升级你的 EQdkp Plus 或者导入旧版本 EQdkp Plus 。",
+"splash_new" => "你是 EQdkp Plus 的新用户？你从未添加过 DKP 或者添加过 raids？",
+"start_tour" => "开始导览",
+"jump_tour" => "跳过导览",
+"06_import" => "导入旧 0.6 数据",
+"guild_import" => "从外部数据库导入一个公会",
+"guild_import_info" => "* 如果你的游戏支持",
  );
 
 ?>
