@@ -1,34 +1,37 @@
 <!-- IF SHOW_GUESTS -->
 	<tr>
 		<td width="100%" valign="top" class="row2" colspan="{ATTENDEES_COLSPAN}"><br/>
-			<table border="0" cellpadding="0" cellspacing="0" class="guesttable" width="100%">
+			<table class="table fullwidth guesttable">
 				<tr>
 					<td width="90%">
 						<b>{L_raidevent_raid_guests}</b> ({GUEST_COUNT}): 
 						<!-- BEGIN guests -->
 							<!-- IF IS_OPERATOR -->
-							<span class="membertooltip guesteditpanel<!-- IF COLORED_NAMESBYCLASS2 --> class_{guests.CLASSID}<!-- ENDIF -->" title="{guests.TOOLTIP}">
+							<span class="guesttooltip guesteditpanel<!-- IF COLORED_NAMESBYCLASS2 --> class_{guests.CLASSID}<!-- ENDIF -->">
+								
 								<!-- IF guests.CLASSICON -->{guests.CLASSICON} <!-- ENDIF -->{guests.NAME} 
 								<span style="display:none;cursor:pointer;" class='guestpanel'>
-									<img src="../images/global/delete.png" alt="{L_raidevent_raid_guest_del}" title="{L_raidevent_raid_guest_del}" onclick="DeleteGuest('{guests.ID}');"/>&nbsp;
-									<img src="../images/global/edit.png" alt="{L_raidevent_raid_guest_edit}" title="{L_raidevent_raid_guest_edit}" onclick="EditGuest('{guests.ID}');" />
+									<i class="fa fa-trash-o fa-lg hand" title="{L_raidevent_raid_guest_del}" onclick="DeleteGuest('{guests.ID}');"></i>
+									&nbsp;
+									<i class="fa fa-pencil fa-lg hand" title="{L_raidevent_raid_guest_edit}" onclick="EditGuest('{guests.ID}');"></i>
 								</span>
 							</span>
+							
 							<!-- ELSE -->
-							<span class="membertooltip<!-- IF COLORED_NAMESBYCLASS2 --> class_{guests.CLASSID}<!-- ENDIF -->" title="{guests.TOOLTIP}">
+							<span class="guesttooltip <!-- IF COLORED_NAMESBYCLASS2 --> class_{guests.CLASSID}<!-- ENDIF -->">
 								<!-- IF guests.CLASSICON -->{guests.CLASSICON} <!-- ENDIF -->{guests.NAME}
 							</span>
 							<!-- ENDIF -->
+							<span class="guesttooltip-data" style="display:none">{guests.TOOLTIP}</span>
 						<!-- END guests -->
 					</td>
 					<!-- IF IS_OPERATOR -->
 					<td width="10%" align="right">
-					<span id="addguest">
-						<img src="../images/calendar/addguest.png" border="0"  alt="{B_ADDGUEST}" title="{B_ADDGUEST}" />
-					</span>
-						
+						<button id="addguest" type="button">
+							<i class="fa fa-user-plus fa-2x"></i>
+						</button>
 					</td>
-					<!-- ENDIF -->	
+					<!-- ENDIF -->
 				</tr>
 			</table>
 		</td>

@@ -1,31 +1,39 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date: 2011-08-08 13:43:28 +0200 (Mo, 08. Aug 2011) $
- * -----------------------------------------------------------------------
- * @author		$Author: wallenium $
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev: 10925 $
- * 
- * $Id: german.php 10925 2011-08-08 11:43:28Z wallenium $
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-Plus Language File
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-if ( !defined('EQDKP_INC') ){
-	header('HTTP/1.0 404 Not Found');exit;
+ 
+if (!defined('EQDKP_INC')) {
+	die('You cannot access this file directly.');
 }
 
-$module_lang = array(
-	'name'		=> 'MultiDKP Poolname',
-);
+//Language: English	
+//Created by EQdkp Plus Translation Tool on  2014-12-17 23:17
+//File: core/data_handler/includes/modules/read/multidkp/language/english.php
+//Source-Language: german
 
-$preset_lang = array(
-	'mdkpname' => 'MultiDKP Poolname',
-);
+$module_lang = array(
+	"name" => 'MultiDKP Poolname',
+	);
+	$preset_lang = array(
+	"mdkpname" => 'MultiDKP Poolname',
+	);
+	
 
 ?>

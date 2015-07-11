@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2011
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -26,11 +29,6 @@ class char_creation_date extends task {
 	public $form_method = 'post';
 	public $name = 'Character creation date';
 	public $type = 'fix';
-
-	public static function __shortcuts() {
-		$shortcuts = array('pdh', 'db', 'time', 'config');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 	public function is_applicable() {
 		$creation_dates = $this->pdh->aget('member', 'creation_date', 0, array($this->pdh->get('member', 'id_list')));
@@ -68,11 +66,11 @@ class char_creation_date extends task {
 					else $date = min($first_raids[$member_id], $first_items[$member_id]);
 				} else $date = $first_raids[$member_id];
 			} else $date = $this->time->time;
-			$this->db->query("UPDATE __members SET member_creation_date = '".$date."' WHERE member_id = '".$member_id."';");
+			
+			$this->db->prepare("UPDATE __members SET member_creation_date = ? WHERE member_id = ?")->execute($date, $member_id);
 		}
 		$this->config->del('char_creation_date_update');
 		return $this->lang['fix_creation_date_done'];
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_char_creation_date', char_creation_date::__shortcuts());
 ?>

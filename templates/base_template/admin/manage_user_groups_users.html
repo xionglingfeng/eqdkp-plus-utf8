@@ -1,15 +1,27 @@
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li><a href="{EQDKP_ROOT_PATH}admin/manage_user_groups.php{SID}">{L_manage_user_groups}</a></li>
+		<li class="current"><a>{GROUP_NAME}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
 <form method="post" action="{ACTION}" name="post">
+	<div class="contentHeader">
+		<h1 class="contentTitle">{L_manage_user_groups}: {GROUP_NAME}<input type="hidden" name="g" value="{GRP_ID}" /></h1>
+	</div>
 	<div id="groups_tabs">
 		<ul>
 			<li><a href='#members'><span>{L_group_members}</span></a></li>
+			<!-- IF S_USERGROUP_ADMIN-->
 			<li><a href='#permissions'><span>{L_permissions}</span></a></li>
+			<!-- ENDIF -->
 		</ul>
 
 		<div id="members">
-			<table width="100%" border="0" cellspacing="1" cellpadding="2" id="user_groups_table" class="colorswitch">
-				<tr>
-					<th align="center" colspan="6"><a href="manage_user_groups.php{SID}">{L_manage_user_groups}</a> &raquo; {GROUP_NAME}<input type="hidden" name="g" value="{GRP_ID}" /></th>
-				</tr>
+			<table id="user_groups_table" class="table fullwidth colorswitch">
 				<tr>
 					<th width="20"><input type="checkbox" id="selall_usergr" /></th>
 					<th>
@@ -26,6 +38,31 @@
 					<th>{L_active}</th>
 					<th>{L_online}</th>
 				</tr>
+				<tr>
+					<th align="center" colspan="6">{L_grpleaders}</th>
+				</tr>
+				<!-- BEGIN user_row_grpleader -->
+				<tr>
+					<td>
+					<!-- IF S_USERGROUP_ADMIN -->
+						<!-- IF not user_row_grpleader.S_UNDELETABLE --><input type="checkbox" name="group_user[{user_row_grpleader.ID}]" value="{user_row_grpleader.ID}" class="usercheckbox" />
+						<!-- ENDIF -->
+					<!-- ENDIF -->
+					</td>
+					<td>
+						<a href="manage_users.php{SID}&amp;u={user_row_grpleader.ID}">{user_row_grpleader.NAME}</a>
+					</td>
+					<td>{user_row_grpleader.EMAIL}</td>
+					<td>{user_row_grpleader.LAST_VISIT}</td>
+					<td>{user_row_grpleader.ACTIVE}</td>
+					<td>{user_row_grpleader.ONLINE}</td>
+				</tr>
+				<!-- END user_row_grpleader -->
+				
+				
+				<tr>
+					<th colspan="6" />{L_group_members}</th>
+				</tr>
 				<!-- BEGIN user_row -->
 				<tr>
 					<td><!-- IF not user_row.S_UNDELETABLE --><input type="checkbox" name="group_user[{user_row.ID}]" value="{user_row.ID}" class="usercheckbox" /><!-- ENDIF --></td>
@@ -39,32 +76,38 @@
 				</tr>
 				<!-- END user_row -->
 				<tr>
-					<th colspan="6">{L_add_user_to_group}</th>
+					<th colspan="6">
+						{BUTTON_MENU} 
+					<input type="submit" name="del_group_users" value="{L_delete_selected_from_group}" class="mainoption bi_delete" id="del_group_users" style="display:none;" /> 
+					<input type="submit" name="add_grpleader" value="{L_add_grpleader}" class="mainoption bi_new" id="add_grpleader"  style="display:none;"/>
+					<input type="submit" name="remove_grpleader" value="{L_remove_grpleader}" class="mainoption bi_new" id="remove_grpleader"  style="display:none;"/>
+					</th>
 				</tr>
-				<tr>
-					<td colspan="6">{ADD_USER_DROPDOWN}</td>
-				</tr>
-				<tr>
-					<th colspan="6"><input type="submit" name="add_group_users" value="{L_add_selected_to_group}" class="mainoption bi_new" id="add_group_users" /> <input type="submit" name="del_group_users" value="{L_delete_selected_from_group}" class="mainoption bi_delete" id="del_group_users" /> <input type="button" name="back" value="{L_back}" class="liteoption bi_back" onclick="window.location='manage_user_groups.php{SID}'"/> </th>
-				</tr>
-			</table>
-
+				
+				</table>
+				<br />
+				<fieldset class="settings mediumsettings" class="settings">
+						<legend>{L_add_user_to_group}</legend>
+						{ADD_USER_DROPDOWN}
+						<br /><br />
+						<button class="mainoption" type="submit" name="add_group_users" id="add_group_users"><i class="fa fa-plus"></i>{L_add_selected_to_group}</button>
+				</fieldset>
 		</div>
-
+		<!-- IF S_USERGROUP_ADMIN -->
 		<div id="permissions">	
 			<div id="permission_tabs">
 				<ul>
 					<li><a href='#user_perms'><span>{L_user_permissions}</span></a></li>
-					<li><a href='#admin_perms'><span><img src="{EQDKP_IMAGE_PATH}global/admin_flag.png" alt="admin"/>{L_admin_permissions}</span></a></li>
+					<li><a href='#admin_perms'><span class="adminicon">{L_admin_permissions}</span></a></li>
 				</ul>
 				
 				<div id="user_perms">
 					<!-- BEGIN u_permissions_row -->
 					<fieldset class="settings mediumsettings" class="settings">
-						<legend>{u_permissions_row.GROUP}</legend>
+						<legend>{u_permissions_row.ICON} {u_permissions_row.GROUP}</legend>
 						<!-- BEGIN check_group -->
 						<div class="permissions">
-							<label>
+							<label title="{u_permissions_row.check_group.CBNAME}"">
 								<input type="checkbox" name="{u_permissions_row.check_group.CBNAME}" value="Y" {u_permissions_row.check_group.CBCHECKED} class="changepermcolor" id="cb_{u_permissions_row.check_group.CBNAME}"/>
 								<span id="span_cb_{u_permissions_row.check_group.CBNAME}" class="perm_text {u_permissions_row.check_group.CLASS}">{u_permissions_row.check_group.TEXT}</span>
 							</label>
@@ -76,14 +119,14 @@
 				
 				<div id="admin_perms">
 					<!-- IF GRP_ID == 1 -->
-					<div class="bluebox roundbox">
-						<div class="icon_info">{L_guest_no_admin_perms_note}</div>
+					<div class="infobox infobox-large infobox-blue clearfix">
+						<i class="fa fa-info-circle fa-4x pull-left"></i> {L_guest_no_admin_perms_note}
 					</div>
 					<!-- ENDIF -->
 					
 					<!-- BEGIN a_permissions_row -->
 					<fieldset class="settings mediumsettings" class="settings">
-						<legend>{a_permissions_row.GROUP}</legend>
+						<legend>{a_permissions_row.ICON} {a_permissions_row.GROUP}</legend>
 						<!-- BEGIN check_group -->
 						<div class="permissions">
 							<label>
@@ -93,15 +136,20 @@
 						</div>
 						<!-- END check_group -->
 					</fieldset>
-					<!-- END a_permissions_row -->				
+					<!-- END a_permissions_row -->	
 				</div>
 				
 			</div>
 			<div class="contentFooter">
-				<input type="submit" class="bi_ok mainoption" name="save_group_perms" value="{L_save}" />
+				<button class="mainoption" type="submit" name="save_group_perms"><i class="fa fa-check"></i>{L_save}</button>
 			</div>
 		</div>
 	</div>
+	<!-- ENDIF -->
+	<div class="contentFooter">
+		<button class="mainoption" type="button" name="back" onclick="window.location='manage_user_groups.php{SID}'"><i class="fa fa-chevron-left"></i>{L_back}</button>
+	</div>
+
 {CSRF_TOKEN}
 </form>
 <script type="text/javascript">
@@ -118,7 +166,7 @@ $(document).ready(function(){
 	$("#selall_usergr").click(function(){
 		var checked_status = this.checked;
 		$(".usercheckbox").each(function(){
-			this.checked = checked_status;
+			$(this).prop("checked", checked_status).trigger('change');
 		});
 	});
 });

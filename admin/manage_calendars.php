@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2010
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 define('EQDKP_INC', true);
 define('IN_ADMIN', true);
@@ -22,10 +25,6 @@ $eqdkp_root_path = './../';
 include_once($eqdkp_root_path.'common.php');
 
 class Manage_Calendars extends page_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'pdh', 'jquery', 'core', 'config', 'html');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 	public function __construct(){
 		$this->user->check_auth('a_calendars_man');
@@ -44,7 +43,7 @@ class Manage_Calendars extends page_generic {
 			$id_list = $this->pdh->get('calendars', 'idlist');
 			foreach($calendars as $calendar) {
 				$func = (in_array($calendar['id'], $id_list)) ? 'update_calendar' : 'add_calendar';
-				$retu[] = $this->pdh->put('calendars', $func, array($calendar['id'], $calendar['name'], $calendar['color'], $calendar['feed'], $calendar['private'], $calendar['type']));
+				$retu[] = $this->pdh->put('calendars', $func, array($calendar['id'], $calendar['name'], $calendar['color'], $calendar['feed'], $calendar['private'], $calendar['type'], $calendar['restricted']));
 				$names[] = $calendar['name'];
 			}
 			if(in_array(false, $retu)) {
@@ -103,14 +102,15 @@ class Manage_Calendars extends page_generic {
 		ksort($ranks);
 		foreach($ranks as $id => $name) {
 			$this->tpl->assign_block_vars('calendars', array(
-				'KEY'		=> $key,
-				'DELETABLE'	=> $this->pdh->get('calendars', 'is_deletable', array($id)),
-				'ID'		=> $id,
-				'NAME'		=> $name,
-				'TYPE'		=> $this->html->DropDown('calendars['.$key.'][type]', $types, $this->pdh->get('calendars', 'type', array($id)), '', '', 'input', 'calendars'.$key),
-				'COLOR'		=> $this->jquery->colorpicker('cal_'.$key, $this->pdh->get('calendars', 'color', array($id)), 'calendars['.$key.'][color]'),
-				'PRIVATE'	=> $this->pdh->get('calendars', 'private', array($id)),
-				'FEED'		=> $this->pdh->get('calendars', 'feed', array($id)),
+				'KEY'			=> $key,
+				'DELETABLE'		=> $this->pdh->get('calendars', 'is_deletable', array($id)),
+				'ID'			=> $id,
+				'NAME'			=> $name,
+				'TYPE'			=> new hdropdown('calendars['.$key.'][type]', array('options' => $types, 'value' => $this->pdh->get('calendars', 'type', array($id)), 'id' => 'calendars'.$key)),
+				'COLOR'			=> $this->jquery->colorpicker('cal_'.$key, $this->pdh->get('calendars', 'color', array($id)), 'calendars['.$key.'][color]'),
+				'PRIVATE'		=> $this->pdh->get('calendars', 'private', array($id)),
+				'FEED'			=> $this->pdh->get('calendars', 'feed', array($id)),
+				'RESTRICTED'	=> new hradio('calendars['.$key.'][restricted]', array('value' => $this->pdh->get('calendars', 'restricted', array($id)))),
 			));
 			$key++;
 			$new_id = ($new_id == $id) ? $id+1 : $new_id;
@@ -121,7 +121,7 @@ class Manage_Calendars extends page_generic {
 			'SID'		=> $this->SID,
 			'ID'		=> $new_id,
 			'KEY'		=> $key,
-			'TYPE'		=> $this->html->DropDown('calendars['.$key.'][type]', $types, '', '', '', 'input', 'calendars'.$key),
+			'TYPE'		=> new hdropdown('calendars['.$key.'][type]', array('options' => $types, 'value' => $this->pdh->get('calendars', 'type', array($id)), 'id' => 'calendars'.$key)),
 			'COLOR'		=> $this->jquery->colorpicker('cal_'.$key, '', 'calendars['.$key.'][color]'),
 		));
 
@@ -139,13 +139,14 @@ class Manage_Calendars extends page_generic {
 			foreach($this->in->getArray('calendars', 'string') as $key => $calendar) {
 				if(isset($calendar['id']) && $calendar['id'] && !empty($calendar['name'])) {
 					$calendars[] = array(
-						'selected'	=> (in_array($calendar['id'], $selected)) ? $calendar['id'] : false,
-						'id'		=> $this->in->get('calendars:'.$key.':id',0),
-						'name'		=> $this->in->get('calendars:'.$key.':name',''),
-						'feed'		=> $this->in->get('calendars:'.$key.':feed','', 'raw'),
-						'color'		=> $this->in->get('calendars:'.$key.':color',''),
-						'private'	=> $this->in->get('calendars:'.$key.':suffix',0),
-						'type'		=> $this->in->get('calendars:'.$key.':type',0)
+						'selected'		=> (in_array($calendar['id'], $selected)) ? $calendar['id'] : false,
+						'id'			=> $this->in->get('calendars:'.$key.':id',0),
+						'name'			=> $this->in->get('calendars:'.$key.':name',''),
+						'feed'			=> $this->in->get('calendars:'.$key.':feed','', 'raw'),
+						'color'			=> $this->in->get('calendars:'.$key.':color',''),
+						'private'		=> $this->in->get('calendars:'.$key.':suffix',0),
+						'type'			=> $this->in->get('calendars:'.$key.':type',0),
+						'restricted'	=> $this->in->get('calendars:'.$key.':restricted',0)
 					);
 				}
 			}
@@ -154,6 +155,5 @@ class Manage_Calendars extends page_generic {
 		return false;
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_Manage_Calendars', Manage_Calendars::__shortcuts());
 registry::register('Manage_Calendars');
 ?>

@@ -1,25 +1,27 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2001
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * This class was initally written for the phpbb. Most code of this file does not match
  * the old code any longer, as it was rewritten for the needs of eqdkp-plus. Because of that
  * it is used under the GPL as part of the libraries of eqdkp plus.
  * Parts of this class may contain code of the smarty project
- *
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -27,10 +29,6 @@ if ( !defined('EQDKP_INC') ){
 }
 
 class template extends gen_class {
-	public static $shortcuts = array('pfh', 'user', 'game', 'pdh', 'config',
-		'encrypt' 		=> 'encrypt',
-		'timekeeper' 	=> 'timekeeper',
-	);
 	
 	private $handle					= '';
 	protected $_data				= array();
@@ -48,6 +46,7 @@ class template extends gen_class {
 	protected $statcontent_file		= array('main'=>'index.tpl');
 	protected $body_filename		= '';
 	protected $is_install			= false;
+	protected $intErrorCount		= 0;
 
 	// Various counters and storage arrays
 	protected $block_names			= array();
@@ -58,6 +57,7 @@ class template extends gen_class {
 										'js_code'		=> false,
 										'js_file'		=> false,
 										'css_code'		=> false,
+										'css_code_direct'=> false,
 										'css_file'		=> false,
 										'rss_feeds'		=> false,
 										'statichtml'	=> false,
@@ -70,8 +70,8 @@ class template extends gen_class {
 
 	public function __construct($install=false) {
 		$this->is_install = $install;
-		require_once($this->root_path . 'libraries/_statics/CSS.php');
-		require_once($this->root_path . 'libraries/_statics/JSMin.php');
+		require_once($this->root_path . 'libraries/_statics/CSS/CSS.php');
+		require_once($this->root_path . 'libraries/_statics/JS/JShrink.php');
 	}
 	
 	/*
@@ -160,8 +160,10 @@ class template extends gen_class {
 	/**
 	* Assign custom JS File to the Header
 	*/
-	public function js_file($varval){
-		$this->tpl_output['js_file'][] = array('file' => $varval);
+	public function js_file($varval, $key=false){
+		if($key !== false){
+			$this->tpl_output['js_file'][$key] = array('file' => $varval);
+		} else $this->tpl_output['js_file'][] = array('file' => $varval);
 	}
 
 	public function staticHTML($varval){
@@ -175,16 +177,233 @@ class template extends gen_class {
 	/**
 	* Assign custom CSS File to the Header
 	*/
-	public function css_file($varval, $media='screen'){
-		$this->tpl_output['css_file'][]			= array('file'=>$varval, 'type'=>'text/css', 'media'=>$media);
+	public function css_file($varval, $media='screen', $first=false){
+		if($first) $this->tpl_output['css_file'] 	= array_merge(array(array('file'=>$varval, 'type'=>'text/css', 'media'=> $media)), $this->tpl_output['css_file']);
+		else $this->tpl_output['css_file'][] 		= array('file'=>$varval, 'type'=>'text/css', 'media'=> $media);
 	}
 
 	/**
 	* Assign custom CSS Code to the Header
 	*/
-	public function add_css($varval){
-		$this->tpl_output['css_code'][] = $varval;
+	public function add_css($varval, $blnDirect=false){
+		if($blnDirect){
+			$this->tpl_output['css_code_direct'][] = $varval;
+		} else $this->tpl_output['css_code'][] = $varval;
 	}
+	
+	
+	public function combine_css(){
+		$strInlineCSS = "";
+		$arrHash = $data = $arrFiles = $arrOrigFiles = array();
+		
+		if (is_array($this->tpl_output['css_code'])){
+			foreach($this->tpl_output['css_code'] as $key => $strInlineCode){
+				$arrHash[] = md5($strInlineCode);
+				$strInlineCSS .= " ".$strInlineCode;
+				unset($this->tpl_output['css_code'][$key]);
+			}
+		}
+		$data[] = array('content' => $strInlineCSS, 'path' => false);
+			
+		$storage_folder = $this->pfh->FolderPath('templates', 'eqdkp');
+		
+		if (is_array($this->tpl_output['css_file'])){
+			foreach($this->tpl_output['css_file'] as $key => $val){
+				$val['file'] = $this->env->server_to_rootpath($val['file']);
+
+				//Resolve file
+				$val['orig_file'] = $val['file'];
+				$val['file'] = $this->resolve_css_file($val['file']);
+				if(!$val['file']) continue;
+				
+				if ($val['media'] == 'screen' && is_file($val['file'])){
+					if (strpos('combined_', $val['file']) !== false) continue;
+					$arrHash[] = md5_file($val['file']);
+					$arrFiles[] = $val['file'];
+					$arrOrigFiles[] = $val['orig_file'];
+					unset($this->tpl_output['css_file'][$key]);		
+				}
+			}
+		}
+		
+		//Check if there is an file for this hash
+		asort($arrHash);
+		$strHash = md5(implode(";", $arrHash));
+		$combinedFile = $storage_folder.$this->style_code.'/combined_'.$strHash.'.css';
+
+		if (!is_array($this->tpl_output['css_file'])) $this->tpl_output['css_file'] = array();
+		
+		if (is_file($combinedFile)){
+			array_unshift($this->tpl_output['css_file'], array('file' => $combinedFile, 'media' => 'screen', 'type' => 'text/css'));
+			return $combinedFile;
+		} else {
+			//Generate it
+			$strCSS = "";
+			foreach($arrFiles as $key => $strFile){
+				$strOrigFile = $arrOrigFiles[$key];
+				$strContent = file_get_contents($strFile);
+				$strPathDir = pathinfo($strOrigFile, PATHINFO_DIRNAME).'/';
+				
+				if (strpos($strPathDir, "./") === 0){
+					$strPathDir = str_replace($this->root_path, "", $strPathDir);
+				}
+
+				$data[] = array('content' => "\r\n/*!\r\n* From File: ".$strFile."\r\n*/ \r\n".$strContent, 'path' => $strPathDir);
+			}
+
+			foreach($data as $val){
+				$strCSS .= $this->replace_paths_css($val['content'], false, false, $val['path']);
+			}
+
+			if(strlen($strCSS)){
+				if(!defined('DISABLE_CSS_MINIFY')){
+					$minify = new Minify_CSS();
+					$strCSS = $minify->minify($strCSS);
+				}
+				
+				$this->pfh->putContent($combinedFile, $strCSS);
+				$this->timekeeper->put('tpl_cache_'.$this->style_code, 'combined.css');
+				if (!is_array($this->tpl_output['css_file'])) $this->tpl_output['css_file'] = array();
+				array_unshift($this->tpl_output['css_file'], array('file' => $combinedFile, 'media' => 'screen', 'type' => 'text/css'));
+			}
+		}
+		return $combinedFile;
+	}
+	
+	public function debug_css_files(){
+		$strInlineCSS = "";
+		$arrHash = $data = $arrFiles = array();
+				
+		$storage_folder = $this->pfh->FolderPath('templates', 'eqdkp');
+	
+		if (is_array($this->tpl_output['css_file'])){
+			foreach($this->tpl_output['css_file'] as $key => $val){
+				$val['file'] = $this->env->server_to_rootpath($val['file']);
+
+				//Resolve file
+				$origFile = $val['file'];
+				$val['file'] = $this->resolve_css_file($val['file']);
+				if(!$val['file']) continue;
+				
+				if ($val['media'] == 'screen' && is_file($val['file'])){
+					if (strpos('combined_', $val['file']) !== false) continue;
+					
+					$strFile = $val['file'];
+					$strContent = file_get_contents($strFile);
+					
+					$strPathDir = pathinfo($origFile, PATHINFO_DIRNAME).'/';
+					$strFilename = pathinfo($origFile, PATHINFO_FILENAME);
+					if (strpos($strPathDir, "./") === 0){
+						$strPathDir = str_replace($this->root_path, "", $strPathDir);
+					}
+
+					$strContent = $this->replace_paths_css($strContent, false, false, $strPathDir);
+					
+					$combinedFile = $storage_folder.$this->style_code.'/dev_'.$strFilename.'.css';
+					$this->pfh->putContent($combinedFile, "/* ".$strFile."*/ \r\n\n\n".$strContent);
+					$this->tpl_output['css_file'][$key]['file'] = $combinedFile;
+				}
+			}
+		}
+	}
+	
+	public function resolve_css_file($cssfile, $stylecode =false){
+		if(!$stylecode) $stylecode = $this->style_code;
+		
+		//Check data dir for exact match
+		$strWithoutRoot = str_replace($this->root_path, '', $cssfile);
+		$strCleaned = str_replace('templates/base_template/', '', $strWithoutRoot);
+		$strCleaned = str_replace('templates/'.$stylecode, '', $strCleaned);
+		$data_root = $this->pfh->FolderPath('templates/'.$stylecode, 'eqdkp');
+
+		if(file_exists($data_root.$strWithoutRoot)){
+			return $data_root.$strWithoutRoot;
+		}elseif(file_exists($data_root.$strCleaned)){
+			return $data_root.$strCleaned;
+		}elseif(strpos($cssfile, '/base_template/')){
+			$strSpecificTemplate = str_replace('/base_template/', '/'.$stylecode.'/', $cssfile);
+			if (file_exists($strSpecificTemplate)){
+				return $strSpecificTemplate;
+			}
+		}
+
+		//if it contains base_template, check first specific template folder, then use base_template
+		return file_exists($cssfile) ? $cssfile : false;
+	}
+	
+	//Combining JS Files
+	public function combine_js(){
+		$arrHash = $data = $arrFiles = array();
+		$storage_folder = $this->pfh->FolderPath('templates', 'eqdkp');
+		
+		if (!is_array($this->tpl_output['js_file'])) $this->tpl_output['js_file'] = array();
+
+		foreach($this->tpl_output['js_file'] as $key => $val){
+			$val['file'] = $this->env->server_to_rootpath($val['file']);
+			
+			//Put the jquery lang file at the end of all other JS files
+			if (pathinfo($val['file'], PATHINFO_FILENAME) == 'lang_jquery'){
+				$nkey = 99999999;
+			} else $nkey = $key;
+			
+			if (is_file($val['file'])){
+				if (strpos($val['file'], $storage_folder) === 0 || strpos('combined_', $val['file']) !== false) continue;
+				$arrHash[] = md5_file($val['file']);
+				unset($this->tpl_output['js_file'][$key]);
+				$arrFiles[$nkey] = $val['file'];
+			}
+		}
+		
+		ksort($arrFiles);
+		
+		//Check if there is an file for this hash
+		asort($arrHash);
+		$strHash = md5(implode(";", $arrHash));
+		$combinedFile = $storage_folder.$this->style_code.'/combined_'.$strHash.'.js';
+		
+		if (is_file($combinedFile)){
+			array_unshift($this->tpl_output['js_file'], array('file' => $combinedFile));
+			
+			return file_get_contents($combinedFile);
+		} else {
+			//Generate it
+			$strJS = "";
+			foreach($arrFiles as $strFile){
+				$strContent = file_get_contents($strFile);
+				$arrHash[] = md5($strContent);
+				$strPathDir = pathinfo($strFile, PATHINFO_DIRNAME).'/';
+				if (strpos($strPathDir, "./") === 0){
+					$strPathDir = "EQDKP_ROOT_PATH".substr($strPathDir, 2);
+				}
+				$strContent = str_replace(array('(./', '("./', "('./"), array('('.$strPathDir, '("'.$strPathDir, "('".$strPathDir),$strContent);
+				$data[] = array('content' => "\r\n/* ".$strFile."*/ \r\n".$strContent, 'path' => $strPathDir);
+			}
+			
+			foreach($data as $val){
+				$strJS .= ' '.$val['content'];
+			}
+			
+			$this->pfh->putContent($combinedFile, $strJS);
+			$this->timekeeper->put('tpl_cache_'.$this->style_code, 'combined.js');
+			array_unshift($this->tpl_output['js_file'], array('file' => $combinedFile));
+			return $strJS;
+		}
+		return "";
+	}
+	
+	public function cleanup_combined(){
+		$intCleanUpTime = 24*3600; //24 hours
+		$intCSS = $this->timekeeper->get('tpl_cache_'.$this->style_code, 'combined.css');
+		$intJS = $this->timekeeper->get('tpl_cache_'.$this->style_code, 'combined.js');
+		
+		if (($intCSS+$intCleanUpTime) < time() || (($intJS+$intCleanUpTime) < time())) {
+			$arrDir = sdir($storage_folder = $this->pfh->FolderPath('templates', 'eqdkp').$this->style_code, 'combined_*');
+			foreach($arrDir as $file){
+				$this->pfh->Delete('templates/'.$this->style_code.'/'.$file, 'eqdkp');
+			}
+		}
+	}
+	
 
 	/**
 	* Assign RSS-Feeds to the Header
@@ -198,7 +417,7 @@ class template extends gen_class {
 				'url'	=> $url,
 				'perms'	=> $arrPermissions,
 			);
-			$url = $this->root_path.'exchange.php?out=xml&amp;data='.rawurlencode($this->encrypt->encrypt(serialize($arrData))).'&amp;key='.((isset($this->user->data['exchange_key'])) ? $this->user->data['exchange_key'] : '');
+			$url = $this->server_path.'exchange.php?out=xml&amp;data='.rawurlencode($this->encrypt->encrypt(serialize($arrData))).'&amp;key='.((isset($this->user->data['exchange_key'])) ? $this->user->data['exchange_key'] : '');
 		}
 
 		$this->tpl_output['rss_feeds'][] = array(
@@ -229,14 +448,14 @@ class template extends gen_class {
 	}
 
 	 // Generate a full path & the filename for a given filename (absolute or relative)
-	private function fullpath_filename($filename, $basefile=false){
+	public function fullpath_filename($filename, $basefile=false){
 
 		if(substr($filename, 0, 1) == '/' || substr($filename, 0, 2) == './'){
 			$myfile			= $filename;
 		}else{
 			if ($basefile){
 				$data_file = $this->data_root.$filename;
-				$tmp_root_file = $this->root_path.'templates/'.$this->style_code.'/'.$filename;				
+				$tmp_root_file = $this->root_path.'templates/'.$this->style_code.'/'.$filename;
 			} else {
 				$data_file = $this->data_root.str_replace('templates/', '', $this->root_dir).$filename;
 				$tmp_root_file = $this->root.'/'.$filename;
@@ -248,6 +467,25 @@ class template extends gen_class {
 			} else {
 				$myfile = $this->base_template.'/'.$filename;
 			}
+		}
+		return $myfile;
+	}
+	
+	public function resolve_templatefile($filename, $stylecode=false){
+		if(!$stylecode) $stylecode = $this->style_code;
+		
+		$data_root = $this->pfh->FolderPath('templates/'.$stylecode, 'eqdkp');
+		$data_file = $data_root.$filename;
+		$tmp_root_file = $this->root_path.'templates/'.$stylecode.'/'.$filename;
+		$base_template = $this->root_path.'templates/base_template';
+		$myfile = false;
+		
+		if (file_exists($data_file)){
+			$myfile = $data_file;
+		} elseif(file_exists($tmp_root_file)){
+			$myfile = $tmp_root_file;
+		} elseif(file_exists($myfile)) {
+			$myfile = $base_template.'/'.$filename;
 		}
 		return $myfile;
 	}
@@ -283,10 +521,28 @@ class template extends gen_class {
 	private function security(){
 		return true;
 	}
+	
+	public function get_combined_css(){
+		return $this->combine_css();
+	}
+	
+	public function get_header_js(){
+		$imploded_jscode = "";
+		if(is_array($this->get_templatedata('js_code'))){
+			$imploded_jscode = implode("\n", $this->get_templatedata('js_code'));
+			if(is_array($this->get_templatedata('js_code_docready'))){
+				$imploded_jscode .= "jQuery(document).ready(function(){";
+				$imploded_jscode .= implode("\n", $this->get_templatedata('js_code_docready'));
+				$imploded_jscode .= "});";
+			}
+		}
+		return $imploded_jscode;
+	}
 
 	// Load the JS / CSS / RSS files to the header
 	private function perform_header_tasks(){
-		$debug = true;
+		$debug = (DEBUG == 4);
+		$this->cleanup_combined();
 		if(!$this->get_templateout('js_code')){
 			// JS in header...
 			if(is_array($this->get_templatedata('js_code'))){
@@ -296,33 +552,29 @@ class template extends gen_class {
 					$imploded_jscode .= implode("\n", $this->get_templatedata('js_code_docready'));
 					$imploded_jscode .= "});";
 				}
-				$this->assign_var('JS_CODE', (($debug) ? $imploded_jscode : JSMin::minify($imploded_jscode)));
+				$this->assign_var('JS_CODE', $imploded_jscode);
 				$this->set_templateout('js_code', true);
 			}
 
 			// JS on end of page
 			if(is_array($this->get_templatedata('js_code_eop'))){
 				$imploded_jscodeeop = implode("\n", $this->get_templatedata('js_code_eop'));
-				$this->assign_var('JS_CODE_EOP', (($debug) ? $imploded_jscodeeop : JSMin::minify($imploded_jscodeeop)));
+				$this->assign_var('JS_CODE_EOP', $imploded_jscodeeop);
 				$this->set_templateout('js_code', true);
 			}
 			// JS on end of page
 			if(is_array($this->get_templatedata('js_code_eop2'))){
 				$imploded_jscodeeop2 = implode("\n", $this->get_templatedata('js_code_eop2'));
-				$this->assign_var('JS_CODE_EOP2', (($debug) ? $imploded_jscodeeop2 : JSMin::minify($imploded_jscodeeop2)));
+				$this->assign_var('JS_CODE_EOP2', $imploded_jscodeeop2);
 				$this->set_templateout('js_code', true);
 			}
 		}
 
-		// Pass CSS Code to template..
-		if(!$this->get_templateout('css_code')){
-			if(is_array($this->get_templatedata('css_code'))){
-				$imploded_css = implode("\n", $this->get_templatedata('css_code'));
-				$this->assign_var('CSS_CODE', (($debug) ? $imploded_css : Minify_CSS::minify($imploded_css)));
-				$this->set_templateout('css_code', true);
-			}
-		}
-
+		//Combine CSS Files and Inline CSS
+		if ($debug) {
+			$this->debug_css_files(); 
+		} else $this->combine_css();
+		
 		// Load the CSS Files..
 		if(!$this->get_templateout('css_file')){
 			if(is_array($this->get_templatedata('css_file'))){
@@ -330,8 +582,25 @@ class template extends gen_class {
 				$this->set_templateout('css_file', true);
 			}
 		}
+		
+		// Pass CSS Code to template..
+		if(!$this->get_templateout('css_code') || !$this->get_templateout('css_code_direct')){
+			$imploded_css = "";
+			if(is_array($this->get_templatedata('css_code'))){
+				$imploded_css .= implode("\n", $this->get_templatedata('css_code'));
+			}
+			if(is_array($this->get_templatedata('css_code_direct'))){
+				$imploded_css .= implode("\n", $this->get_templatedata('css_code_direct'));
+			}
+			if($imploded_css != ""){
+				$this->assign_var('CSS_CODE', (($debug || defined('DISABLE_JS_MINIFY')) ? $imploded_css : Minify_CSS::minify($imploded_css)));
+			}
+			$this->set_templateout('css_code', true);
+			$this->set_templateout('css_code_direct', true);
+		}
 
 		// Load the JS Files..
+		if(!$debug) $this->combine_js();
 		if(!$this->get_templateout('js_file')){
 			if(is_array($this->get_templatedata('js_file'))){
 				$this->assign_var('JS_FILES', $this->implode_cssjsfiles("<script type='text/javascript' src='", "'></script>", "\n", $this->get_templatedata('js_file')));
@@ -351,6 +620,14 @@ class template extends gen_class {
 				$imploded_feeds = implode("\n", $feeds);
 				$this->assign_var('RSS_FEEDS', $imploded_feeds);
 				$this->set_templateout('rss_feeds', true);
+				
+				$this->assign_var('S_GLOBAL_RSSFEEDS', true);
+				foreach($this->get_templatedata('rss_feeds') as $feed){
+					$this->tpl->assign_block_vars('global_rss_row', array(
+						'LINK' => $feed['url'],
+						'NAME' => $feed['name'],
+					));
+				}
 			}
 		}
 
@@ -376,10 +653,12 @@ class template extends gen_class {
 		$output = '';
 
 		foreach($array as $item){
-			$filetime	= (substr($item['file'],0,4) == "http") ? rand(1,100000000) : @filemtime($item['file']);
+			$relative_file = $this->env->server_to_rootpath($item['file']);
+			$filetime	= (substr($item['file'],0,4) == "http") ? rand(1,100000000) : @filemtime($relative_file);
 			$type		= (is_array($item) && isset($item['type'])) ? "' type='".$item['type']."'" : '';
 			$media		= (is_array($item) && isset($item['media'])) ? " media='".$item['media']."'" : '';
-			$output .= $before . ((is_array($item)) ? $item['file'] : $item) . "?timestamp=".$filetime.$type.$media.$after.$glue;
+			$file 		= ((is_array($item)) ? $item['file'] : $item);
+			$output .= $before . str_replace($this->root_path, $this->server_path, $file) . "?timestamp=".$filetime.$type.$media.$after.$glue;
 		}
 		return substr($output, 0, -strlen($glue));
 	}
@@ -406,6 +685,7 @@ class template extends gen_class {
 				$this->compile_write($handle, $this->compiled_code[$handle]);
 				$this->handle = $handle;
 				@eval($this->compiled_code[$handle]);
+				@flush();
 			}
 		}
 		exit;
@@ -549,9 +829,18 @@ class template extends gen_class {
 		}
 		return true;
 	}
+	
+	public function compileString($strString, $arrVars=array()){
+		$this->core->addCommonTemplateVars();
+		$this->assign_vars($arrVars);
+		$strCompiled = $this->compile($strString, true, 'return');
+		@eval($strCompiled);
+
+		return $return;
+	}
 
 	//Compiles the given string of code, and returns the result in a string.
-	private function compile($code, $do_not_echo = false, $retvar = ''){
+	private function compile($code, $do_not_echo = false, $retvar = 'return'){
 		$this->strip_tags_php($code);
 
 		// match the template tags
@@ -591,10 +880,14 @@ class template extends gen_class {
 					case 'INCLUDE':
 						$compile_blocks[] = '// INCLUDE ' . $blocks[2][$curr_tb] . "\n" . $this->compile_tag_include($blocks[2][$curr_tb]);
 						break;
+					case 'PRE':
+						$precompiled = $this->pre_compile($blocks[2][$curr_tb]);
+						$compile_blocks[] = $precompiled;
+						break;
 					default:
 						$this->compile_var_tags($blocks[0][$curr_tb]);
 						$trim_check = trim($blocks[0][$curr_tb]);
-						$compile_blocks[] = (!$do_not_echo) ? ((!empty($trim_check)) ? 'echo \'' . $blocks[0][$curr_tb] . '\';' : '') : ((!empty($trim_check)) ? $blocks[0][$curr_tb] : '');
+						$compile_blocks[] = ((!empty($trim_check)) ? 'echo \'' . $blocks[0][$curr_tb] . '\';' : '');
 						break;
 				}	// switch
 			}	// isset
@@ -604,9 +897,16 @@ class template extends gen_class {
 		for ($i = 0; $i < count($text_blocks); $i++){
 			$trim_check_text		= ( isset($text_blocks[$i]) ) ? trim($text_blocks[$i]) : '';
 			$trim_check_block		= ( isset($compile_blocks[$i]) ) ? trim($compile_blocks[$i]) : '';
-			$template_php			.= (!$do_not_echo) ? ((!empty($trim_check_text)) ? 'echo \'' . $text_blocks[$i] . '\';' : '') . ((!empty($compile_blocks[$i])) ? $compile_blocks[$i] : '') : ((!empty($trim_check_text)) ? $text_blocks[$i] . "\n" : '') . ((!empty($compile_blocks[$i])) ? $compile_blocks[$i] . "\n" : '');
+			$template_php			.= ((!empty($trim_check_text)) ? 'echo \'' . $text_blocks[$i] . '\';' : '') . ((!empty($compile_blocks[$i])) ? $compile_blocks[$i] : '') ;
 		}
-		return (!$do_not_echo) ? $template_php : '$' . $retvar . '.= \'' . $template_php . '\'';
+		
+		if($do_not_echo){
+			$template_php = '$' . $retvar . ' = "";'."\n".$template_php;
+			$template_php = str_replace("echo '", '$' . $retvar . ' .= \'', $template_php);
+			return $template_php;
+		}
+		
+		return $template_php;
 	}
 
 	private function compile_var_tags(&$text_blocks){
@@ -625,6 +925,10 @@ class template extends gen_class {
 		}
 
 		// This will handle the remaining root-level varrefs
+		//Check modifier on language Vars
+		$text_blocks = preg_replace("/\{(L|GL)_([a-z0-9\-_]*?)\|([a-z0-9\-_]+?)\}/is", "'.\$this->handleModifier('{"."$1_$2"."}', '$3').'", $text_blocks);
+		
+		
 		//normal language
 		$text_blocks	= preg_replace('#\{L_([a-z0-9\-_]*?)\}#is', "' . ((isset(\$this->_data['.'][0]['L_\\1'])) ? \$this->_data['.'][0]['L_\\1'] : ((\$this->lang('\\1')) ? \$this->lang('\\1') : '{ ' . ucfirst(strtolower(str_replace('_', ' ', '\\1'))) . '         }')) . '", $text_blocks);
 		//game language
@@ -632,16 +936,68 @@ class template extends gen_class {
 		$text_blocks	= preg_replace('#\{([a-z0-9\:\@\-_]*?)\}#is', "' . ((isset(\$this->_data['.'][0]['\\1'])) ? \$this->_data['.'][0]['\\1'] : '') . '", $text_blocks);
 		return;
 	}
+	
+	public function handleModifier($strLangString, $strModifier){
+		switch($strModifier){
+			case 'jsencode':
+					return "'".str_replace("'", "\'", $strLangString)."'";
+				break;
+			
+			default: return $strLangString;
+		}
+	}
+	
+	
+	private function pre_compile($tag_args){
+		$var = $this->_data['.'][0][$tag_args];
+		if ($var) return $this->compile($var);
+		return '';
+	}
 
 	private function compile_tag_block($tag_args){
 		$tag_template_php = '';
 		array_push($this->block_names, $tag_args);
+		
+		// Allow for control of looping (indexes start from zero):
+		// foo(2)    : Will start the loop on the 3rd entry
+		// foo(-2)   : Will start the loop two entries from the end
+		// foo(3,4)  : Will start the loop on the fourth entry and end it on the fifth
+		// foo(3,-4) : Will start the loop on the fourth entry and end it four from last
+		if (preg_match('#^([^()]*)\(([\-\d]+)(?:,([\-\d]+))?\)$#', $tag_args, $match))
+		{
+			$tag_args = $match[1];
+			if ($match[2] < 0)
+			{
+				$loop_start = '($_' . $tag_args . '_count ' . $match[2] . ' < 0 ? 0 : $_' . $tag_args . '_count ' . $match[2] . ')';
+			}
+			else
+			{
+				$loop_start = '($_' . $tag_args . '_count < ' . $match[2] . ' ? $_' . $tag_args . '_count : ' . $match[2] . ')';
+			}
+			if (strlen($match[3]) < 1 || $match[3] == -1)
+			{
+				$loop_end = '$_' . $tag_args . '_count';
+			}
+			else if ($match[3] >= 0)
+			{
+				$loop_end = '(' . ($match[3] + 1) . ' > $_' . $tag_args . '_count ? $_' . $tag_args . '_count : ' . ($match[3] + 1) . ')';
+			}
+			else //if ($match[3] < -1)
+			{
+				$loop_end = '$_' . $tag_args . '_count' . ($match[3] + 1);
+			}
+		}
+		else
+		{
+			$loop_start = 0;
+			$loop_end = '$_' . $tag_args . '_count';
+		}
 
 		if (sizeof($this->block_names) < 2){
 			// Block is not nested.
 			$tag_template_php	= '$_' . $tag_args . '_count = (isset($this->_data[\'' . $tag_args . '.\'])) ?  sizeof($this->_data[\'' . $tag_args . '.\']) : 0;' . "\n";
 			$tag_template_php	.= 'if ($_' . $tag_args . '_count) {' . "\n";
-			$tag_template_php	.= 'for ($_' . $tag_args . '_i = 0; $_' . $tag_args . '_i < $_' . $tag_args . '_count; $_' . $tag_args . '_i++)';
+			$tag_template_php	.= 'for ($_' . $tag_args . '_i = '.$loop_start.'; $_' . $tag_args . '_i < '.$loop_end.'; $_' . $tag_args . '_i++)';
 
 		// This block is nested.
 		}else{
@@ -655,7 +1011,7 @@ class template extends gen_class {
 			// Create the for loop code to iterate over this block.
 			$tag_template_php	= '$_' . $tag_args . '_count = (isset(' . $varref . ')) ? sizeof(' . $varref . ') : 0;' . "\n";
 			$tag_template_php	.= 'if ($_' . $tag_args . '_count) {' . "\n";
-			$tag_template_php	.= 'for ($_' . $tag_args . '_i = 0; $_' . $tag_args . '_i < $_' . $tag_args . '_count; $_' . $tag_args . '_i++)';
+			$tag_template_php	.= 'for ($_' . $tag_args . '_i = '.$loop_start.'; $_' . $tag_args . '_i < ' . $loop_end . '; $_' . $tag_args . '_i++)';
 		}
 		$tag_template_php		.= "\n{\n";
 		return $tag_template_php;
@@ -695,6 +1051,7 @@ class template extends gen_class {
 
 				case '==':
 				case 'eq':
+				case 'EQ':
 					$token = '==';
 				break;
 
@@ -702,22 +1059,26 @@ class template extends gen_class {
 				case '<>':
 				case 'ne':
 				case 'neq':
+				case 'NEQ':
 					$token = '!=';
 				break;
 
 				case '<':
 				case 'lt':
+				case 'LT':
 					$token = '<';
 				break;
 
 				case '<=':
 				case 'le':
 				case 'lte':
+				case 'LE':
 					$token = '<=';
 				break;
 
 				case '>':
 				case 'gt':
+				case 'GET':
 					$token = '>';
 				break;
 
@@ -729,21 +1090,25 @@ class template extends gen_class {
 
 				case '&&':
 				case 'and':
+				case 'AND':
 					$token = '&&';
 				break;
 
 				case '||':
 				case 'or':
+				case 'OR':
 					$token = '||';
 				break;
 
 				case '!':
 				case 'not':
+				case 'NOT':
 					$token = '!';
 				break;
 
 				case '%':
 				case 'mod':
+				case 'MOD':
 					$token = '%';
 				break;
 
@@ -751,6 +1116,7 @@ class template extends gen_class {
 					array_push($is_arg_stack, $i);
 				break;
 
+				case 'IS':
 				case 'is':	$is_arg_start	= ($tokens[$i-1] == ')') ? array_pop($is_arg_stack) : $i-1;
 							$is_arg			= implode('    ', array_slice($tokens, $is_arg_start, $i - $is_arg_start));
 							$new_tokens		= $this->_parse_is_expr($is_arg, array_slice($tokens, $i+1));
@@ -924,82 +1290,120 @@ class template extends gen_class {
 		}
 
 	}
-
-	public function parse_cssfile($stylepath = false, $data = false) {
+	
+	
+	public function add_common_cssfiles(){
+		//Global CSS
+		$global_css		= $this->root_path.'templates/eqdkpplus.css';
+		$this->tpl->css_file($global_css, 'screen');
+		
+		//Font Awesome
+		$this->tpl->css_file($this->root_path.'libraries/FontAwesome/font-awesome.min.css', 'screen');
+		
+		//Template CSS
+		$css_theme		= $this->root_path.'templates/'.$this->style_code.'/'.$this->style_code.'.css';
+		$this->tpl->css_file($css_theme, 'screen');
+		
+		//Now the class colors
+		$gameclasses = $this->game->get_primary_classes();
+		$data = "";
+		if(isset($gameclasses) && is_array($gameclasses)){
+			foreach($gameclasses as $class_id => $class_name) {
+				$data .= '
+						.class_'.$class_id.', .class_'.$class_id.':link, .class_'.$class_id.':visited, .class_'.$class_id.':active,
+						.class_'.$class_id.':link:hover, td.class_'.$class_id.' a:hover, td.class_'.$class_id.' a:active,
+						td.class_'.$class_id.', td.class_'.$class_id.' a:link, td.class_'.$class_id.' a:visited{
+							text-decoration: none;
+							color: '.$this->game->get_class_color($class_id).' !important;
+						}
+					';
+			}
+			$this->add_css($data);
+		}
+	}
+	
+	
+	private function replace_paths_css($strCSS, $stylepath = false, $data = false, $path=false){
 		$style = ($data) ? $data : $this->user->style;
 		$stylepath = ($stylepath) ? $stylepath : $this->style_code;
 		$root_path = '../../../../../';
 
-		$storage_folder = $this->pfh->FolderPath('templates/'.$stylepath, 'eqdkp');
-		if (file_exists($storage_folder.$stylepath.'.css')){
-			$file = $storage_folder.$stylepath.'.css';
-		} elseif (file_exists($this->root_path . 'templates/'.$stylepath.'/'.$stylepath.'.css')) {
-			$file = $this->root_path . 'templates/'.$stylepath.'/'.$stylepath.'.css';
+		//Background Image
+		$template_background_file = "";
+		switch($style['background_type']){
+			//Game
+			case 1: $template_background_file = $root_path . 'games/' .$this->config->get('default_game') . '/template_background.jpg' ;
+			break;
+				
+			//Own
+			case 2:
+				if ($style['background_img'] != ''){
+					if (strpos($style['background_img'],'://') > 1){
+						$template_background_file = $style['background_img'];
+					} else {
+						$template_background_file = $root_path.$style['background_img'];
+					}
+				}
+				break;
+		
+			//Style
+			default:
+				if(is_file($this->root_path . 'templates/' . $style['template_path'] . '/images/template_background.png')){
+					$template_background_file	= $root_path . 'templates/' . $style['template_path'] . '/images/template_background.png';
+				} else {
+					$template_background_file	= $root_path . 'templates/' . $style['template_path'] . '/images/template_background.jpg';
+				}
 		}
-
-
-		if (file_exists($this->root_path . 'games/' .$this->config->get('default_game') . '/template_background.jpg')){
+		if($template_background_file == ""){
+			//Cannot find a background file, let's take the game specific
 			$template_background_file = $root_path . 'games/' .$this->config->get('default_game') . '/template_background.jpg' ;
-		} else {
-			$template_background_file	= $root_path . 'templates/' . $style['template_path'] . '/images/template_background.jpg';
 		}
-		if ($style['background_img'] != ''){
-			if (strpos($style['background_img'],'://') > 1){
-				$template_background_file = $style['background_img'];
-			} else {
-				$template_background_file = $root_path.$style['background_img'];
-			}
-		}
-
+		
 		$in = array(
-				"/T_FONTFACE1/",
-				"/T_FONTFACE2/",
-				"/T_FONTFACE3/",
-				"/T_FONTSIZE1/",
-				"/T_FONTSIZE2/",
-				"/T_FONTSIZE3/",
-				"/T_FONTCOLOR1/",
-				"/T_FONTCOLOR2/",
-				"/T_FONTCOLOR3/",
-				"/T_FONTCOLOR_NEG/",
-				"/T_FONTCOLOR_POS/",
-				"/T_BODY_BACKGROUND/",
-				"/T_TABLE_BORDER_WIDTH/",
-				"/T_TABLE_BORDER_COLOR/",
-				"/T_TABLE_BORDER_STYLE/",
-				"/T_BODY_LINK_STYLE/",
-				"/T_BODY_LINK/",
-				"/T_BODY_HLINK_STYLE/",
-				"/T_BODY_HLINK/",
-				"/T_HEADER_LINK_STYLE/",
-				"/T_HEADER_LINK/",
-				"/T_HEADER_HLINK_STYLE/",
-				"/T_HEADER_HLINK/",
-
-				"/T_TH_COLOR1/",
-				"/T_TR_COLOR1/",
-				"/T_TR_COLOR2/",
-				"/T_INPUT_BACKGROUND/",
-				"/T_INPUT_BORDER_WIDTH/",
-				"/T_INPUT_BORDER_COLOR/",
-				"/T_INPUT_BORDER_STYLE/",
-				"/T_PORTAL_WIDTH_WITHOUT_BOTH_COLUMNS/",
-				"/T_PORTAL_WIDTH_WITHOUT_LEFT_COLUMN/",
-				"/T_PORTAL_WIDTH/",
-				"/T_COLUMN_LEFT_WIDTH/",
-				"/T_COLUMN_RIGHT_WIDTH/",
-
-				"/\.\.\/\.\.\//",
-				"/\.\.\//",
-				"/\(images/",
-				"/\('images/",
-				"/\(\"images/",
-				"/EQDKP_ROOT_PATH/",
-				"/EQDKP_IMAGE_PATH/",
-				"/TEMPLATE_IMAGE_PATH/",
-				"/TEMPLATE_BACKGROUND/",
+				"T_FONTFACE1",
+				"T_FONTFACE2",
+				"T_FONTFACE3",
+				"T_FONTSIZE1",
+				"T_FONTSIZE2",
+				"T_FONTSIZE3",
+				"T_FONTCOLOR1",
+				"T_FONTCOLOR2",
+				"T_FONTCOLOR3",
+				"T_FONTCOLOR_NEG",
+				"T_FONTCOLOR_POS",
+				"T_BODY_BACKGROUND",
+				"T_TABLE_BORDER_WIDTH",
+				"T_TABLE_BORDER_COLOR",
+				"T_TABLE_BORDER_STYLE",
+				"T_BODY_LINK_STYLE",
+				"T_BODY_LINK",
+				"T_BODY_HLINK_STYLE",
+				"T_BODY_HLINK",
+				"T_HEADER_LINK_STYLE",
+				"T_HEADER_LINK",
+				"T_HEADER_HLINK_STYLE",
+				"T_HEADER_HLINK",
+		
+				"T_TH_COLOR1",
+				"T_TR_COLOR1",
+				"T_TR_COLOR2",
+				"T_INPUT_BACKGROUND",
+				"T_INPUT_BORDER_WIDTH",
+				"T_INPUT_BORDER_COLOR",
+				"T_INPUT_BORDER_STYLE",
+				"T_PORTAL_WIDTH_WITHOUT_BOTH_COLUMNS",
+				"T_PORTAL_WIDTH_WITHOUT_LEFT_COLUMN",
+				"T_PORTAL_WIDTH",
+				"T_COLUMN_LEFT_WIDTH",
+				"T_COLUMN_RIGHT_WIDTH",
+				"T_BACKGROUND_POSITION",
+		
+				"EQDKP_ROOT_PATH",
+				"EQDKP_IMAGE_PATH",
+				"TEMPLATE_IMAGE_PATH",
+				"TEMPLATE_BACKGROUND",
 		);
-
+		
 		$out = array(
 				$style['fontface1'],
 				$style['fontface2'],
@@ -1036,63 +1440,88 @@ class template extends gen_class {
 				$style['portal_width'],
 				$style['column_left_width'],
 				$style['column_right_width'],
-
-
-				$root_path,
-				$root_path,
-				'('.$root_path.'templates/'.$stylepath.'/images',
-				'(\''.$root_path.'templates/'.$stylepath.'/images',
-				'("'.$root_path.'templates/'.$stylepath.'/images',
+				(($style['background_pos'] == 'normal') ? 'scroll' : 'fixed'),
+		
 				$root_path,
 				$root_path.'images/',
 				$root_path.'templates/'.$stylepath.'/images',
 				$template_background_file,
 		);
-
-		if (strlen($file)){
-			//The global css file
-			$content = file_get_contents($this->root_path.'templates/eqdkpplus.css');
-			$data = preg_replace($in, $out, $content);
-
-
-			$content = file_get_contents($file);
-			//Replace everything
-			$data .= preg_replace($in, $out, $content);
-
-			//Now the class colors
-			$gameclasses = $this->game->get('classes');
-			if(isset($gameclasses) && is_array($gameclasses)){
-				foreach($gameclasses as $class_id => $class_name) {
-					$data .= '
-						.class_'.$class_id.', .class_'.$class_id.':link, .class_'.$class_id.':visited, .class_'.$class_id.':active,
-						.class_'.$class_id.':link:hover, td.class_'.$class_id.' a:hover, td.class_'.$class_id.' a:active,
-						td.class_'.$class_id.', td.class_'.$class_id.' a:link, td.class_'.$class_id.' a:visited{
-							text-decoration: none;
-							color: '.$this->game->get_class_color($class_id).' !important;
-						}
-					';
+		
+		$data = str_replace($in, $out, $strCSS);
+		
+		/**
+		 * Contao Open Source CMS
+		 * Copyright (c) 2005-2014 Leo Feyer
+		 * @link    https://contao.org
+		 * @license http://www.gnu.org/licenses/lgpl-3.0.html LGPL
+		 */
+		
+		$content = $data;
+		$strDirname = $path;
+		$strGlue = ($strDirname != '.') ? $strDirname  : '';
+		
+		$strBuffer = '';
+		$chunks = preg_split('/url\(["\']??(.+)["\']??\)/U', $content, -1, PREG_SPLIT_DELIM_CAPTURE);
+		
+		// Check the URLs
+		for ($i=0, $c=count($chunks); $i<$c; $i=$i+2)
+		{
+			$strBuffer .= $chunks[$i];
+		
+			if (!isset($chunks[$i+1]))
+			{
+				break;
+			}
+		
+			$strData = $chunks[$i+1];
+		
+			// Skip absolute links and embedded images (see #5082)
+			if (strncmp($strData, 'data:', 5) !== 0 && strncmp($strData, 'http://', 7) !== 0 && strncmp($strData, 'https://', 8) !== 0 && strncmp($strData, '/', 1) !== 0)
+			{
+				// Make the paths relative to the root (see #4161)
+				if (strncmp($strData, '../', 3) !== 0)
+				{
+					$strData = $root_path . $strGlue . $strData;
 				}
+				else
+				{
+					$dir = $strDirname;
+		
+					// Remove relative paths
+					while (strncmp($strData, '../', 3) === 0)
+					{
+						$dir = dirname($dir);
+						$strData = substr($strData, 3);
+					}
+		
+					$glue = ($dir != '.') ? $dir . '/' : '';
+					$strData = $root_path . $glue . $strData;
+				}
+				
+				$strData = str_replace("//", "/", $strData);
 			}
 			
-			//User additions
-			$strUserFile = $this->root_path . 'templates/'.$stylepath.'/user_additions.css';
-			if (file_exists($strUserFile)){
-				$content = file_get_contents($strUserFile);
-				$data .= preg_replace($in, $out, $content);
-			}
-
-			$minify = new Minify_CSS();
-			$data = $minify->minify($data);
-			$this->pfh->putContent($storage_folder.'main.css', $data);
-			$this->timekeeper->put('tpl_cache_'.$stylepath, 'main.css');
+			$strBuffer .= 'url("' . $strData . '")';
 		}
-
+		$data = $strBuffer;
+		return $data;
 	}
 
 	public function generate_error($content, $handle = false, $sprintf = '', $function = ''){
 		if ($handle === false) $handle = $this->handle;
+		
+		$this->intErrorCount++;
+		if($this->intErrorCount > 3){
+			throw new Exception("Infinite Template Error. Generating Error aborted.");
+		}
+		
+		if(!$this->error_message){		
+			// fix for upgrade from 1.0 to 2.0 with deleted old template folder. This fix redirects directly to the maintenance mode
+			if($this->files[$handle] && strpos($this->files[$handle], '/templates/base_template/index.tpl') !== false && $function == 'loadfile()' && ($this->config->get('plus_version') === false || version_compare('2.0', $this->config->get('plus_version')) > 0)){			
+				redirect('maintenance/index.php', false, false, false);
+			}
 
-		if(!$this->error_message){
 			$title			= $this->lang('templates_error');
 			$content		= (!$this->lang($content)) ? $content : $this->lang($content);
 
@@ -1114,6 +1543,21 @@ class template extends gen_class {
 			$this->error_message	= true;
 		}
 		
+	}
+	
+	public function get_error_details(){
+		$handle = $this->handle;
+		$message = "";
+		if(!$this->error_message){
+			$message		.= 'File: '.$this->filename[$handle]."\n";
+			if($handle != 'body') $message		.= 'Body-File: '.$this->files['body']."\n";
+			$message		.= 'Path: '.$this->files[$handle]."\n";
+			$message		.= ($function != "") ? 'Function: '.$function."\n" : '';
+			$message		.= 'Style-Code: '.$this->style_code."\n";
+			$message		.= 'Template: '.$this->template."\n";
+			$message		.= 'Handler: '.$handle."\n";
+		}
+		return $message;
 	}
 
 	private function display_error($title, $message) {
@@ -1142,5 +1586,4 @@ class template extends gen_class {
 		parent::__destruct();
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_template', template::$shortcuts);
 ?>

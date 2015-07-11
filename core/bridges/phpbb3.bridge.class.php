@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: myHTML
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		libraries:myHTML
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,12 +24,8 @@ if ( !defined('EQDKP_INC') ){
 }
 
 class phpbb3_bridge extends bridge_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('env', 'config', 'user', 'time');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 	
-	public $name = "phpBB3";
+	public static $name = "phpBB3";
 	
 	public $data = array(
 		'user'	=> array( //User
@@ -53,41 +52,20 @@ class phpbb3_bridge extends bridge_generic {
 		),
 		
 	);
-		
-	public $functions = array(
-		'login'	=> array(
-			'callbefore'	=> '',
-			'function' 		=> '',
-			'callafter'		=> 'phpbb3_callafter',
-		),
-		'logout' 	=> 'phpbb3_logout',
-		'autologin' => 'phpbb3_autologin',	
-		'sync'		=> 'phpbb3_sync',
-	);
-		
+				
 	public $settings = array(
 		'cmsbridge_disable_sso'	=> array(
-			'fieldtype'	=> 'checkbox',
-			'name'		=> 'cmsbridge_disable_sso',
+			'type'	=> 'radio',
 		),
 		'cmsbridge_disable_sync' => array(
-			'fieldtype'	=> 'checkbox',
-			'name'		=> 'cmsbridge_disable_sync',
+			'type'	=> 'radio',
 		),
 	);
+	
+	public $blnSyncBirthday = true;
 		
-	public $sync_fields = array(
-		'icq',
-		'town',
-		'interests',
-		'birthday',
-		'msn',
-		'user_email',
-		'username',
-	);
 
-	//Needed function
-	public function check_password($password, $hash, $strSalt = '', $boolUseHash){
+	public function check_password($password, $hash, $strSalt = '', $boolUseHash = false, $strUsername = "", $arrUserdata=array()){
 		$itoa64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 		if (strlen($hash) == 34)
 		{
@@ -96,7 +74,7 @@ class phpbb3_bridge extends bridge_generic {
 		return (md5($password) === $hash) ? true : false;
 	}
 	
-	public function phpbb3_callafter($strUsername, $strPassword, $boolAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash){
+	public function after_login($strUsername, $strPassword, $boolSetAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash=false){
 		//Is user active?
 		if ($boolLoginResult){
 		
@@ -105,24 +83,25 @@ class phpbb3_bridge extends bridge_generic {
 			}
 			//Single Sign On
 			if ($this->config->get('cmsbridge_disable_sso') != '1'){
-				$this->phpbb3_sso($arrUserdata, $boolAutoLogin);
+				$this->sso($arrUserdata, $boolSetAutoLogin);
 			}
+			
+			return true;
 		}
-		return true;
+		return false;
 	}
 	
-	public function phpbb3_sso($arrUserdata, $boolAutoLogin = false){
+	public function sso($arrUserdata, $boolAutoLogin = false){
 		$user_id = $arrUserdata['id'];
-		$strSessionID = md5(rand().rand());
-		$this->db->query("DELETE FROM ".$this->prefix."sessions WHERE session_user_id='".$this->db->escape($user_id)."'");
+		$strSessionID = md5(generateRandomBytes(55));
+		//$this->bridgedb->prepare("DELETE FROM ".$this->prefix."sessions WHERE session_user_id=?")->execute($user_id);
 		
-		$query = $this->db->query("SELECT * FROM ".$this->prefix."config");
-		$result = $this->db->fetch_rowset($query);
-		if (is_array($result)){
-			foreach ($result as $row){
+		$query = $this->bridgedb->query("SELECT * FROM ".$this->prefix."config");
+		if ($query){
+			while($row = $query->fetchAssoc()){
 				$arrConfig[$row['config_name']] = $row['config_value'];
 			}
-		}
+		} else return false;
 		
 		$ip = $this->get_ip();
 
@@ -143,7 +122,7 @@ class phpbb3_bridge extends bridge_generic {
 			'session_forum_id'			=> 0,
 		);
 		
-		$this->db->query("INSERT INTO ".$this->prefix."sessions :params", $arrSet);
+		$this->bridgedb->prepare("INSERT INTO ".$this->prefix."sessions :p")->set($arrSet)->execute();
 				
 		// Set cookie
 		$expire = $this->time->time + 31536000;
@@ -165,12 +144,12 @@ class phpbb3_bridge extends bridge_generic {
 		if ($boolAutoLogin){
 			$strLoginKey = substr($this->user->generate_salt(), 4, 16);
 			
-			$this->db->query("INSERT INTO ".$this->prefix."sessions_keys :params", array(
+			$this->bridgedb->prepare("INSERT INTO ".$this->prefix."sessions_keys :p")->set(array(
 				'key_id'	=> md5($strLoginKey),
 				'last_ip'	=> $ip,
 				'last_login'=> (int)$this->time->time,
 				'user_id'	=> (int) $user_id,
-			));
+			))->execute();
 		
 			setcookie($arrConfig['cookie_name'].'_k', $strLoginKey, $expire, $arrConfig['cookie_path'], $arrConfig['cookie_domain'], $arrConfig['cookie_secure']);
 		} else {
@@ -180,14 +159,13 @@ class phpbb3_bridge extends bridge_generic {
 		return true;
 	}
 	
-	public function phpbb3_autologin(){
-		$query = $this->db->query("SELECT * FROM ".$this->prefix."config");
-		$result = $this->db->fetch_rowset($query);
-		if (is_array($result)){
-			foreach ($result as $row){
+	public function autologin($arrCookieData){
+		$query = $this->bridgedb->query("SELECT * FROM ".$this->prefix."config");
+		if ($query){
+			while($row = $query->fetchAssoc()){
 				$arrConfig[$row['config_name']] = $row['config_value'];
 			}
-		}
+		} else return false;
 		
 		$ip = $this->get_ip();
 	
@@ -196,20 +174,25 @@ class phpbb3_bridge extends bridge_generic {
 		
 		if ($SID == NULL || $SID == "") return false;
 	
-		$result = $this->db->query("SELECT * FROM ".$this->prefix."sessions WHERE session_user_id = '".$this->db->escape($userID)."' and session_id='".$this->db->escape($SID)."'");
-		$row = $this->db->fetch_row($result);
-		if ($row){
-			if ($row['session_ip'] == $ip && $row['session_browser'] == (string) trim(substr($this->env->useragent, 0, 149))){
-				$result2 = $this->db->query("SELECT * FROM ".$this->prefix."users WHERE user_id='".$this->db->escape($userID)."'");
-				$row2 = $this->db->fetch_row($result2);
-				if($row2){
-					$strUsername = utf8_strtolower($row2['username']);
-					$user_id = $this->pdh->get('user', 'userid', array($strUsername));
-					$data = $this->pdh->get('user', 'data', array($user_id));
-					return $data;
-				}
+		$result = $this->bridgedb->prepare("SELECT * FROM ".$this->prefix."sessions WHERE session_user_id = ? and session_id=?")->execute($userID, $SID);
+		if ($result){
+			$row = $result->fetchRow();
+			if($row){
+				if ($row['session_ip'] == $ip && $row['session_browser'] == (string) trim(substr($this->env->useragent, 0, 149))){
+					$result2 = $this->bridgedb->prepare("SELECT * FROM ".$this->prefix."users WHERE user_id=?")->execute($userID);
+					if ($result2){
+						$row2 = $result2->fetchRow();
+						if ($row2){
+							$strUsername = utf8_strtolower($row2['username']);
+							$user_id = $this->pdh->get('user', 'userid', array($strUsername));
+							$data = $this->pdh->get('user', 'data', array($user_id));
+							return $data;	
+						}	
+					}
+				}	
 			}
 		}
+		
 		return false;
 	}
 	
@@ -254,44 +237,51 @@ class phpbb3_bridge extends bridge_generic {
 		return $iip;
 	}
 	
-	public function phpbb3_logout() {
-		$arrUserdata = $this->get_userdata($this->user->data['username']);
+	public function logout() {
+		$arrUserdata = $this->bridge->get_userdata($this->user->data['username']);
 		if (isset($arrUserdata['id'])){
-			$this->db->query("DELETE FROM ".$this->prefix."sessions WHERE session_user_id='".$this->db->escape($arrUserdata['id'])."'");
+			$this->bridgedb->prepare("DELETE FROM ".$this->prefix."sessions WHERE session_user_id=?")->execute($arrUserdata['id']);
 		}
 		
-		$query = $this->db->query("SELECT * FROM ".$this->prefix."config");
-		$result = $this->db->fetch_rowset($query);
-		if (is_array($result)){
-			foreach ($result as $row){
+		$query = $this->bridgedb->query("SELECT * FROM ".$this->prefix."config");
+		if ($query){
+			while($row = $query->fetchAssoc()){
 				$arrConfig[$row['config_name']] = $row['config_value'];
 			}
-		}
-		
+		} else return;
+				
 		setcookie($arrConfig['cookie_name'].'_sid', '', 0, $arrConfig['cookie_path'], $arrConfig['cookie_domain'], $arrConfig['cookie_secure']);
 		//User-Cookie
 		setcookie($arrConfig['cookie_name'].'_u', '', 0, $arrConfig['cookie_path'], $arrConfig['cookie_domain'], $arrConfig['cookie_secure']);
 		setcookie($arrConfig['cookie_name'].'_k', '', 0, $arrConfig['cookie_path'], $arrConfig['cookie_domain'], $arrConfig['cookie_secure']);
 	}
 	
-	public function phpbb3_sync($arrUserdata){
+	public function sync($arrUserdata){
 		if ($this->config->get('cmsbridge_disable_sync') == '1'){
 			return false;
 		}
 		$sync_array = array(
 			'icq' 			=> $arrUserdata['user_icq'],
 			'town'			=> $arrUserdata['user_from'],
-			'interests'	=> $arrUserdata['user_interests'],
-			'birthday'	=> $this->_handle_birthday($arrUserdata['user_birthday']),
-			'msn'				=> $arrUserdata['user_msnm'],
+			'interests'		=> $arrUserdata['user_interests'],
+			'birthday'		=> $this->_handle_birthday($arrUserdata['user_birthday']),
 		);
 		return $sync_array;
+	}
+	
+	public function sync_fields(){
+		return array(
+			'icq'		=> 'ICQ',
+			'town'		=> 'Town',
+			'interests' => 'Interests',
+			'birthday'	=> 'Birthday',
+		);
 	}
 	
 	private function _handle_birthday($date){
 		list($d, $m, $y) = explode('-', $date);
 		if ($y != '' && $y != 0 && $m != '' && $m != 0 && $d != '' && $d != 0){
-			return $this->time->mktime(0,0,0,$m,$d,$y);
+			return $this->time->mktime(0,1,0,$m,$d,$y);
 		}
 		return 0;
 	}
@@ -311,7 +301,6 @@ class phpbb3_bridge extends bridge_generic {
 	function _hash_crypt_private($password, $setting, &$itoa64)
 	{
 		$password = trim(htmlspecialchars(str_replace(array("\r\n", "\r", "\0"), array("\n", "\n", ''), $password), ENT_COMPAT, 'UTF-8'));
-		
 		
 		$output = '*';
 
@@ -417,5 +406,4 @@ class phpbb3_bridge extends bridge_generic {
 	}
 
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_phpbb3_bridge', phpbb3_bridge::__shortcuts());
 ?>

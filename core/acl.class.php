@@ -1,38 +1,32 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
 	header('HTTP/1.0 404 Not Found');exit;
 }
 
-class acl_manager extends gen_class {
+class acl_manager extends gen_class {	
 	private $auth_defaults		= array();
 	private $auth_ids			= array();
 	private $group_permissions	= array();
-
-	//Permissions that are only for a superadmin
-	private $superadmin_only_permissions = array(
-		'a_maintenance'		=> 'a_maintenance',
-		'a_logs_del'		=> 'a_logs_del',
-		'a_backup'			=> 'a_backup',
-		'a_reset'			=> 'a_reset',
-		'a_files_man'		=> 'a_files_man',
-	);
 
 	//Returns the default permissions
 	public function get_auth_defaults($force_requery = false){
@@ -41,11 +35,13 @@ class acl_manager extends gen_class {
 					FROM __auth_options
 					ORDER BY auth_id';
 			$result = $this->db->query($sql);
-			while ( $row = $this->db->fetch_record($result) ) {
-				$this->auth_defaults[ $row['auth_value'] ]	= $row['auth_default'];
-				$this->auth_ids[$row['auth_value']]			= $row['auth_id'];
+			if ($result){
+				while ( $row = $result->fetchAssoc() ) {
+					$this->auth_defaults[ $row['auth_value'] ]	= $row['auth_default'];
+					$this->auth_ids[$row['auth_value']]			= $row['auth_id'];
+				}
 			}
-			$this->db->free_result($result);
+
 		}
 		return $this->auth_defaults;
 	}
@@ -95,47 +91,60 @@ class acl_manager extends gen_class {
 				$sql = "SELECT ao.auth_value, ag.auth_setting
 						FROM __auth_groups ag, __auth_options ao
 						WHERE (ag.auth_id = ao.auth_id)
-						AND (ag.group_id='".$group_id."')";
-				$result = $this->db->query($sql);
-
-				while ( $row = $this->db->fetch_record($result) ){
-					if ($row['auth_setting'] == 'Y'){
-						$this->group_permissions[$group_id][$row['auth_value']] = $row['auth_setting'];
+						AND (ag.group_id=?)";
+				
+				
+				$result = $this->db->prepare($sql)->execute($group_id);
+				
+				if ($result){
+					while ( $row = $result->fetchAssoc() ){
+						if ($row['auth_setting'] == 'Y'){
+							$this->group_permissions[$group_id][$row['auth_value']] = $row['auth_setting'];
+						}
 					}
 				}
-				 $this->db->free_result($result);
 
 			}
 		}
 		return $this->group_permissions[$group_id];
 	}
 
+	public function get_groups_with_active_auth($auth_value){
+		$groups = $this->pdh->get('user_groups', 'id_list');
+		$output	= array();
+		foreach($groups as $group_id){
+			$active_auths	= $this->get_group_permissions($group_id);
+			if(array_key_exists($auth_value, $active_auths)){
+				$output[] = $group_id;
+			}
+		}
+		return $output;
+	}
+
 	public function update_auth_option($auth_value, $auth_default){
 		$auth_id = $this->get_auth_id($auth_value);
-		if ( $auth_id ){
-			$sql = "UPDATE __auth_users
-					SET auth_setting='$auth_default'
-					WHERE auth_id='".$this->db->escape($auth_id)."'";
+		if ( $auth_id ){			
+			$objQuery = $this->db->prepare("UPDATE __auth_users :p WHERE auth_id=?")->set(array(
+					'auth_setting' => $auth_default,
+			))->execute($auth_id);
 		}else{
-			$sql = "INSERT INTO __auth_options
-					(auth_value, auth_default)
-					VALUES ('".$this->db->escape($auth_value)."', '".$this->db->escape($auth_default)."')";
+			$objQuery = $this->db->prepare("INSERT INTO __auth_options :p")->set(array(
+					'auth_value'	=> $auth_value,
+					'auth_default'	=> $auth_default,
+			))->execute();
 		}
-		$this->db->query($sql);
+		return $objQuery;
 	}
 
 	public function del_auth_option($auth_value){
-		$sql = "DELETE FROM __auth_options
-				WHERE auth_value='".$auth_value."'";
-		$this->db->query($sql);
+		$objQuery = $this->db->prepare("DELETE FROM __auth_options WHERE auth_value=?")->execute($auth_value);
+		return $objQuery;
 	}
 
 	public function update_user_permissions($permission_array, $user_id=0){
 		if ($user_id == 0){$user_id = $user->data['user_id'];}
-
-		$perm_ids = implode("', '", array_keys($permission_array));
-		$sql = "DELETE FROM __auth_users WHERE user_id='".$user_id."' AND auth_id IN ('".$perm_ids."')";
-		$this->db->query($sql);
+		
+		$this->db->prepare("DELETE FROM __auth_users WHERE user_id=? AND auth_id :in")->in(array_keys($permission_array))->execute($user_id);
 
 		$boolExecute = false;
 
@@ -143,11 +152,18 @@ class acl_manager extends gen_class {
 		foreach ($permission_array as $auth_id => $permission) {
 			if ($permission == 'Y'){
 				$boolExecute = true;
-				$sql .= "('{$user_id}','{$auth_id}','{$permission}'), ";
+				$arrData[] = array(
+						'user_id'		=> $user_id,
+						'auth_id'		=> $auth_id,
+						'auth_setting'	=> $permission,
+				);
 			}
 		}
-		$sql = preg_replace('/, $/', '', $sql);
-		if ($boolExecute) $this->db->query($sql);
+
+		if ($boolExecute) $this->db->prepare("INSERT INTO __auth_users :p")->set($arrData)->execute();
+		
+		
+		
 	}
 
 	//Returns the permissions that are only for the superadmin
@@ -159,102 +175,105 @@ class acl_manager extends gen_class {
 		$group_permissions = array(
 			// Events
 			$this->user->lang('events') => array(
-				array('CBNAME' => 'a_event_add',  'TEXT' => $this->user->lang('add')),
-				array('CBNAME' => 'a_event_upd',  'TEXT' => $this->user->lang('update')),
-				array('CBNAME' => 'a_event_del',  'TEXT' => $this->user->lang('delete')),
-				array('CBNAME' => 'u_event_view', 'TEXT' => $this->user->lang('view'))
+				'icon' => 'fa fa-key la-lg',
+				array('CBNAME' => 'a_event_add',			'TEXT' => $this->user->lang('add')),
+				array('CBNAME' => 'a_event_upd',			'TEXT' => $this->user->lang('update')),
+				array('CBNAME' => 'a_event_del',			'TEXT' => $this->user->lang('delete')),
 			),
 			// Individual adjustments
 			$this->user->lang('individual_adjustments') => array(
-				array('CBNAME' => 'a_indivadj_add', 'TEXT' => $this->user->lang('add')),
-				array('CBNAME' => 'a_indivadj_upd', 'TEXT' => $this->user->lang('update')),
-				array('CBNAME' => 'a_indivadj_del', 'TEXT' => $this->user->lang('delete'))
+				'icon' => 'fa fa-tag la-lg',
+				array('CBNAME' => 'a_indivadj_add',			'TEXT' => $this->user->lang('add')),
+				array('CBNAME' => 'a_indivadj_upd',			'TEXT' => $this->user->lang('update')),
+				array('CBNAME' => 'a_indivadj_del',			'TEXT' => $this->user->lang('delete'))
 			),
 			// Items
 			$this->user->lang('items') => array(
-				array('CBNAME' => 'a_item_add',  'TEXT' => $this->user->lang('add')),
-				array('CBNAME' => 'a_item_upd',  'TEXT' => $this->user->lang('update')),
-				array('CBNAME' => 'a_item_del',  'TEXT' => $this->user->lang('delete')),
-				array('CBNAME' => 'u_item_view', 'TEXT' => $this->user->lang('view'))
+				'icon' => 'fa fa-gift la-lg',
+				array('CBNAME' => 'a_item_add',				'TEXT' => $this->user->lang('add')),
+				array('CBNAME' => 'a_item_upd',				'TEXT' => $this->user->lang('update')),
+				array('CBNAME' => 'a_item_del',				'TEXT' => $this->user->lang('delete')),
 			),
-			// News
-			$this->user->lang('news') => array(
-				array('CBNAME' => 'a_news_add', 'TEXT' => $this->user->lang('add')),
-				array('CBNAME' => 'a_news_upd', 'TEXT' => $this->user->lang('update')),
-				array('CBNAME' => 'a_news_del', 'TEXT' => $this->user->lang('delete')),
-				array('CBNAME' => 'u_news_view', 'TEXT' => $this->user->lang('view')),
+			// Article
+			$this->user->lang('articles') => array(
+				'icon' => 'fa fa-file-text la-lg',
+				array('CBNAME' => 'a_articles_man',			'TEXT' => $this->user->lang('manage')),
+				array('CBNAME' => 'a_article_categories_man','TEXT' => $this->user->lang('manage_article_categories')),
+				array('CBNAME' => 'u_files_man',			'TEXT' => $this->user->lang('perm_u_files_man')),
+				array('CBNAME' => 'u_articles_script',		'TEXT' => $this->user->lang('perm_u_articles_script')),
 			),
 			// Raids
 			$this->user->lang('raids') => array(
-				array('CBNAME' => 'a_raid_add',  'TEXT' => $this->user->lang('add')),
-				array('CBNAME' => 'a_raid_upd',  'TEXT' => $this->user->lang('update')),
-				array('CBNAME' => 'a_raid_del',  'TEXT' => $this->user->lang('delete')),
-				array('CBNAME' => 'u_raid_view', 'TEXT' => $this->user->lang('view'))
+				'icon' => 'fa fa-trophy la-lg',
+				array('CBNAME' => 'a_raid_add',				'TEXT' => $this->user->lang('add')),
+				array('CBNAME' => 'a_raid_upd',				'TEXT' => $this->user->lang('update')),
+				array('CBNAME' => 'a_raid_del',				'TEXT' => $this->user->lang('delete')),
 			),
 
 			// Calendar
 			$this->user->lang('calendars') => array(
-				array('CBNAME' => 'a_calendars_man',  'TEXT' => $this->user->lang('manage_calendars')),
-				array('CBNAME' => 'a_cal_event_man',  'TEXT' => $this->user->lang('manage_calevents')),
-				array('CBNAME' => 'a_cal_revent_conf','TEXT' => $this->user->lang('manage_revent_man')),
-				array('CBNAME' => 'u_cal_event_add', 'TEXT' => $this->user->lang('add_calevents')),
-				array('CBNAME' => 'u_calendar_view', 'TEXT' => $this->user->lang('view_calendar')),
+				'icon' => 'fa fa-calendar la-lg',
+				array('CBNAME' => 'a_calendars_man',		'TEXT' => $this->user->lang('manage_calendars')),
+				array('CBNAME' => 'a_cal_event_man',		'TEXT' => $this->user->lang('manage_calevents')),
+				array('CBNAME' => 'a_cal_revent_conf',		'TEXT' => $this->user->lang('manage_revent_man')),
+				array('CBNAME' => 'a_cal_addrestricted',	'TEXT' => $this->user->lang('add_restricted_calevent')),
+				array('CBNAME' => 'u_cal_event_add',		'TEXT' => $this->user->lang('add_calevents')),
+				array('CBNAME' => 'u_calendar_view',		'TEXT' => $this->user->lang('view_calendar')),
+				array('CBNAME' => 'u_calendar_raidnotes',	'TEXT' => $this->user->lang('calendar_acl_raidnotes')),
 			),
 
 			// Members
 			$this->user->lang('chars') => array(
-				array('CBNAME' => 'a_members_man', 'TEXT' => $this->user->lang('manage')),
-				array('CBNAME' => 'u_roster_list', 'TEXT' => $this->user->lang('menu_roster')),
-				array('CBNAME' => 'u_member_view', 'TEXT' => $this->user->lang('listing_members')),
-				
-				array('CBNAME' => 'u_member_add',  'TEXT' => $this->user->lang('charsadd')),
-				array('CBNAME' => 'u_member_man',	'TEXT' => $this->user->lang('charsmanage')),
-				array('CBNAME' => 'u_member_del',  'TEXT' => $this->user->lang('charsdelete')),
-				array('CBNAME' => 'u_member_conn', 'TEXT' => $this->user->lang('charconnect')),
+				'icon' => 'fa fa-user la-lg',
+				array('CBNAME' => 'a_members_man',			'TEXT' => $this->user->lang('manage')),
+				array('CBNAME' => 'a_raidgroups_man',		'TEXT' => $this->user->lang('manage_raid_groups')),
+				array('CBNAME' => 'u_member_add',			'TEXT' => $this->user->lang('charsadd')),
+				array('CBNAME' => 'u_member_man',			'TEXT' => $this->user->lang('charsmanage')),
+				array('CBNAME' => 'u_member_del',			'TEXT' => $this->user->lang('charsdelete')),
+				array('CBNAME' => 'u_member_conn',			'TEXT' => $this->user->lang('charconnect')),
 			),
 			// Manage
 			$this->user->lang('manage') => array(
-				array('CBNAME' => 'a_config_man',  'TEXT' => $this->user->lang('configuration')),
-				array('CBNAME' => 'a_extensions_man', 'TEXT' => $this->user->lang('extensions')),
-				array('CBNAME' => 'a_reset',   		'TEXT' => $this->user->lang('reset')),
-				array('CBNAME' => 'a_maintenance',   'TEXT' => $this->user->lang('maintenance')),
-				array('CBNAME' => 'a_files_man',   'TEXT' => $this->user->lang('manage_files'))
+				'icon' => 'fa fa-wrench la-lg',
+				array('CBNAME' => 'a_config_man',			'TEXT' => $this->user->lang('configuration')),
+				array('CBNAME' => 'a_extensions_man',		'TEXT' => $this->user->lang('extensions')),
+				array('CBNAME' => 'a_reset',				'TEXT' => $this->user->lang('reset')),
+				array('CBNAME' => 'a_maintenance',			'TEXT' => $this->user->lang('maintenance')),
+				array('CBNAME' => 'a_files_man',			'TEXT' => $this->user->lang('manage_files')),
 			),
 			//User
 			$this->user->lang('user') => array(
-				array('CBNAME' => 'a_users_man',   'TEXT' => $this->user->lang('manage')),
-				array('CBNAME' => 'a_users_massmail',   'TEXT' => $this->user->lang('massmail_send')),
-				array('CBNAME' => 'u_userlist',   'TEXT' => $this->user->lang('view')),
-				array('CBNAME' => 'u_usermailer',   'TEXT' => $this->user->lang('adduser_send_mail')),
+				'icon' => 'fa fa-group la-lg',
+				array('CBNAME' => 'a_users_man',			'TEXT' => $this->user->lang('manage')),
+				array('CBNAME' => 'a_users_perms',			'TEXT' => $this->user->lang('permissions')),
+				array('CBNAME' => 'a_usergroups_man',		'TEXT' => $this->user->lang('manage_user_groups')),
+				array('CBNAME' => 'a_users_profilefields',	'TEXT' => $this->user->lang('manage_userpf')),
+				array('CBNAME' => 'a_users_massmail',		'TEXT' => $this->user->lang('massmail_send')),
+				array('CBNAME' => 'u_userlist',				'TEXT' => $this->user->lang('view')),
+				array('CBNAME' => 'u_usermailer',			'TEXT' => $this->user->lang('adduser_send_mail')),
 			),
 
 			// Logs
 			$this->user->lang('logs') => array(
-				array('CBNAME' => 'a_logs_view', 'TEXT' => $this->user->lang('view')),
-				array('CBNAME' => 'a_logs_del', 'TEXT' => $this->user->lang('delete'))
+				'icon' => 'fa fa-book la-lg',
+				array('CBNAME' => 'a_logs_view',			'TEXT' => $this->user->lang('view')),
+				array('CBNAME' => 'a_logs_del',				'TEXT' => $this->user->lang('delete'))
 			),
 			// Backup Database
 			$this->user->lang('backup') => array(
-				array('CBNAME' => 'a_backup', 'TEXT' => $this->user->lang('backup_database'))
-			),
-			// Pages
-			$this->user->lang('info') => array(
-				array('CBNAME' => 'a_pages_man', 'TEXT' => $this->user->lang('manage')),
-			),
-			 // SMS
-			$this->user->lang('sms_perm') => array(
-					array('CBNAME' => 'a_sms_send', 'TEXT' => $this->user->lang('sms_perm2')),
+				'icon' => 'fa fa-floppy-o la-lg',
+				array('CBNAME' => 'a_backup',				'TEXT' => $this->user->lang('backup_database'))
 			),
 			 // Search
 			$this->user->lang('search') => array(
-					array('CBNAME' => 'u_search', 'TEXT' => $this->user->lang('search')),
+				'icon' => 'fa fa-search la-lg',
+				array('CBNAME' => 'u_search',				'TEXT' => $this->user->lang('search')),
 			),
 		);
 		return $group_permissions;
 	}
 }
-class acl extends acl_manager {	
-	public static $shortcuts = array('db', 'user');
+class acl extends acl_manager {
 	public $user_permissions = array();
 	public $user_group_memberships = array();
 	public $user_group_permissions = array();
@@ -269,11 +288,13 @@ class acl extends acl_manager {
 			if ( $user_id != ANONYMOUS ){
 
 				//First Step: get Group memberships
-				$result =  $this->db->query("SELECT group_id FROM __groups_users WHERE user_id='".$user_id."'");
-				while ( $row = $this->db->fetch_record($result) ){
-					$this->user_group_memberships[$user_id][$row['group_id']] = 1;
+				$objQuery = $this->db->prepare("SELECT * FROM __groups_users WHERE user_id=?")->execute($user_id);
+				if ($objQuery){
+					while ( $row = $objQuery->fetchAssoc() ){
+						if (intval($row['grpleader']) && !isset($this->user_group_permissions[$user_id]['a_usergroups_grpleader'])) $this->user_group_permissions[$user_id]['a_usergroups_grpleader'] = "Y";
+						$this->user_group_memberships[$user_id][$row['group_id']] = 1;
+					}
 				}
-				$this->db->free_result($result);
 
 				//If user is Superadmin, he has all permissions
 				if (isset($this->user_group_memberships[$user_id][2])){
@@ -282,39 +303,44 @@ class acl extends acl_manager {
 					}
 					//If not superadmin: get user- and grouppermissions
 				} else {
-					//User-Permissions
-					$sql = "SELECT ao.auth_value, au.auth_setting
+					//User-Permissions					
+					$objQuery = $this->db->prepare("SELECT ao.auth_value, au.auth_setting
 							FROM __auth_users au, __auth_options ao
 							WHERE (au.auth_id = ao.auth_id)
-							AND (au.user_id='".$user_id."')";
-
-					$result = $this->db->query($sql);
-					while ( $row = $this->db->fetch_record($result) ){
-						$this->user_permissions[$user_id][$row['auth_value']] = $row['auth_setting'];
-					}
-
-					$this->db->free_result($result);
-
-					//Group-Permissions
-					$result =  $this->db->query("SELECT ga.auth_setting, ao.auth_value, gu.group_id FROM __groups_users gu, __auth_groups ga, __auth_options ao WHERE gu.user_id='".$user_id."' AND ga.group_id = gu.group_id AND ga.auth_id = ao.auth_id");
-
-					while ( $row = $this->db->fetch_record($result) ){
-						if ($row['auth_setting'] == "Y"){
-							$this->user_group_permissions[$user_id][$row['auth_value']] = $row['auth_setting'];
-							$this->user_group_memberships[$user_id][$row['group_id']] = 1;
+							AND (au.user_id=?)")->execute($user_id);
+					
+					if($objQuery){
+						while ( $row = $objQuery->fetchAssoc() ){
+							$this->user_permissions[$user_id][$row['auth_value']] = $row['auth_setting'];
 						}
 					}
-					$this->db->free_result($result);
+					
+					//Group-Permissions
+					$objQuery = $this->db->prepare("SELECT ga.auth_setting, ao.auth_value, gu.group_id FROM __groups_users gu, __auth_groups ga, __auth_options ao WHERE gu.user_id=? AND ga.group_id = gu.group_id AND ga.auth_id = ao.auth_id")->execute($user_id);
+					
+					if($objQuery){
+						while ( $row = $objQuery->fetchAssoc() ){
+							if ($row['auth_setting'] == "Y"){
+								$this->user_group_permissions[$user_id][$row['auth_value']] = $row['auth_setting'];
+								$this->user_group_memberships[$user_id][$row['group_id']] = 1;
+							}
+						}
+					}
 				}
+				
+				//Check if he has chars that are grpleader of raidgroups
+				if ($this->pdh->get('raid_groups_members', 'user_has_grpleaders', array($user_id))) $this->user_group_permissions[$user_id]['a_raidgroups_grpleader'] = "Y";
+				
 			} else { //Permission for ANONYMOUS
 				$result =  $this->db->query("SELECT ga.auth_setting, ao.auth_value FROM __auth_groups ga, __auth_options ao WHERE ga.auth_id = ao.auth_id AND ga.group_id = 1");
-			while ( $row = $this->db->fetch_record($result) ){
-				if ($row['auth_setting'] == "Y" && substr($row['auth_value'], 0, 2)!= "a_"){
-						$this->user_group_permissions[$user_id][$row['auth_value']] = $row['auth_setting'];
+				if($result){
+					while ( $row = $result->fetchAssoc() ){
+						if ($row['auth_setting'] == "Y" && substr($row['auth_value'], 0, 2)!= "a_"){
+								$this->user_group_permissions[$user_id][$row['auth_value']] = $row['auth_setting'];
+						}		
+					}
 				}
-					$this->user_group_memberships[$user_id][1] = 1;
-			}
-			$this->db->free_result($result);
+				$this->user_group_memberships[$user_id][1] = 1;
 		}
 	}
 }
@@ -373,5 +399,4 @@ class acl extends acl_manager {
 
 } //Close class
 
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_acl', acl::$shortcuts);
 ?>

@@ -1,25 +1,28 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2011
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 if(!defined('EQDKP_INC')) {
 	header('HTTP/1.0 404 Not Found');exit;
 }
 class install extends gen_class {
-	public static $shortcuts = array('in', 'pdl');
 
 	private $current_step	= 'start';
 	private $previous		= 'start';
@@ -51,7 +54,7 @@ class install extends gen_class {
 				<html>
 					<head>
 						<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-						<link rel="stylesheet" type="text/css" media="screen" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.11/themes/base/jquery-ui.css" />
+						<link rel="stylesheet" type="text/css" media="screen" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css" />
 						<title>Installation - Error</title>
 					</head>
 					<body>
@@ -86,11 +89,32 @@ class install extends gen_class {
 	}
 	
 	private function init_language() {
-		$language = $this->in->get('inst_lang', 'english');
+		if (!$this->in->exists('inst_lang')){
+			$usersprache = explode(",", $_SERVER["HTTP_ACCEPT_LANGUAGE"]);
+			$usersprache = explode(";", $usersprache[0]);
+			
+			if(strlen($usersprache[0]) == "5") {
+				$code = substr($usersprache[0], 3, 2);
+			} elseif(strlen($usersprache[0]) == "2") {
+				$code = $usersprache[0];
+			} else {
+				$code = "";
+			}
+			$code = strtolower($code);
+			
+			$language = $this->translate_iso_langcode($code);
+			if (!is_file($this->root_path .'language/'.$language.'/lang_install.php')){
+				$language = "english";
+			}
+		} else {
+			$language = $this->in->get('inst_lang', 'english');
+		}
+		
 		if( !include_once($this->root_path .'language/'.$language.'/lang_install.php') ){
 			die('Could not include the language files! Check to make sure that "' . $this->root_path . 'language/'.$language.'/lang_install.php" exists!');
 		}
 		registry::add_const('lang', $lang);
+		registry::add_const('language', $language);
 	}
 	
 	private function scan_steps() {
@@ -180,13 +204,11 @@ class install extends gen_class {
 		//Set chmod644 for config.php
 		@chmod($this->root_path."config.php", 0644);
 		
-		//load portal modules (iframe)
-		$portals = '<iframe style="display:none;" src="'.$this->root_path.'admin/manage_portal.php"></iframe>';
-		return $this->lang['install_end_text'].$portals;
+		return $this->lang['install_end_text'];
 	}
 	
 	private function parse_end() {
-		header('Location: '.$this->root_path.'maintenance/task_manager.php?splash=true');
+		header('Location: '.$this->root_path.'maintenance/?splash=true');
 		exit;
 	}
 	
@@ -220,7 +242,7 @@ class install extends gen_class {
 		}
 		sort($options);
 		foreach($options as $option) {
-			$selected = ($this->in->get('inst_lang', 'english') == $option) ? ' selected="selected"' : '';
+			$selected = ($this->language == $option) ? ' selected="selected"' : '';
 			$drop .= '<option value="'.$option.'"'.$selected.'>'.ucfirst($option).'</option>';
 		}
 		return $drop.'</select>';
@@ -233,10 +255,12 @@ class install extends gen_class {
 <html>
 	<head>
 		<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-		<link rel="stylesheet" type="text/css" media="screen" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.11/themes/base/jquery-ui.css" />
-		<script type="text/javascript" language="javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.min.js"></script>
-		<script type="text/javascript" language="javascript" src="//ajax.googleapis.com/ajax/libs/jqueryui/1.8.11/jquery-ui.min.js"></script>
+		
+		<link rel="stylesheet" type="text/css" media="screen" href="../libraries/jquery/core/core.min.css" />
+		<script type="text/javascript" language="javascript" src="../libraries/jquery/core/core.min.js"></script>
+		<link href="../libraries/FontAwesome/font-awesome.min.css" rel="stylesheet">
 		<link rel="stylesheet" type="text/css" media="screen" href="style/install.css" />
+		<link rel="stylesheet" type="text/css" media="screen" href="style/jquery_tmpl.css" />
 		<script type="text/javascript">
 			//<![CDATA[
 		$(function() {
@@ -250,13 +274,7 @@ class install extends gen_class {
 				$("#back_"+$(this).attr("id")).removeAttr("disabled");
 				$("#form_install").submit();
 			});
-			$("input:submit, input:button").button();
-			$(".prevstep").button({
-				icons: {
-					primary: "ui-icon-arrowreturnthick-1-w"
-				}
-			})
-			$("tbody tr").hover(function(){$(this).addClass("ui-state-highlight");},function(){ $(this).removeClass("ui-state-highlight");});
+			
 			'.$_step->head_js.'
 		});
 			//]]>
@@ -267,12 +285,14 @@ class install extends gen_class {
 
 	<body>
 		<form action="index.php" method="post" id="form_install">
-		<div id="installer">
+		<div id="outerWrapper">
 			<div id="header">
-				<div id="logo"></div>
-				<div id="languageselect">'.$this->lang['language'].': '.$this->lang_drop().'</div>
-				<div id="logotext">Installation</div>
-			</div><br/>
+				<img src="style/logo.svg" id="logo" />
+				<div id="languageselect"><i class="fa fa-globe"></i> '.$this->lang['language'].': '.$this->lang_drop().'</div>
+				<div id="logotext">Installation '.VERSION_EXT.'</div>
+			</div>
+				
+		<div id="installer">
 			<div id="steps">
 				<div id="progressbar"><span class="install_label">'.$progress.'%</span></div>
 				<ul class="steps">'.$this->gen_menu().'
@@ -294,12 +314,12 @@ class install extends gen_class {
 					'.$this->get_content().'
 					<div class="buttonbar">';
 		if($this->previous != 'start' && $this->current_step != 'end') $content .= '
-						<button id="previous_step" class="prevstep">'.$this->lang['back'].'</button>
+						<button id="previous_step" class="prevstep"><i class="fa fa-mail-reply"></i> '.$this->lang['back'].'</button>
 						<input type="hidden" name="prev" value="'.$this->previous.'" id="back_previous_step" disabled="disabled" />';
 		if($_step->skippable) $content .= '
 						<input type="submit" name="'.(($_step->parseskip) ? 'next' : 'skip').'" value="'.$this->lang['skip'].'" class="'.(($_step->parseskip) ? 'nextstep' : 'skipstep').'" />';
 		$content .= 	'
-						<input type="submit" class="ui-button-text-icon-primary" name="next" value="'.$this->next_button().'" />
+						<button type="submit" name="next" /><i class="fa fa-arrow-right"></i> '.$this->next_button().'</button>
 						<input type="hidden" name="current_step" value="'.$this->current_step.'" />
 						<input type="hidden" name="install_done" value="'.implode(',', $this->done).'" />
 						<input type="hidden" name="step_data" value="'.base64_encode(serialize($this->data)).'" />
@@ -308,7 +328,8 @@ class install extends gen_class {
 			</div>
 		</div>
 		<div id="footer">
-			EQDKP Plus '.VERSION_EXT.' © 2006 - '.date('Y', time()).' by EQDKP Plus Development-Team
+			<a href="http://eqdkp-plus.eu">EQDKP Plus '.VERSION_EXT.' © 2006 - '.date('Y', time()).' by EQDKP Plus Development-Team</a>
+		</div>
 		</div>
 		</form>
 	</body>
@@ -318,32 +339,174 @@ class install extends gen_class {
 	
 	public function install_error($log) {
 		$title = (isset($log['args'][1])) ? $log['args'][1] : $this->lang['error'];
-		return '<div class="ui-widget" align="left">
-			<div style="padding: 0pt 0.7em;" class="ui-state-error ui-corner-all"> 
-				<p><span style="float: left; margin-right: 0.3em;" class="ui-icon ui-icon-alert"></span> 
-				<strong>'.$title.'</strong><br />'.$log['args'][0].'</p>
-			</div>
-		</div>';
+
+		return '<div class="infobox infobox-large infobox-red clearfix">
+		<i class="fa fa-exclamation-triangle fa-4x pull-left"></i><strong>'.$title.'</strong><br /> '.$log['args'][0].'
+	</div>';
+
 	}
 	
 	public function install_warning($log) {
 		$title = (isset($log['args'][1])) ? $log['args'][1] : $this->lang['warning'];
-		return '<div class="ui-widget" align="left">
-			<div style="margin-top: 20px; padding: 0pt 0.7em;" class="ui-state-highlight ui-corner-all"> 
-				<p><span style="float: left; margin-right: 0.3em;" class="ui-icon ui-icon-info"></span>
-				<strong>'.$title.'</strong><br />'.$log['args'][0].'</p>
-			</div>
+		
+		return '<div class="infobox infobox-large infobox-red clearfix">
+			<i class="fa fa-exclamation-triangle fa-4x pull-left"></i><strong>'.$title.'</strong><br />'.$log['args'][0].'
 		</div>';
 	}
 	
 	public function install_success($log) {
 		$title = (isset($log['args'][1])) ? $log['args'][1] : $this->lang['success'];
-		return '<div class="ui-widget" align="left">
-			<div style="margin-top: 20px; padding: 0pt 0.7em;" class="ui-state-highlight ui-corner-all"> 
-				<p><span style="float: left; margin-right: 0.3em;" class="ui-icon ui-icon-circle-check"></span>
-				<strong>'.$title.'</strong><br />'.$log['args'][0].'</p>
-			</div>
-		</div>';
+		
+		return '<div class="infobox infobox-large infobox-green clearfix">
+		<i class="fa fa-check fa-4x pull-left"></i><strong>'.$title.'</strong><br />'.$log['args'][0].'
+	</div>';
+	}
+	
+	//Returns English as Default
+	public function translate_iso_langcode($isoCode){
+		$language_codes = array(
+			'en' => 'English' , 
+			'aa' => 'Afar' , 
+			'ab' => 'Abkhazian' , 
+			'af' => 'Afrikaans' , 
+			'am' => 'Amharic' , 
+			'ar' => 'Arabic' , 
+			'as' => 'Assamese' , 
+			'ay' => 'Aymara' , 
+			'az' => 'Azerbaijani' , 
+			'ba' => 'Bashkir' , 
+			'be' => 'Byelorussian' , 
+			'bg' => 'Bulgarian' , 
+			'bh' => 'Bihari' , 
+			'bi' => 'Bislama' , 
+			'bn' => 'Bengali/Bangla' , 
+			'bo' => 'Tibetan' , 
+			'br' => 'Breton' , 
+			'ca' => 'Catalan' , 
+			'co' => 'Corsican' , 
+			'cs' => 'Czech' , 
+			'cy' => 'Welsh' , 
+			'da' => 'Danish' , 
+			'de' => 'German' , 
+			'dz' => 'Bhutani' , 
+			'el' => 'Greek' , 
+			'eo' => 'Esperanto' , 
+			'es' => 'Spanish' , 
+			'et' => 'Estonian' , 
+			'eu' => 'Basque' , 
+			'fa' => 'Persian' , 
+			'fi' => 'Finnish' , 
+			'fj' => 'Fiji' , 
+			'fo' => 'Faeroese' , 
+			'fr' => 'French' , 
+			'fy' => 'Frisian' , 
+			'ga' => 'Irish' , 
+			'gd' => 'Scots/Gaelic' , 
+			'gl' => 'Galician' , 
+			'gn' => 'Guarani' , 
+			'gu' => 'Gujarati' , 
+			'ha' => 'Hausa' , 
+			'hi' => 'Hindi' , 
+			'hr' => 'Croatian' , 
+			'hu' => 'Hungarian' , 
+			'hy' => 'Armenian' , 
+			'ia' => 'Interlingua' , 
+			'ie' => 'Interlingue' , 
+			'ik' => 'Inupiak' , 
+			'in' => 'Indonesian' , 
+			'is' => 'Icelandic' , 
+			'it' => 'Italian' , 
+			'iw' => 'Hebrew' , 
+			'ja' => 'Japanese' , 
+			'ji' => 'Yiddish' , 
+			'jw' => 'Javanese' , 
+			'ka' => 'Georgian' , 
+			'kk' => 'Kazakh' , 
+			'kl' => 'Greenlandic' , 
+			'km' => 'Cambodian' , 
+			'kn' => 'Kannada' , 
+			'ko' => 'Korean' , 
+			'ks' => 'Kashmiri' , 
+			'ku' => 'Kurdish' , 
+			'ky' => 'Kirghiz' , 
+			'la' => 'Latin' , 
+			'ln' => 'Lingala' , 
+			'lo' => 'Laothian' , 
+			'lt' => 'Lithuanian' , 
+			'lv' => 'Latvian/Lettish' , 
+			'mg' => 'Malagasy' , 
+			'mi' => 'Maori' , 
+			'mk' => 'Macedonian' , 
+			'ml' => 'Malayalam' , 
+			'mn' => 'Mongolian' , 
+			'mo' => 'Moldavian' , 
+			'mr' => 'Marathi' , 
+			'ms' => 'Malay' , 
+			'mt' => 'Maltese' , 
+			'my' => 'Burmese' , 
+			'na' => 'Nauru' , 
+			'ne' => 'Nepali' , 
+			'nl' => 'Dutch' , 
+			'no' => 'Norwegian' , 
+			'oc' => 'Occitan' , 
+			'om' => '(Afan)/Oromoor/Oriya' , 
+			'pa' => 'Punjabi' , 
+			'pl' => 'Polish' , 
+			'ps' => 'Pashto/Pushto' , 
+			'pt' => 'Portuguese' , 
+			'qu' => 'Quechua' , 
+			'rm' => 'Rhaeto-Romance' , 
+			'rn' => 'Kirundi' , 
+			'ro' => 'Romanian' , 
+			'ru' => 'Russian' , 
+			'rw' => 'Kinyarwanda' , 
+			'sa' => 'Sanskrit' , 
+			'sd' => 'Sindhi' , 
+			'sg' => 'Sangro' , 
+			'sh' => 'Serbo-Croatian' , 
+			'si' => 'Singhalese' , 
+			'sk' => 'Slovak' , 
+			'sl' => 'Slovenian' , 
+			'sm' => 'Samoan' , 
+			'sn' => 'Shona' , 
+			'so' => 'Somali' , 
+			'sq' => 'Albanian' , 
+			'sr' => 'Serbian' , 
+			'ss' => 'Siswati' , 
+			'st' => 'Sesotho' , 
+			'su' => 'Sundanese' , 
+			'sv' => 'Swedish' , 
+			'sw' => 'Swahili' , 
+			'ta' => 'Tamil' , 
+			'te' => 'Tegulu' , 
+			'tg' => 'Tajik' , 
+			'th' => 'Thai' , 
+			'ti' => 'Tigrinya' , 
+			'tk' => 'Turkmen' , 
+			'tl' => 'Tagalog' , 
+			'tn' => 'Setswana' , 
+			'to' => 'Tonga' , 
+			'tr' => 'Turkish' , 
+			'ts' => 'Tsonga' , 
+			'tt' => 'Tatar' , 
+			'tw' => 'Twi' , 
+			'uk' => 'Ukrainian' , 
+			'ur' => 'Urdu' , 
+			'uz' => 'Uzbek' , 
+			'vi' => 'Vietnamese' , 
+			'vo' => 'Volapuk' , 
+			'wo' => 'Wolof' , 
+			'xh' => 'Xhosa' , 
+			'yo' => 'Yoruba' , 
+			'zh' => 'Chinese' , 
+			'zu' => 'Zulu' , 
+		);
+		
+		if (isset($language_codes[$isoCode])) {
+			return utf8_strtolower($language_codes[$isoCode]);
+		} else {
+			return "english";
+		}
 	}
 }
 
@@ -373,5 +536,4 @@ abstract class install_generic extends gen_class {
 	abstract public function get_filled_output();
 	abstract public function parse_input();
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_install', install::$shortcuts);
 ?>

@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: myHTML
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		libraries:myHTML
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,7 +25,7 @@ if ( !defined('EQDKP_INC') ){
 
 class ipb3_bridge extends bridge_generic {
 	
-	public $name = "IPB 3";
+	public static $name = "IPB 3";
 	
 	public $data = array(
 		'user'	=> array( //User
@@ -36,7 +39,7 @@ class ipb3_bridge extends bridge_generic {
 			'QUERY'	=> '',
 		),
 		'groups' => array( //Where I find the Usergroup
-			'table'	=> 'groups', //without prefix
+			'table'	=> 'groups',
 			'id'	=> 'g_id',
 			'name'	=> 'g_title',
 			'QUERY'	=> '',
@@ -47,50 +50,43 @@ class ipb3_bridge extends bridge_generic {
 		),
 		
 	);
-	
-	public $functions = array(
-		'login'	=> array(
-			'callbefore'	=> '',
-			'function' 		=> '',
-			'callafter'		=> 'ipb3_callafter',
-		),
-		'logout' 	=> '',
-		'autologin' => '',	
-		'sync'		=> '',
-	);
-	
+		
 	//Needed function
-	public function check_password($password, $hash, $strSalt = '', $boolUseHash){
+	public function check_password($password, $hash, $strSalt = '', $boolUseHash = false, $strUsername = "", $arrUserdata=array()){
 		
 		$password = md5( md5($strSalt) . md5( $password ) );
 		
 		return ($password === $hash) ? true : false;
 	}
 	
-	public function ipb3_get_user_groups($intUserID, $arrGroups){
-		$query = $this->db->query("SELECT member_group_id, mgroup_others FROM ".$this->prefix."members WHERE member_id='".$this->db->escape($intUserID)."'");
-		$result = $this->db->fetch_row($query);
-		if (in_array((int)$result['member_group_id'], $arrGroups)) return true;
-		$arrAditionalGroups = explode(',', $result['mgroup_others']);
-		if (is_array($arrAditionalGroups)){
-			foreach ($arrAditionalGroups as $group){
-				if (($group != '') && in_array((int)$group, $arrGroups)) return true;
+	public function ipb3_get_user_groups($intUserID){
+		$query = $this->bridgedb->prepare("SELECT member_group_id, mgroup_others FROM ".$this->prefix."members WHERE member_id=?")->execute($intUserID);
+		$arrReturn = array();
+		if ($query){
+			$result = $query->fetchAssoc();
+			$arrReturn[] = (int)$result['member_group_id'];
+			$arrAditionalGroups = explode(',', $result['mgroup_others']);
+			if (is_array($arrAditionalGroups)){
+				foreach ($arrAditionalGroups as $group){
+					if ($group != '') $arrReturn[] = (int)$group;
+				}
 			}
-		}
+		}		
 		
-		return false;
+		return $arrReturn;
 	}
 	
-	public function ipb3_callafter($strUsername, $strPassword, $boolAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash){
+	public function after_login($strUsername, $strPassword, $boolSetAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash=false){
 		//Is user active?
 		if ($boolLoginResult){
 			if ($arrUserdata['temp_ban'] != '0' || $arrUserdata['member_banned'] != '0') {
 				return false;
 			}
+			
+			return true;
 		}
-		return true;
+		return false;
 	}
 	
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_ipb3_bridge', ipb3_bridge::$shortcuts);
 ?>

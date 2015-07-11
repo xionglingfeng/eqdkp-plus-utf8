@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if (!defined('EQDKP_INC')){
@@ -22,7 +25,7 @@ if (!defined('EQDKP_INC')){
 
 if (!class_exists('exchange_calevents_list')){
 	class exchange_calevents_list extends gen_class{
-		public static $shortcuts = array('user', 'config', 'pdh', 'time', 'pex'=>'plus_exchange', 'env'=>'environment');
+		public static $shortcuts = array('pex'=>'plus_exchange');
 		public $options		= array();
 
 		public function get_calevents_list($params, $body){
@@ -67,7 +70,7 @@ if (!class_exists('exchange_calevents_list')){
 						}
 
 						// fetch per raid data
-						$raidcal_status = unserialize($this->config->get('calendar_raid_status'));
+						$raidcal_status = $this->config->get('calendar_raid_status');
 						$rstatusdata = array();
 						if(is_array($raidcal_status)){
 							foreach($raidcal_status as $raidcalstat_id){
@@ -103,13 +106,13 @@ if (!class_exists('exchange_calevents_list')){
 							'allDay'		=> ($this->pdh->get('calendar_events', 'allday', array($intRaidID)) > 0) ? 1 : 0,
 							'closed'		=> ($this->pdh->get('calendar_events', 'raidstatus', array($intRaidID)) == 1) ? 1 : 0,
 							'eventid'		=> $intRaidID,						
-							'url'			=> ($raidmode) ? 'calendar/viewcalraid.php?eventid='.$intRaidID : '',
-							'icon'			=> ($eventextension['raid_eventid']) ? $this->pdh->get('event', 'icon', array($eventextension['raid_eventid'], true, true)) : '',
-							'note'			=> $this->pdh->get('calendar_events', 'notes', array($intRaidID)),
+							'url'			=> ($raidmode) ? register('routing')->build('calendarevent', $this->pdh->get('calendar_events', 'name', array($intRaidID)), $intRaidID, false) : '',
+							'icon'			=> ($eventextension['raid_eventid']) ? $this->env->link.$this->pdh->get('event', 'icon', array($eventextension['raid_eventid'], true)) : '',
+							'note'			=> $this->bbcode->remove_bbcode($this->pdh->get('calendar_events', 'notes', array($intRaidID))),
 							'raidleader'	=> unsanitize(($eventextension['raidleader'] > 0) ? implode(', ', $this->pdh->aget('member', 'name', 0, array($eventextension['raidleader']))) : ''),
 							'raidstatus'	=> ($raidmode) ? $rstatusdata : '',
 							'user_status'	=> ($raidmode) ? $memberstatus : '',
-							'color'			=> '#'.$eventcolor,
+							'color'			=> $eventcolor,
 							'calendar'		=> $this->pdh->get('calendar_events', 'calendar_id', array($intRaidID)),
 							'calendar_name'	=> unsanitize($this->pdh->get('calendar_events', 'calendar', array($intRaidID))),
 							'icalfeed'		=> ($this->user->is_signedin()) ? $this->env->link.'exchange.php?out=icalfeed&module=calendar&key='.$this->user->data['exchange_key'] : '',
@@ -125,5 +128,4 @@ if (!class_exists('exchange_calevents_list')){
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_exchange_calevents_list', exchange_calevents_list::$shortcuts);
 ?>

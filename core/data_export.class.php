@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,7 +24,6 @@ if ( !defined('EQDKP_INC') ){
 }
 
 class content_export extends gen_class {
-	public static $shortcuts = array('config', 'pdh', 'time');
 	
 	private $timestamp;
 	private $date_created;
@@ -38,7 +40,7 @@ class content_export extends gen_class {
 		);
 	}
 	
-	public function export($withMemberItems = true, $withMemberAdjustments = false, $blnExcludeHTML = false){
+	public function export($withMemberItems = false, $withMemberAdjustments = false, $filter = false, $filterid = false, $blnIncludeHTML = false){
 		$arrPresets = array();
 		foreach ($this->presets as $preset){
 			$pre = $this->pdh->pre_process_preset($preset['name'], $preset);
@@ -62,11 +64,11 @@ class content_export extends gen_class {
 			'name'				=> $this->config->get('default_game'),
 			'version'			=> $this->config->get('game_version'),
 			'language'			=> $this->config->get('game_language'),
-			'server_name'		=> unsanitize($this->config->get('uc_servername')),
+			'server_name'		=> unsanitize($this->config->get('servername')),
 			'server_loc'		=> $this->config->get('uc_server_loc'),
 		);				
 		$out['info'] = array(
-			'with_twink'		=> (intval($this->config->get('pk_show_twinks'))) ? 0 : 1,
+			'with_twink'		=> (intval($this->config->get('show_twinks'))) ? 0 : 1,
 			'date'				=> $this->date_created,
 			'timestamp'			=> $this->timestamp,
 			'total_players'		=> count($this->pdh->get('member', 'id_list')),
@@ -78,6 +80,17 @@ class content_export extends gen_class {
 		//Alle Member
 		$total_points = 0;
 		$members = $this->pdh->sort($this->pdh->get('member', 'id_list'), 'member', 'name');
+		
+		//Filter here
+		if ($filter && $filterid){
+			switch($filter){
+				case 'user': $members = $this->pdh->sort($this->pdh->get('member', 'connection_id', array($filterid)), 'member', 'name');
+				break;
+				case 'character': $members = array($filterid);
+				break;
+			}
+		}
+		
 		if (is_array($members) && count($members) > 0) {
 			foreach ($members as $member){		
 				$points = array();
@@ -94,7 +107,7 @@ class content_export extends gen_class {
 						'points_adjustment_with_twink'	=> (isset($arrPresets['adjustment'])) ? $this->pdh->get($arrPresets['adjustment'][0], $arrPresets['adjustment'][1], $arrPresets['adjustment'][2], array('%dkp_id%' => $mdkp, '%member_id%' => $member, '%with_twink%' => true)) : false,
 						
 					);
-					if (!$blnExcludeHTML){
+					if ($blnIncludeHTML){
 						$points['multidkp_points:'.$mdkp]['points_current_html'] 			= (isset($arrPresets['current'])) ? $this->pdh->geth($arrPresets['current'][0], $arrPresets['current'][1], $arrPresets['current'][2], array('%dkp_id%' => $mdkp, '%member_id%' => $member, '%with_twink%' => false)) : false;
 						$points['multidkp_points:'.$mdkp]['points_current_with_twink_html'] = (isset($arrPresets['current'])) ? $this->pdh->geth($arrPresets['current'][0], $arrPresets['current'][1], $arrPresets['current'][2], array('%dkp_id%' => $mdkp, '%member_id%' => $member, '%with_twink%' => true)) : false;
 						$points['multidkp_points:'.$mdkp]['points_earned_html']				= (isset($arrPresets['earned'])) ? $this->pdh->geth($arrPresets['earned'][0], $arrPresets['earned'][1], $arrPresets['earned'][2], array('%dkp_id%' => $mdkp, '%member_id%' => $member, '%with_twink%' => false)) : false;
@@ -131,8 +144,6 @@ class content_export extends gen_class {
 
 					'class_id'		=> $this->pdh->get('member', 'classid', array($member)),
 					'class_name'	=> $this->pdh->get('member', 'classname', array($member)),
-					'race_id'		=> $this->pdh->get('member', 'raceid', array($member)),
-					'race_name'		=> $this->pdh->get('member', 'racename', array($member)),
 
 					'points'		=> $points,
 					'items'			=> $items,
@@ -205,5 +216,4 @@ class content_export extends gen_class {
 		return $out;
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_content_export', content_export::$shortcuts);
 ?>

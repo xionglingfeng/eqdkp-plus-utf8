@@ -1,3 +1,13 @@
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li><a href="{EQDKP_ROOT_PATH}admin/manage_logs.php{SID}">{L_viewlogs_title}</a></li>
+		<li class="current"><a>{LOG_ACTION}, {LOG_DATE}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
 <fieldset class="settings">
 	<legend>{LOG_ACTION}</legend>
 	
@@ -20,9 +30,17 @@
 		<dt><label>{L_session_id}:</label></dt>
 		<dd>{LOG_SESSION_ID}</dd>
 	</dl>
+	<dl>
+		<dt><label>{L_record}:</label></dt>
+		<dd>{LOG_RECORD}</dd>
+	</dl>
+	<dl>
+		<dt><label>{L_recordid}:</label></dt>
+		<dd>{LOG_RECORD_ID}</dd>
+	</dl>
 	<!-- IF LOG_PLUGIN -->
 	<dl>
-		<dt><label>{L_title}:</label></dt>
+		<dt><label>{L_plugins}:</label></dt>
 		<dd>{LOG_PLUGIN}</dd>
 	</dl>
 	<!-- ENDIF -->
@@ -38,5 +56,23 @@
 	</dl>
 	<!-- END log_row -->
 </fieldset>
-<!-- ENDIF -->
-<input type="button" name="back" value="{L_back}" class="mainoption bi_back" id="back2view" />
+
+<!-- IF S_COMPARE_VIEW -->
+<style>
+ .log-comp-pre pre {
+ 	white-space: pre-wrap;
+ 	word-break: break-word;
+ }
+</style>
+<table  class="table fullwidth colorswitch">
+	<tr>
+	<th>{L_value}</th><th>{L_old_value}</th><th>{L_new_value}</th>
+	</tr>
+	<!-- BEGIN log_compare_row -->
+	<tr>
+		<td style="font-weight: bold;">{log_compare_row.KEY}</td><td style="white-space: pre-wrap; word-break: break-word;">{log_compare_row.OLD}</td><td class="log-comp-pre">{log_compare_row.NEW}</td>
+	</tr>
+	<!-- END log_compare_row -->
+</table>
+<!-- ENDIF --><!-- ENDIF -->
+<button class="mainoption" type="button" name="back" id="back2view"><i class="fa fa-chevron-left"></i>{L_back}</button>

@@ -1,0 +1,53 @@
+<!-- IF S_NORMAL_HEADER -->
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li><a href="{EQDKP_ROOT_PATH}admin/manage_items.php{SID}">{L_manitems_title}</a></li>
+		<li class="current"><a><!-- IF NAME == '' -->{L_add_item}<!-- ELSE -->{NAME}<!-- ENDIF --></a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+<!-- ENDIF -->
+<form method="post" action="{ACTION}" name="post">
+	<fieldset class="settings smallsettings">
+		<legend>{L_editing_item}</legend>
+		<dl>
+			<dt><label>{L_name}:</label></dt>
+			<dd><input name="name" type="text" class="input" value="{NAME}" size="100" id="name" /></dd>
+		</dl>
+		<dl>
+			<dt><label>{L_item_id}:</label></dt>
+			<dd><input type="text" name="item_id" value="{ITEM_ID}" class="input" id="item_id"/></dd>
+		</dl>
+		<dl>
+			<dt><label>{L_raid}:</label></dt>
+			<dd>{RAID}</dd>
+		</dl>
+		<dl>
+			<dt><label>{L_date}:</label></dt>
+			<dd>{DATE}</dd>
+		</dl>
+		<!-- IF not S_POINTS_DISABLED -->	
+		<dl>
+			<dt><label>{L_value}:</label></dt>
+			<dd><input type="text" name="value" value="{VALUE}" class="input" id="item_value"/></dd>
+		</dl>
+		<!-- ENDIF -->
+		<dl>
+			<dt><label>{L_itempool}:</label></dt>
+			<dd>{ITEMPOOLS}</dd>
+		</dl>
+		<dl>
+			<dt><label>{L_buyers}:</label></dt>
+			<dd>{BUYERS}</dd>
+		</dl>
+	</fieldset>
+	<div class="contentFooter">
+		<button class="mainoption" type="submit" name="save"><i class="fa fa-check"></i>{L_save}</button>
+		<button class="mainoption" type="button" name="del" onclick="delete_warning('{GRP_KEY}');"><i class="fa fa-times"></i>{L_delete}</button>
+		<button class="mainoption" type="button" name="" onclick="window.location.href='manage_items.php{SID}'"><i class="fa fa-chevron-left"></i>{L_cancel}</button>
+		<input type="hidden" name="selected_ids" value="{GRP_KEY}" />
+	</div>
+{CSRF_TOKEN}
+</form>

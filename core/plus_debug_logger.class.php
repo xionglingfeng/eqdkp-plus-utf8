@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,7 +24,6 @@ if ( !defined('EQDKP_INC') ){
 }
 
 	class plus_debug_logger extends gen_class {
-		public static $shortcuts = array('pfh');
 
 		private $log = array();
 		private $known_types = array();
@@ -52,6 +54,7 @@ if ( !defined('EQDKP_INC') ){
 			E_DEPRECATED			=> 'DEPRECATED NOTICE',
 			E_USER_DEPRECATED		=> 'USER DEPRECATED NOTICE',
 		);
+		private $fatals = array(E_ERROR, E_PARSE, E_COMPILE_ERROR, E_RECOVERABLE_ERROR);
 
 		private $debug2errorlevel = array();
 
@@ -64,18 +67,17 @@ if ( !defined('EQDKP_INC') ){
 			$this->register_type("unknown", null, null, array(0,1,2,3,4), true);
 			$this->register_type("php_error", array($this, 'php_error_pt_formatter'), array($this, 'php_error_html_formatter'), array(3,4), true);
 			$this->register_type("deprecated", null, array($this, 'deprecated_html_formatter'), array(3,4));
-
+			$this->register_type("fatal_error", array($this, 'fatal_error_pt_formatter'), array($this, 'fatal_error_html_formatter'), array(3,4), true);
+			
 			$this->php_error_reporting = intval(ini_get("error_reporting"));
 			$this->eqdkp_cwd = getcwd();
 			if($this->do_file_logging) {
 				$this->logfile_folder = $this->pfh->FolderPath('tmp', "");
-				if(!is_writable($this->logfile_folder)) {
+				if(!is_writable($this->logfile_folder))
 					$this->do_file_logging = false;
-				} else {
-					$this->pfh->secure_folder($this->pfh->FolderPath('tmp', ""));
-				}
 			}
-				//register_shutdown_function(array($this, "catch_fatals"));
+			
+			//register_shutdown_function(array($this, "catch_fatals"));
 			if($this->do_file_logging) {
 				$this->logfile_info = unserialize(@file_get_contents($this->logfile_folder.'info.data'));
 				if (is_array($this->logfile_info)){
@@ -88,7 +90,7 @@ if ( !defined('EQDKP_INC') ){
 			}
 			$this->debug2errorlevel = array(
 				0	=> E_ERROR,
-				1	=> E_WARNING | E_ERROR,
+				1	=> E_ERROR,
 				2	=> E_WARNING | E_ERROR,
 				3	=> E_ALL & ~(E_NOTICE | E_USER_NOTICE),
 				4 	=> E_ALL
@@ -114,7 +116,7 @@ if ( !defined('EQDKP_INC') ){
 			}
 
 			//we filter some errors, don't think thats the best way to do it
-			//if(substr($errfile, -9) != 'mysql.php' && substr($errfile, -20) != 'config_itemstats.php' && $errno != E_STRICT && $errno != E_NOTICE && (substr($errfile, -10) != 'config.php' && $errline != 275)){
+			if(substr($errfile, -16) == "config.class.php" && $errline == 154 && $errno == 8) return false;
 
 			//so lets do it better and use the set php error reporting level from common..
 			if( $errno & $this->php_error_reporting ){
@@ -263,6 +265,42 @@ if ( !defined('EQDKP_INC') ){
 					<b>Error String:</b> ".$log_entry['args'][2]."<br />";
 			return $text;
 		}
+		
+		// pdl html format function for sql errors
+		public function fatal_error_html_formatter($log_entry) {
+			$text =  '<b>Error ID: </b>'		. $log_entry['args'][0] . '<br /><br />
+			<b>Message:</b> '		. $log_entry['args'][2] . '<br /><br />
+			<b>Code:</b>'			. $log_entry['args'][3] . '<br />
+			<b>Backtrace:</b>'		. $log_entry['args'][4] . '<br />';
+			return $text;
+		}
+		
+		// pdl plaintext (logfile) format function for sql errors
+		public function fatal_error_pt_formatter($log_entry) {
+			$text =  '>>>> '.$log_entry['args'][0]." <<<<\t\n";
+			$text .= "Type: "	. $log_entry['args'][1] . "\t\n";
+			$text .= "Message: "	. $log_entry['args'][2] . "\t\n";
+			$text .= "Code: "		. $log_entry['args'][3] . "\t\n";
+			$text .= "Trace:\n";
+			
+			if (count($log_entry['args'][4])){
+				$trace = $log_entry['args'][4];
+			} else {
+				$trace = $log_entry['args'][5];
+			}
+			if(is_array($trace)){
+				foreach($trace as $ddata) {
+					$text .=	'File: '.$ddata['file'].', Line: '.$ddata['line'].', Function: '.$ddata['function'];
+					if(isset($ddata['object'])) $text .= ', Object: '.get_class($ddata['object']);
+					$text .= "\n";
+				}
+			} else {
+				$text .= $trace;
+			}
+			
+			$text .= " <<<<\n";
+			return $text;
+		}
 
 		public function deprecated_html_formatter($log_entry) {
 			$text = "<b>Use of deprecated function/method</b>:<br />
@@ -311,33 +349,119 @@ if ( !defined('EQDKP_INC') ){
 			echo($this->get_html_log($debug_level, $type));
 		}
 
+		
+		public function get_logfiles(){
+			$arrFiles = scandir($this->logfile_folder);
+			$arrLogFiles = array();
+			foreach($arrFiles as $file){
+				if(valid_folder($file) && $file != "info.data" && $file != "unknown.log"){
+					$arrLogFiles[] = $file;
+				}
+			}
+			return $arrLogFiles;
+		}
+		
+		public function search_fatal_error_id($strErrorID){
+			$arrLogFiles = $this->get_logfiles();
+			$arrMatches = array();
+			$exception = array();
+			$blnRecord=false;
+			
+			foreach($arrLogFiles as $logfile){
+				$handle = fopen($this->logfile_folder.'/'.$logfile, "r");
+				if ($handle) {
+					while (!feof($handle)) {
+						$buffer = fgets($handle, 4096);
+
+						if(preg_match('/>>>> (.*?) <<<</', $buffer, $arrMatches)){
+							if($arrMatches[1] === $strErrorID){
+								$blnRecord = true;
+							} else {
+								$blnRecord = false;
+							}
+						}
+						
+						if($blnRecord){		
+							if(count($exception) && preg_match("/<<<</", $buffer)){
+								unset($exception[0]);
+								return array(
+									'file'		=> $logfile,
+									'error'		=> implode("", $exception),
+								);
+								
+							}
+
+							$exception[] = $buffer;
+						}
+					}
+					fclose($handle);
+				}
+			}
+			return false;
+		}
+		
+		
 		//return logs from "behind", so most recent first
-		public function get_file_log($error_type, $number=0, $start=0){
+		public function get_file_log($error_type, $number=25, $start=0){
 			$file = $this->logfile_folder.'/'.$error_type.'.log';
-			$max_entries = (isset($this->logfile_info[$error_type])) ? count($this->logfile_info[$error_type]) : 0;
-			if (($max_entries - $start) < 0) return array();
+			
+			$regexp = '/([0-9][0-9]\.[01][0-9]\.[0-9]{4}\s[0-9]{2}\:[0-9]{2}\:[0-9]{2}\s)/';
+			$count = 0;
+			$blnRecord = "false";
+			$exceptions = array();
+			
 			if(file_exists($file)){
-				$filearray['filesize'] = filesize($file);
-				$length = $filearray['filesize'];
-				//size where log start saved, so add one to get end of previous log
-				if($start AND isset($this->logfile_info[$error_type][$max_entries - $start + 1])) $length = $this->logfile_info[$error_type][$max_entries - $start + 1];
-				$offset = 0;
-				if($number AND $number < ($max_entries - $start) AND isset($this->logfile_info[$error_type][$max_entries -$start +1 -$number])) {
-					$offset = $this->logfile_info[$error_type][$max_entries - $start + 1 - $number];
-					$length -= $offset;
+				//Read total number
+				$handle = fopen($file, "r");
+				if ($handle) {
+					while (!feof($handle)) {
+						$buffer = fgets($handle, 4096);
+				
+						if(preg_match($regexp, $buffer)){								
+							$count++;
+						}
+					}
+					fclose($handle);
 				}
 				
-				$handle = fopen($file, "r+");
-				if($offset) fseek($handle, $offset);
-				$content = fread($handle, $length);
-				fclose($handle);
-				$regexp = '/([0-9][0-9]\.[01][0-9]\.[0-9]{4}\s[0-9]{2}\:[0-9]{2}\:[0-9]{2}\s)/';
-				$filearray['entries'] = preg_split($regexp, $content, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
-				$filearray['entrycount'] = $max_entries;
-				return $filearray;
-			}else{
-				return null;
+				//now get the entries
+				$s = $count-$start-$number;
+				if($s < 0) $s=0;
+				$e = $count-$start;
+				$i = 0;
+
+				$handle = fopen($file, "r");
+				if ($handle) {
+					while (!feof($handle)) {
+						$buffer = fgets($handle, 4096);
+
+						if(preg_match($regexp, $buffer)){						
+							if($i >= $s && $i < $e){
+								$blnRecord = true;
+							} else {
+								$blnRecord = false;
+							}
+							$i++;
+						}
+						
+						if($blnRecord){
+							$exceptions[] = $buffer;
+						}
+					}
+					fclose($handle);
+				}
 			}
+			
+			$strException = implode("", $exceptions);
+			
+			$arrSplitted = preg_split($regexp, $strException, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+
+			$arrSplitted = array_reverse($arrSplitted);
+			
+			if(is_array($arrSplitted) && $count){
+				return array('entries' => $arrSplitted, 'count' => $count);
+			}
+			return array('entries' => array(), 'count' => 0);
 		}
 
 		public function delete_logfile($type) {
@@ -348,65 +472,146 @@ if ( !defined('EQDKP_INC') ){
 		}
 		
 		private function error_message_header($strErrorName = 'Fatal Error'){
-			return '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+			return '<!DOCTYPE html>
 						<html>
 						<head>
 							<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
 
 							<title>EQdkp Plus - '.$strErrorName.'</title>
 							<style type="text/css">
-								body, html {
+							/* body */
+							html {
+								height: 100%;
+							}
+							
+							body {
+								background: #2e78b0; /* Old browsers */
+								background: -moz-linear-gradient(top,  #2e78b0 0%, #193759 100%); /* FF3.6+ */
+								background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#2e78b0), color-stop(100%,#193759)); /* Chrome,Safari4+ */
+								background: -webkit-linear-gradient(top,  #2e78b0 0%,#193759 100%); /* Chrome10+,Safari5.1+ */
+								background: -o-linear-gradient(top,  #2e78b0 0%,#193759 100%); /* Opera 11.10+ */
+								background: -ms-linear-gradient(top,  #2e78b0 0%,#193759 100%); /* IE10+ */
+								background: linear-gradient(to bottom,  #2e78b0 0%,#193759 100%); /* W3C */
+								filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=\'#2e78b0\', endColorstr=\'#193759\',GradientType=0 ); /* IE6-9 */
+								font-size: 14px;
+								font-family: Tahoma,Arial,Verdana,sans-serif;
+								color: #000000;
 								padding:0;
-								margin:0;
-								font-family: \'Trebuchet MS\', Verdana, sans-serif;
-								font-size: 13px;
+							  	margin:0;
+								height: 100%;
+								line-height: 20px;
 							}
-
-							h1{
-								font-size: 20px;
-								padding: 0px;
-								margin: 0px;
-								text-decoration:underline;
+							
+							.wrapper{
+								background: url('.$this->root_path.'templates/maintenance/images/background-head.svg) no-repeat scroll center top transparent;
+								background-size: 100%;
+							}							
+							
+							.header {
+								padding-top: 10px;
+								font-size: 45px;
+								font-weight: bold;
+								text-shadow: 1px 1px 2px #fff;
+								filter: dropshadow(color=#fff, offx=1, offy=1);
+								border: none;
+								color:  #fff;
+								text-align:center;
+								vertical-align: middle;
+								font-family: \'Trebuchet MS\',Arial,sans-serif;
 							}
-							.error_table{
+							
+							.header img {
+								height: 150px;
+								vertical-align: middle;
+							}
+							
+							.footer {
+								margin-top: 10px;
+								color: #fff;
+								text-align: center;
+							}
+							
+							.footer a, .footer a:link, .footer a:visited {
+								color: #fff;
+								text-decoration: none;
+							}
+							
+							.footer a:hover {
+								text-decoration: underline;
+							}
+							
+							.innerWrapper {
+								margin-right: auto;
+								margin-left: auto;
+								background-color: #F5F5F5;
+							    border: 1px solid #383838;
+							    border-radius: 4px 4px 4px 4px;
+							    box-shadow: 2px 2px 3px 0 #000000;
+								padding: 10px;
+								margin-bottom: 20px;
+								margin-top: 10px;
 								width: 700px;
-								border:1px solid #333;
-								background-color:#FFF;
+							}
+									
+							h1, h2, h3 {
+								font-family: \'Trebuchet MS\',Arial,sans-serif;
+							    font-weight: bold;
+							    margin-bottom: 10px;
+							    padding-bottom: 5px;
+								border-bottom: 1px solid #CCCCCC;
+								margin-top: 5px;
+							}
+							
+							h1 {
+							    font-size: 20px;
+							}
+							
+							h2 {
+								font-size: 18px;
+							}
+							
+							h3 {
+								font-size: 14px;
+								border-bottom: none;
+								margin-bottom: 5px;
+							}
+									
+							/* Links */
+							a,a:link,a:active,a:visited {
+								color: #4E7FA8;
+								text-decoration: none;
+							}
+							
+							a:hover {
+								color: #000;
+								text-decoration: none;
 							}
 						</style>
 						</head>
 
-						<body style="background-color:#efefef">
-						<div style="width:100%" align="center">
-						<div class="error_table">
-							<table width="400" border="0" cellspacing="1" cellpadding="2" style="background:#336c99 url(\''.$this->root_path.'templates/maintenance/images/header_back.png\') left no-repeat; font-size: 24px;
-							font-weight:bold;
-								height:110px;
-								width: 100%;
-								border: 0px;
-								border-bottom:2px solid #333;
-								text-transform: uppercase; color:#FFF;">
-									<tr>
-										<td width="100%">
-											<center>
-												<img src="'.$this->root_path.'templates/maintenance/images/logo.png" alt="EQdkp Plus" class="absmiddle" /> '.$strErrorName.'
-											</center>
-										</td>
-									</tr>
-								</table>
+						<body>
+									
+						<div class="wrapper">
+							<div class="header">
+								<img src="'.$this->root_path.'templates/maintenance/images/logo.svg" alt="EQdkp Plus" class="absmiddle" style="height: 130px;"/> '.$strErrorName.'
+							</div>
+		
+							<div class="innerWrapper">
+								<h1>A '.$strErrorName.' occured!</h1><br />	
 
-						<div id="cont" align="left" style="margin:15px;">
-						<h1>A '.$strErrorName.' occured!</h1><br />';
+		
+';
 		}
 		
 		private function error_message_footer($blnShowEQdkpLink = true){
-			return (($blnShowEQdkpLink) ? '<br /><b><a href="'.EQDKP_PROJECT_URL.'">Please visit the EQdkp Plus Homepage!</a></b>' : '').'
-					</div>
-					</div>
-					<div style="width:700px;">
-					<a href="'.EQDKP_PROJECT_URL.'" target="_new">EQDKP Plus</a> &copy; 2003 - '.date('Y').' by EQDKP Plus Developer Team
-					</div>
-					</div>
+			return (($blnShowEQdkpLink) ? '<br />' : '').'
+					
+							</div>	
+
+					</div>	
+					<div class="footer">
+						<a href="'.EQDKP_PROJECT_URL.'" target="_new">EQDKP Plus</a> &copy; 2003 - '.date('Y').' by EQDKP Plus Developer Team
+					</div>	
 					</body>
 					</html>';
 		}
@@ -415,7 +620,7 @@ if ( !defined('EQDKP_INC') ){
 			chdir($this->eqdkp_cwd);
 
 			if ($error = error_get_last()) {
-				if (isset($error['type']) && ($error['type'] == E_ERROR || $error['type'] == E_PARSE || $error['type'] == E_COMPILE_ERROR)) {
+				if (isset($error['type']) && in_array($error['type'], $this->fatals)) {
 					while (ob_get_level()) {
 						ob_end_clean();
 					}
@@ -428,35 +633,53 @@ if ( !defined('EQDKP_INC') ){
 					$this->myErrorHandler($error['type'], $error['message'], $error['file'], $error['line']);
 					$output = $this->error_message_header();
 					
+					$strErrorID = md5(time().'fatal'.rand());
+					
 					//template errors
 					if ($error['type'] == 4 && strpos($error['file'], 'template.class.php') && strpos($error['file'], ": eval()'d code")){
-						echo register('tpl')->generate_error('
-							You have a parsing error in a template file.<br /> Please see "Body-File" and "Path" for getting the files responsible for this error.<br />
-							If the bugged template-file is located in data-folder, you can fix this error by deleting this file. Otherwise you should restore the original template file.
-						');
-						exit();
-					}					
+						$this->log('fatal_error', $strErrorID, 'Template Error', $error['message'], 'File: '.$error['file'].', Line: '.$error['line'], array(), register('tpl')->get_error_details());
+					} else {
+						$this->log('fatal_error', $strErrorID, ((isset($this->errorType[$error['type']]))?$this->errorType[$error['type']]:'unknown'), $error['message'], 'File: '.$error['file'].', Line: '.$error['line'], array(), debug_backtrace());
+					}
 
-					foreach ($error as $key=>$value){
-						if($key == 'type'){
-							$et = (isset($this->errorType[$value]))?$this->errorType[$value]:'unknown';
-							$output .= '<b>'.ucfirst($key).'</b>: '.$et.'<br />';
-						}elseif($key == 'message'){
-							$slash = (strpos($value, '/') !== false) ? '/' : '\\';
-							$real_directory = str_replace($slash.'core', '', realpath(dirname(__FILE__)));
-							$msg = str_replace("\n", "<br />\n", $value);
-							$msg = str_replace("Stack trace", "<b>Stack Trace</b>", $msg);
-							$msg = str_replace($this->dbpass, '*******', $msg);
-							$msg = str_replace($real_directory, '.....', $msg);
-							$output .= '<b>'.ucfirst($key).'</b>: '.$msg.'<br />';
-						}elseif($key == 'file') {
-							$slash = (strpos($value, '/') !== false) ? '/' : '\\';
-							$real_directory = str_replace($slash.'core', '', realpath(dirname(__FILE__)));
-							$value = str_replace($real_directory, '.....', $value);
-							$output .= '<b>File</b>: '.$value.'<br />';
-						} else {
-							$output .= '<b>'.ucfirst($key).'</b>: '.$value.'<br />';
+					$output = $this->error_message_header('Fatal error');
+					$output .= 'A fatal error occured.<br /><br />';
+					$output .= 'Error ID: '.$strErrorID.'<br /><br />';
+					if($this->debug_level > 3){
+					
+						//template errors
+						if ($error['type'] == 4 && strpos($error['file'], 'template.class.php') && strpos($error['file'], ": eval()'d code")){
+	
+							echo register('tpl')->generate_error('
+								You have a parsing error in a template file.<br /> Please see "Body-File" and "Path" for getting the files responsible for this error.<br />
+								If the bugged template-file is located in data-folder, you can fix this error by deleting this file. Otherwise you should restore the original template file.
+							');
+							exit();
+						}					
+	
+						foreach ($error as $key=>$value){
+							if($key == 'type'){
+								$et = (isset($this->errorType[$value]))?$this->errorType[$value]:'unknown';
+								$output .= '<b>'.ucfirst($key).'</b>: '.$et.'<br />';
+							}elseif($key == 'message'){
+								$slash = (strpos($value, '/') !== false) ? '/' : '\\';
+								$real_directory = str_replace($slash.'core', '', realpath(dirname(__FILE__)));
+								$msg = str_replace("\n", "<br />\n", $value);
+								$msg = str_replace("Stack trace", "<b>Stack Trace</b>", $msg);
+								$msg = str_replace($this->dbpass, '*******', $msg);
+								$msg = str_replace($real_directory, '.....', $msg);
+								$output .= '<b>'.ucfirst($key).'</b>: '.$msg.'<br />';
+							}elseif($key == 'file') {
+								$slash = (strpos($value, '/') !== false) ? '/' : '\\';
+								$real_directory = str_replace($slash.'core', '', realpath(dirname(__FILE__)));
+								$value = str_replace($real_directory, '.....', $value);
+								$output .= '<b>File</b>: '.$value.'<br />';
+							} else {
+								$output .= '<b>'.ucfirst($key).'</b>: '.$value.'<br />';
+							}
 						}
+					} else {
+						$output .= 'The error message can be looked up at the data/.../tmp/fatal_error.log or at "ACP >> Logs >> Errors"';
 					}
 					$output .= $this->error_message_footer();
 					echo $output;
@@ -465,27 +688,95 @@ if ( !defined('EQDKP_INC') ){
 		}
 		
 		public function catch_dbal_exception($e){
+			$strErrorID = md5(time().'dbal_exception'.$e->getMessage());
+			$this->log('fatal_error', $strErrorID, 'DBAL Exception', $e->getMessage(), $e->getCode(), $e->getTrace(), debug_backtrace());
+
 			if (!headers_sent()){
 				header('HTTP/1.1 500 Internal Server Error');
 			}
-			$output = $this->error_message_header('Database error');
-			$strErrorMessage = $e->getMessage();
-			$strErrorMessage = str_replace($this->dbpass, '*******', $strErrorMessage);
-			if (strlen($this->dbuser) > 3){
-				$strSuffix = substr($this->dbuser, 0, 3);
-				$strUserReplace = str_pad($strSuffix, strlen($this->dbuser), '*');
-			}
-			$strErrorMessage = str_replace($this->dbuser, $strUserReplace, $strErrorMessage);
-			if (strlen($this->dbhost) > 6){
-				$strSuffix = substr($this->dbhost, 0, 6);
-				$strHostReplace = str_pad($strSuffix, strlen($this->dbhost), '*');
-			}
-			$strErrorMessage = str_replace($this->dbhost, $strHostReplace, $strErrorMessage);
+			$output = $this->error_message_header('Fatal error');
+			$output .= 'A fatal error occured.<br /><br />';
+			$output .= 'Error ID: '.$strErrorID.'<br /><br />';
 			
-			$output .= $strErrorMessage.'<br /><br />';
+			if($this->debug_level > 3){
+				$strErrorMessage = $e->getMessage();
+				$strErrorMessage = str_replace($this->dbpass, '*******', $strErrorMessage);
+				if (strlen($this->dbuser) > 3){
+					$strSuffix = substr($this->dbuser, 0, 3);
+					$strUserReplace = str_pad($strSuffix, strlen($this->dbuser), '*');
+				}
+				$strErrorMessage = str_replace($this->dbuser, $strUserReplace, $strErrorMessage);
+				if (strlen($this->dbhost) > 6){
+					$strSuffix = substr($this->dbhost, 0, 6);
+					$strHostReplace = str_pad($strSuffix, strlen($this->dbhost), '*');
+				}
+				$strErrorMessage = str_replace($this->dbhost, $strHostReplace, $strErrorMessage);
+				
+				$output .= $strErrorMessage.'<br /><br />';
+			} else {
+				$output .= 'The error message can be looked up at the data/.../tmp/fatal_error.log or at "ACP >> Logs >> Errors"';
+			}
 			
 			$output .= $this->error_message_footer(false);
 			echo $output;
+			//Die, otherwise the next fatal error will occure
+			die();
+		}
+		
+		public function class_doesnt_exist($class) {
+			if (!headers_sent()){
+				header('HTTP/1.1 500 Internal Server Error');
+			}
+			$strErrorID = md5(time().'class_404'.$class);
+			$this->log('fatal_error', $strErrorID, 'Classloading Error', 'Class "'.$class.'" not found', 404, array(), debug_backtrace());
+			$output = $this->error_message_header('Fatal error');
+			$output .= 'A fatal error occured.<br /><br />';
+			$output .= 'Error ID: '.$strErrorID.'<br /><br />';
+			if($this->debug_level > 3){
+				$error_message = "Error while loading class <b>'".$class."'</b>: class not found!<br /><br /><b>Debug Backtrace:</b><br />";
+				$data = debug_backtrace();
+				$pos = strrpos($data[max(array_keys($data))]['file'], '/');
+				if($pos === false) $pos = strrpos($data[max(array_keys($data))]['file'], '\\');
+				foreach($data as $key => $call) {
+					$file = substr($call['file'], $pos);
+					$error_message .= $file.": ".$call['line']."<br />";
+				}
+				$output .= $error_message;
+			} else {
+				$output .= 'The error message can be looked up at the data/.../tmp/fatal_error.log or at "ACP >> Logs >> Errors"';
+			}
+			echo $output.$this->error_message_footer();
+			//Die, otherwise the next fatal error will occure
+			die();
+		}
+		
+		public function file_not_found($path) {
+			if (!headers_sent()){
+				header('HTTP/1.1 500 Internal Server Error');
+			}
+			$strErrorID = md5(time().'file_404'.$path);
+			$this->log('fatal_error', $strErrorID, 'Fileloading Error', 'File "'.$path.'" not found', 404, array(), debug_backtrace());
+			$output = $this->error_message_header('Fatal error');
+			$output .= 'A fatal error occured.<br /><br />';
+			$output .= 'Error ID: '.$strErrorID.'<br /><br />';
+			if($this->debug_level > 3){		
+				$error_message = "Error while loading file <b>'".$path."'</b>: File not found!<br />";
+				$error_message .= "Please ensure that all files are uploaded correctly!";
+				if($this->debug_level) {
+					$error_message .= "<br /><br /><b>Debug Backtrace:</b><br />";
+					$data = debug_backtrace();
+					$pos = strrpos($data[max(array_keys($data))]['file'], '/');
+					if($pos === false) $pos = strrpos($data[max(array_keys($data))]['file'], '\\');
+					foreach($data as $key => $call) {
+						$file = substr($call['file'], $pos);
+						$error_message .= $file.": ".$call['line']."<br />";
+					}
+				}
+				$output .= $error_message;
+			} else {
+				$output .= 'The error message can be looked up at the data/.../tmp/fatal_error.log or at "ACP >> Logs >> Errors"';
+			}
+			echo $output.$this->error_message_footer();
 			//Die, otherwise the next fatal error will occure
 			die();
 		}
@@ -584,5 +875,4 @@ if ( !defined('EQDKP_INC') ){
 			$this->log('deprecated', $name, $backtrace[2]['file'], $backtrace[2]['line'], $backtrace[1]['file'], $backtrace[1]['line']);
 		}
 	}//end class
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_plus_debug_logger', plus_debug_logger::$shortcuts);
 ?>

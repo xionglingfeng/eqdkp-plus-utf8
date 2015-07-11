@@ -1,26 +1,28 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
 	header('HTTP/1.0 404 Not Found');exit;
 }
 class tour extends gen_class {
-	public static $shortcuts = array('in', 'config', 'jquery', 'user', 'tpl', 'core');
 
 	private $cookie			= array();
 	private $cookie_time	= 0;
@@ -37,10 +39,10 @@ class tour extends gen_class {
 			$this->start();
 		};
 
-		$this->cookie = unserialize(get_cookie('tour'));
+		$this->cookie = unserialize(base64_decode($this->in->getEQdkpCookie('tour')));
 		$this->cookie_time = time() + 3600;
 
-		if (strlen(get_cookie('tour')) && $this->user->is_signedin()){
+		if (strlen($this->cookie) && $this->user->is_signedin()){
 			$this->init_steps();
 
 			$step = $this->cookie['step'];
@@ -83,8 +85,8 @@ class tour extends gen_class {
 	}
 
 	public function start(){
-		set_cookie('tour', serialize(array('step'	=> 0)), $this->cookie_time);
-		redirect('index.php');
+		set_cookie('tour', base64_encode(serialize(array('step'	=> 0))), $this->cookie_time);
+		redirect('index.php'.$this->SID);
 	}
 
 	public function init_steps(){
@@ -118,7 +120,7 @@ class tour extends gen_class {
 				'type'	=> 'admin',
 			),
 			7	=> array(
-				'url'	=> 'admin/manage_pages.php',
+				'url'	=> 'admin/manage_article_categories.php',
 				'type'	=> 'admin',
 			),
 			8	=> array(
@@ -144,24 +146,23 @@ class tour extends gen_class {
 
 	public function execute_step($step, $show){
 		if (!$show && $this->steps[$step]['url'] != ''){
-			set_cookie('tour', serialize(array('step'	=> $step)), $this->cookie_time);
-			redirect($this->steps[$step]['url'].'?tour=show');
+			set_cookie('tour', base64_encode(serialize(array('step'	=> $step))), $this->cookie_time);
+			redirect($this->steps[$step]['url'].$this->SID.'&tour=show');
 		} else {
 
 			$custom_js = "var a = 1;";
 			if ($step == 0){
-				$custom_js = "window.location='?tour=next'";
+				$custom_js = "window.location='".$this->SID."&tour=next'";
 			}
 
-			$this->jquery->Dialog('tour_step', $this->lang['navi_title'], array('message'	=> '<b>'.$this->lang['navi_title'].' - '.$this->lang['step_'.$step.'_title'].'</b><br/><br/>'.$this->lang['step_'.$step], 'width' => 300, 'height'	=> 300, 'custom_js' => $custom_js, 'cancel_js'	=> "window.location='?tour=cancel'"), 'confirm');
+			$this->jquery->Dialog('tour_step', $this->lang['navi_title'], array('message'	=> '<b>'.$this->lang['navi_title'].' - '.$this->lang['step_'.$step.'_title'].'</b><br/><br/>'.$this->lang['step_'.$step], 'width' => 300, 'height'	=> 300, 'custom_js' => $custom_js, 'cancel_js'	=> "window.location='".$this->SID."&tour=cancel'"), 'confirm');
 			$this->tpl->add_js(
 				"$(document).ready(function () {
 					tour_step();
 				});"
 			);
-			set_cookie('tour', serialize(array('step'	=> $step, 'shown' => true)), $this->cookie_time);
+			set_cookie('tour', base64_encode(serialize(array('step'	=> $step, 'shown' => true))), $this->cookie_time);
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_tour', tour::$shortcuts);
 ?>

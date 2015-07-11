@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if (!defined('EQDKP_INC')){
@@ -22,7 +25,7 @@ if (!defined('EQDKP_INC')){
 
 if (!class_exists('exchange_calevents_details')){
 	class exchange_calevents_details extends gen_class {
-		public static $shortcuts = array('user', 'config', 'pdh', 'time', 'game', 'bbcode'=>'bbcode', 'pex'=>'plus_exchange');
+		public static $shortcuts = array('pex'=>'plus_exchange');
 
 		public function get_calevents_details($params, $body){
 			if ($this->user->check_auth('u_calendar_view', false)){
@@ -32,8 +35,10 @@ if (!class_exists('exchange_calevents_details')){
 					$comments = $this->pdh->get('comment', 'filtered_list', array('viewcalraid', $event_id));
 					if (is_array($comments)){
 						foreach($comments as $key => $row){
+							$avatarimg = $this->pdh->get('user', 'avatarimglink', array($row['userid']));
 							$arrComments['comment:'.$key] = array(
 								'username'			=> $row['username'],
+								'user_avatar'		=> $this->pfh->FileLink((($avatarimg != "") ? $avatarimg : 'images/global/avatar-default.svg'), false, 'absolute'),
 								'date'				=> $this->time->date('Y-m-d H:i', $row['date']),
 								'date_timestamp'	=> $row['date'],
 								'message'			=> $this->bbcode->toHTML($row['text']),
@@ -45,7 +50,7 @@ if (!class_exists('exchange_calevents_details')){
 					if ($raidmode) {
 
 						// get the memners
-						$notsigned_filter		= unserialize($this->config->get('calendar_raid_nsfilter'));
+						$notsigned_filter		= $this->config->get('calendar_raid_nsfilter');
 						$this->members			= $this->pdh->maget('member', array('userid', 'name', 'classid'), 0, array($this->pdh->sort($this->pdh->get('member', 'id_list', array(
 														((in_array('inactive', $notsigned_filter)) ? false : true),
 														((in_array('hidden', $notsigned_filter)) ? false : true),
@@ -71,7 +76,7 @@ if (!class_exists('exchange_calevents_details')){
 
 						// Guests / rest
 						$this->guests			= $this->pdh->get('calendar_raids_guests', 'members', array($event_id));
-						$this->raidcategories	= ($eventdata['extension']['raidmode'] == 'role') ? $this->pdh->aget('roles', 'name', 0, array($this->pdh->get('roles', 'id_list'))) : $this->game->get('classes', 'id_0');
+						$this->raidcategories	= ($eventdata['extension']['raidmode'] == 'role') ? $this->pdh->aget('roles', 'name', 0, array($this->pdh->get('roles', 'id_list'))) : $this->game->get_primary_classes(array('id_0'));
 						$this->mystatus			= $this->pdh->get('calendar_raids_attendees', 'myattendees', array($event_id, $this->user->data['user_id']));
 
 						// Build the attendees aray for this raid by class
@@ -88,7 +93,7 @@ if (!class_exists('exchange_calevents_details')){
 						}
 
 						//The Status & Member data
-						$raidcal_status = unserialize($this->config->get('calendar_raid_status'));
+						$raidcal_status = $this->config->get('calendar_raid_status');
 						$this->raidstatus_full = $this->raidstatus = array();
 						if(is_array($raidcal_status)){
 							foreach($raidcal_status as $raidcalstat_id){
@@ -108,7 +113,7 @@ if (!class_exists('exchange_calevents_details')){
 
 								if(isset($this->attendees[$statuskey][$classid]) && is_array($this->attendees[$statuskey][$classid])){
 									foreach($this->attendees[$statuskey][$classid] as $memberid=>$memberdata){
-										//$shownotes_ugroups = unserialize($this->config->get('calendar_raid_shownotes'));
+										//$shownotes_ugroups = $this->acl->get_groups_with_active_auth('u_calendar_raidnotes');
 
 										$arrChars['char:'.$memberid] = array(
 											'id'			=> $memberid,
@@ -149,7 +154,7 @@ if (!class_exists('exchange_calevents_details')){
 									'id'		=> $guestid,
 									'name'		=> unsanitize($guestsdata['name']),
 									'classid'	=> $guestsdata['class'],
-									'class'		=> $this->game->get_name('classes', $guestsdata['class']),
+									'class'		=> $this->game->get_name('primary', $guestsdata['class']),
 								);
 							}
 						}
@@ -179,6 +184,7 @@ if (!class_exists('exchange_calevents_details')){
 									'main'		=> ($key == $mainchar) ? 1 : 0,
 									'class'		=> $this->pdh->get('member', 'classid', array($key)),
 									'roles'		=> $arrRoles,
+									'raidgroup' => $this->pdh->get('calendar_raids_attendees', 'raidgroup', array($event_id, $key)),
 								);
 							}
 						}
@@ -190,6 +196,7 @@ if (!class_exists('exchange_calevents_details')){
 							$userstatus['char_id'] = $this->mystatus['member_id'];
 							$userstatus['char_class'] = $this->pdh->get('member', 'classid', array($this->mystatus['member_id']));
 							$userstatus['char_name'] = $this->pdh->get('member', 'name', array($this->mystatus['member_id']));
+							$userstatus['raidgroup'] = $this->pdh->get('calendar_raids_attendees', 'raidgroup', array($event_id, $this->mystatus['member_id']));
 							if ($this->mystatus['member_role'] > 0 ) $userstatus['char_roleid'] = $this->mystatus['member_role'];
 							if ($this->mystatus['member_role'] > 0 ) $userstatus['char_role'] = $this->pdh->get('roles', 'name', array($this->mystatus['member_role']));
 						}
@@ -200,6 +207,17 @@ if (!class_exists('exchange_calevents_details')){
 							'attachid' => $event_id,
 							'comments' => $arrComments,
 						);
+						
+						$arrRaidgroups = array();
+						foreach ($this->pdh->aget('raid_groups', 'name', false, array($this->pdh->get('raid_groups', 'id_list'))) as $raidgroupid => $raidgroupname){
+							$arrRaidgroups['raidgroup:'.$raidgroupid] = array(
+								'id'		=> $raidgroupid,
+								'name'		=> $raidgroupname,
+								'default'	=> ($this->pdh->get('raid_groups', 'standard', array($raidgroupid))) ? 1 : 0,
+								'color'		=> $this->pdh->get('raid_groups', 'color', array($raidgroupid)),
+							);
+						}
+						
 						
 						
 						$out = array(
@@ -214,8 +232,8 @@ if (!class_exists('exchange_calevents_details')){
 							'deadline_timestamp'=> $eventdata['timestamp_start']-($eventdata['extension']['deadlinedate'] * 3600),
 							'allDay'		=> ($this->pdh->get('calendar_events', 'allday', array($event_id)) > 0) ? 1 : 0,
 							'closed'		=> ($this->pdh->get('calendar_events', 'raidstatus', array($event_id)) == 1) ? 1 : 0,
-							'icon'			=> ($eventdata['extension']['raid_eventid']) ? $this->pdh->get('event', 'icon', array($eventdata['extension']['raid_eventid'], true, true)) : '',
-							'note'			=> unsanitize($this->pdh->get('calendar_events', 'notes', array($event_id))),
+							'icon'			=> ($eventdata['extension']['raid_eventid']) ? $this->pdh->get('event', 'icon', array($eventdata['extension']['raid_eventid'], true)) : '',
+							'note'			=> unsanitize($this->bbcode->remove_bbcode($this->pdh->get('calendar_events', 'notes', array($event_id)))),
 							'raidleader'	=> unsanitize(($eventdata['extension']['raidleader'] > 0) ? implode(', ', $this->pdh->aget('member', 'name', 0, array($eventdata['extension']['raidleader']))) : ''),
 							'raidstatus'	=> $arrStatus,
 							'user_status'	=> $userstatus,
@@ -223,6 +241,7 @@ if (!class_exists('exchange_calevents_details')){
 							'comments'		=> $arrCommentsOut,
 							'calendar'		=> $eventdata['calendar_id'],
 							'calendar_name'	=> $this->pdh->get('calendar_events', 'calendar', array($event_id)),
+							'raidgroups'	=> $arrRaidgroups,
 						);
 					} else {
 						$out = array(
@@ -233,7 +252,7 @@ if (!class_exists('exchange_calevents_details')){
 							'end'			=> $this->time->date('Y-m-d H:i', $this->pdh->get('calendar_events', 'time_end', array($event_id))),
 							'end_timestamp'	=> $this->pdh->get('calendar_events', 'time_end', array($event_id)),
 							'allDay'		=> ($this->pdh->get('calendar_events', 'allday', array($event_id)) > 0) ? 1 : 0,
-							'note'			=> unsanitize($this->pdh->get('calendar_events', 'notes', array($event_id))),
+							'note'			=> unsanitize($this->bbcode->remove_bbcode($this->pdh->get('calendar_events', 'notes', array($event_id)))),
 							'calendar'		=> $eventdata['calendar_id'],
 							'calendar_name'	=> $this->pdh->get('calendar_events', 'calendar', array($event_id)),
 						);
@@ -249,5 +268,4 @@ if (!class_exists('exchange_calevents_details')){
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_exchange_calevents_details', exchange_calevents_details::$shortcuts);
 ?>

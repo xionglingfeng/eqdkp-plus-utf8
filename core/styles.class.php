@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,8 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if (!class_exists("styles")){
 	class styles extends gen_class {
-		public static $shortcuts = array('in', 'user', 'config', 'pdh', 'pfh', 'tpl', 'game', 'core', 'time', 'jquery');
-
 		private $update_styles = array();
 		private $arrIgnoreFolder = array(
 			'maintenance',
@@ -35,8 +36,9 @@ if (!class_exists("styles")){
 			'attendees_columns',
 			'logo_position',
 			'background_img',
+			'background_pos',
+			'background_type',
 			'css_file',
-			'use_db_vars',
 
 			'body_background',
 			'body_link',
@@ -119,11 +121,11 @@ if (!class_exists("styles")){
 					$xml = simplexml_load_file($installer_file);
 					if ($xml){
 						$data = array(
-							'style_name'	=> $xml->name,
-							'style_version'	=> $xml->version,
-							'style_author'	=> $xml->author,
-							'style_contact'	=> $xml->authorEmail,
-							'template_path'	=>($xml->settings->template_path) ? $xml->settings->template_path : $style['template_path'],
+							'style_name'	=> (string)$xml->name,
+							'style_version'	=> (string)$xml->version,
+							'style_author'	=> (string)$xml->author,
+							'style_contact'	=> (string)$xml->authorEmail,
+							'template_path'	=>($xml->settings->template_path) ? (string)$xml->settings->template_path : $style['template_path'],
 							'enabled'		=> '1'
 						);
 
@@ -135,7 +137,7 @@ if (!class_exists("styles")){
 								$settings_xml = simplexml_load_file($settings_file);
 								if ($settings_xml){
 									foreach($this->allowed_colors as $color){
-										$data_array[$color] = $settings_xml->$color;
+										$data_array[$color] = (string)$settings_xml->$color;
 									}
 									
 									$data		= array_merge($data, $data_array);
@@ -146,10 +148,12 @@ if (!class_exists("styles")){
 										$this->ClassColorManagement($style_id, $settings_xml->classcolors, true);
 									}
 								}
+							} else {
+								$this->pdh->put('class_colors', 'delete_classcolor', array($styleid));
 							}
 							
 						} else {
-							$this->pdh->put('styles', 'update_version', array($xml->version, $styleid));
+							$this->pdh->put('styles', 'update_version', array((string)$xml->version, $styleid));
 						}
 					}
 					
@@ -170,7 +174,7 @@ if (!class_exists("styles")){
 			}
 
 			//Delete Cache
-			$this->helperDeleteCache();
+			$this->helperDeleteCompleteCache();
 		}
 
 		public function install($stylename){
@@ -186,11 +190,11 @@ if (!class_exists("styles")){
 				$xml = simplexml_load_file($installer_file);
 				if ($xml){
 					$data = array(
-						'style_name'	=> $xml->name,
-						'style_version'	=> $xml->version,
-						'style_author'	=> $xml->author,
-						'style_contact'	=> $xml->authorEmail,
-						'template_path'	=>($xml->folder) ? $xml->folder : $stylename,
+						'style_name'	=> (string)$xml->name,
+						'style_version'	=> (string)$xml->version,
+						'style_author'	=> (string)$xml->author,
+						'style_contact'	=> (string)$xml->authorEmail,
+						'template_path'	=>($xml->folder) ? (string)$xml->folder : $stylename,
 						'enabled'				=> '1'
 					);
 					if (!in_array($data['style_name'], $styles)){
@@ -202,7 +206,7 @@ if (!class_exists("styles")){
 							$settings_xml = simplexml_load_file($settings_file);
 							if ($settings_xml){
 								foreach($this->allowed_colors as $color){
-									$data_array[$color] = $settings_xml->$color;
+									$data_array[$color] = (string)$settings_xml->$color;
 								}
 								$data		= array_merge($data, $data_array);
 								
@@ -218,7 +222,8 @@ if (!class_exists("styles")){
 							$this->ClassColorManagement($style_id, $settings_xml->classcolors, false);
 						} else {
 							$arrClassColorsDefaultStyle = $this->pdh->get('class_colors', 'class_colors', array((int)$this->config->get('default_style')));
-							foreach($this->game->get('classes') as $class_id => $class_name){
+							$classdata = $this->game->get_primary_classes();
+							foreach($classdata as $class_id => $class_name){
 								if (!isset($arrClassColorsDefaultStyle[$class_id])) continue;
 								$color = $arrClassColorsDefaultStyle[$class_id];
 								$this->pdh->put('class_colors', 'add_classcolor', array($style_id, $class_id, $color));
@@ -239,14 +244,20 @@ if (!class_exists("styles")){
 			if ($styleid == $this->config->get('default_style')){
 				$this->core->message( $this->user->lang('admin_delete_style_error_defaultstyle'), $this->user->lang('error'), 'red');
 			}else{
+				$style = $this->pdh->get('styles', 'styles', array($styleid));
 				$this->pdh->put('styles', 'delete_style', array($styleid));
 				$this->pdh->process_hook_queue();
-				$style = $this->pdh->get('styles', 'styles', array($styleid));
-
 				$storage_folder = $this->pfh->FolderPath('templates/'.$style['template_path'], 'eqdkp');
+
 				if (file_exists($storage_folder)){$this->pfh->Delete($storage_folder);}
 				$this->core->message( $this->user->lang('admin_delete_style_success'), $this->user->lang('success'), 'green');
 			}
+		}
+		
+		public function remove($stylename){
+			$stylename = preg_replace("/[^a-zA-Z0-9-_]/", "", $stylename);
+			if($stylename == "") return false;
+			$this->pfh->Delete($this->root_path.'templates/'.$stylename.'/');
 		}
 
 		public function export($styleid){
@@ -266,7 +277,7 @@ if (!class_exists("styles")){
 	<author>'.$data['style_author'].'</author>
 	<authorEmail>'.$data['style_contact'].'</authorEmail>
 	<authorUrl>'.EQDKP_PROJECT_URL.'</authorUrl>
-	<creationDate>'.$this->time->RFC2822($this->time->time).'</creationDate>
+	<creationDate>'.$this->time->RFC3339($this->time->time).'</creationDate>
 	<copyright>'.$data['style_author'].'</copyright>
 	<license>CC</license>
 	<version>'.$data['style_version'].'</version>
@@ -393,7 +404,7 @@ if (!class_exists("styles")){
 		}
 
 		public function delete_cache(){
-			$this->helperDeleteCache();
+			$this->helperDeleteCompleteCache();
 			$this->core->message($this->user->lang('delete_template_cache_success'), $this->user->lang('success'), 'green');
 		}
 
@@ -457,8 +468,9 @@ if (!class_exists("styles")){
 
 		public function ClassColorManagement($template, $xml=false, $with_delete=true) {
 			if($with_delete) $this->pdh->put('class_colors', 'delete_classcolor', array($template));
-			foreach($this->game->get('classes') as $class_id => $class_name){
-				$color = (is_object($xml)) ? $xml->{'cc_'.$class_id} : $this->in->get('classc_'.$class_id);
+			$classdata = $this->game->get_primary_classes();
+			foreach($classdata as $class_id => $class_name){
+				$color = (is_object($xml)) ? (string)$xml->{'cc_'.$class_id} : $this->in->get('classc_'.$class_id);
 				$this->pdh->put('class_colors', 'add_classcolor', array($template, $class_id, $color));
 			}
 		}
@@ -474,8 +486,9 @@ if (!class_exists("styles")){
 						$files = array_merge($files, $files_rec);
 					} else {
 						$ext = pathinfo($file, PATHINFO_EXTENSION);
-						if ($file != "index.php" && $file != "index.html" && $file != 'user_additions.css' && $file != 'jquery_tmpl.css' && $file != "main.css" && in_array($ext, $this->allowed_extensions)){
-							$filepath = ($remove_templatepath) ? str_replace($orig_templatepath.'/', '', $templatepath.'/'.$file) : $file;
+						if ($file != "index.php" && $file != "index.html" && $file != 'user_additions.css' && $file != 'jquery_tmpl.css' && in_array($ext, $this->allowed_extensions)){
+							$filepath = ($remove_templatepath) ? str_replace($orig_templatepath, '', $templatepath.'/'.$file) : $file;
+							$filepath = (substr($filepath, 0, 1) === '/') ? substr($filepath, 1) : $filepath;
 							$files[$filepath] = $file;
 						}
 					}
@@ -492,7 +505,8 @@ if (!class_exists("styles")){
 			if ( $dir = @opendir($this->pfh->FolderPath('templates/'.$templatepath, 'eqdkp')) ){
 				while ($file = @readdir($dir)){
 					$ext = pathinfo($file, PATHINFO_EXTENSION);
-					if (!is_dir($file) && $file != "ads.html" && $file != "index.php" && $file != "index.html" && $file != "main.css" && in_array($ext, $this->allowed_extensions)){
+					if (!is_dir($file) && $file != "index.php" && $file != "index.html" && in_array($ext, $this->allowed_extensions)){
+						if (strpos($file, "combined") === 0 || strpos($file, "dev_") === 0) continue;
 						$files[$this->pfh->FolderPath('templates/'.$templatepath, 'eqdkp').$file] = $file;
 					}
 				}
@@ -500,7 +514,7 @@ if (!class_exists("styles")){
 			if ( $dir = @opendir($this->pfh->FolderPath('templates/'.$templatepath.'/admin', 'eqdkp')) ){
 				while ($file = @readdir($dir)){
 					$ext = pathinfo($file, PATHINFO_EXTENSION);
-					if (!is_dir($file) && $file != "ads.html" && $file != "index.php" && $file != "index.html" && in_array($ext, $this->allowed_extensions)){
+					if (!is_dir($file) && $file != "index.php" && $file != "index.html" && in_array($ext, $this->allowed_extensions)){
 						$files[$this->pfh->FolderPath('templates/'.$templatepath, 'eqdkp').'admin/'.$file] = 'admin/'.$file;
 					}
 				}
@@ -508,22 +522,37 @@ if (!class_exists("styles")){
 			return $files;
 		}
 
-		private function helperDeleteCache(){
+		private function helperDeleteCompleteCache(){
 			$this->tpl->delete_cache();
 
 			//Also delete the main.css-files from the styles
 			$storage_folder  = $this->pfh->FolderPath('templates', 'eqdkp');
 
 			if ( $dir = @opendir($storage_folder) ){
-				while ($file = @readdir($dir)){
-					if (file_exists($storage_folder.$file.'/main.css')){
-						$this->pfh->Delete($storage_folder.$file.'/main.css');
+				while ($file = @readdir($dir)){					
+					//Delete the Combined Files
+					if(is_dir($storage_folder.$file)){
+						$arrDir = sdir($storage_folder.$file, 'combined_*');
+						foreach($arrDir as $file){
+							$this->pfh->Delete('templates/'.$templatepath.'/'.$file, 'eqdkp');
+						}
 					}
 				}
 			}
+			
+			
+		}
+		
+		public function deleteStyleCache($templatepath){
+			//Delete the Combined Files
+			$arrDir = sdir($storage_folder = $this->pfh->FolderPath('templates', 'eqdkp').$templatepath, 'combined_*');
+			foreach($arrDir as $file){
+				$this->pfh->Delete('templates/'.$templatepath.'/'.$file, 'eqdkp');
+			}
+			
+			$this->tpl->delete_cache($templatepath);
 		}
 
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_styles', styles::$shortcuts);
 ?>

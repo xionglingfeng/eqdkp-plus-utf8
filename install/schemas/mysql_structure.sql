@@ -6,10 +6,10 @@
 # --------------------------------------------------------
 ### Configuration
 
-DROP TABLE IF EXISTS __backup_cnf;
-CREATE TABLE `__backup_cnf` (
-	`config_name` varchar(255) COLLATE utf8_bin NOT NULL,
-	`config_plugin` varchar(25) COLLATE utf8_bin NOT NULL DEFAULT 'core',
+DROP TABLE IF EXISTS __config;
+CREATE TABLE `__config` (
+	`config_name` varchar(120) COLLATE utf8_bin NOT NULL,
+	`config_plugin` varchar(40) COLLATE utf8_bin NOT NULL DEFAULT 'core',
 	`config_value` text COLLATE utf8_bin,
 	PRIMARY KEY (`config_name`, `config_plugin`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
@@ -43,20 +43,7 @@ CREATE TABLE `__users` (
 	`user_active` tinyint(1) NOT NULL DEFAULT 1,
 	`custom_fields` text COLLATE utf8_bin,
 	`plugin_settings` text COLLATE utf8_bin,
-	`first_name` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`last_name` varchar(255) COLLATE utf8_bin DEFAULT NULL,
 	`country` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`town` varchar(250) COLLATE utf8_bin DEFAULT NULL,
-	`state` varchar(250) COLLATE utf8_bin DEFAULT NULL,
-	`ZIP_code` int(11) DEFAULT NULL,
-	`phone` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`cellphone` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`address` text COLLATE utf8_bin,
-	`allvatar_nick` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`icq` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`skype` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`msn` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`irq` varchar(255) COLLATE utf8_bin DEFAULT NULL,
 	`gender` varchar(255) COLLATE utf8_bin DEFAULT NULL,
 	`birthday` BIGINT(10) NULL DEFAULT '0',
 	`privacy_settings` text COLLATE utf8_bin,
@@ -64,8 +51,8 @@ CREATE TABLE `__users` (
 	`auth_account` text COLLATE utf8_bin,
 	`failed_login_attempts` INT(3) NOT NULL DEFAULT '0',
 	`exchange_key` varchar(32) COLLATE utf8_bin NOT NULL DEFAULT '',
-	`api_key` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
 	`hide_nochar_info` TINYINT(1) NULL DEFAULT '0',
+	`notifications` TEXT NULL COLLATE 'utf8_bin',
 	PRIMARY KEY (`user_id`),
 	UNIQUE KEY `username` (`username`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
@@ -105,13 +92,16 @@ CREATE TABLE IF NOT EXISTS `__groups_user` (
 	`groups_user_deletable` tinyint(1) NOT NULL DEFAULT 0,
 	`groups_user_default` tinyint(1) NOT NULL DEFAULT 0,
 	`groups_user_hide` tinyint(1) NOT NULL DEFAULT 0,
+	`groups_user_sortid` smallint(5) unsigned NOT NULL DEFAULT 0,
+	`groups_user_team` tinyint(1) NOT NULL DEFAULT 0,
 	PRIMARY KEY (`groups_user_id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 DROP TABLE IF EXISTS __groups_users;
 CREATE TABLE IF NOT EXISTS `__groups_users` (
-	`group_id` int(22) NOT NULL,
-	`user_id` int(22) NOT NULL
+	`group_id` int(11) NOT NULL,
+	`user_id` int(11) NOT NULL,
+	`grpleader` int(11) NOT NULL DEFAULT 0
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 DROP TABLE IF EXISTS __sessions;
@@ -124,10 +114,11 @@ CREATE TABLE `__sessions` (
 	`session_page` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '0',
 	`session_ip` varchar(50) COLLATE utf8_bin NOT NULL,
 	`session_browser` TEXT COLLATE 'utf8_bin',
-	`session_key` varchar(15) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`session_key` varchar(50) COLLATE utf8_bin NOT NULL DEFAULT '',
 	`session_type` varchar(15) COLLATE utf8_bin NOT NULL DEFAULT '',
 	`session_perm_id` smallint(5) NULL DEFAULT '-1',
 	`session_failed_logins` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`session_vars` MEDIUMTEXT COLLATE 'utf8_bin' NULL,
 	PRIMARY KEY (`session_id`),
 	KEY `session_current` (`session_current`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
@@ -191,9 +182,6 @@ CREATE TABLE `__members` (
 	`member_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
 	`member_name` varchar(30) COLLATE utf8_bin NOT NULL,
 	`member_status` tinyint(1) NOT NULL DEFAULT 1,
-	`member_level` smallint(3) DEFAULT NULL,
-	`member_race_id` smallint(3) unsigned NOT NULL DEFAULT '0',
-	`member_class_id` smallint(3) unsigned NOT NULL DEFAULT '0',
 	`member_rank_id` smallint(3) NOT NULL DEFAULT '0',
 	`member_main_id` smallint(5) unsigned DEFAULT NULL,
 	`member_creation_date` int(10) unsigned NOT NULL DEFAULT 0,
@@ -204,8 +192,7 @@ CREATE TABLE `__members` (
 	`requested_del` tinyint(1) NOT NULL DEFAULT 0,
 	`require_confirm` tinyint(1) NOT NULL DEFAULT 0,
 	`defaultrole` tinyint(2) NOT NULL DEFAULT '0',
-	PRIMARY KEY (`member_id`),
-	UNIQUE KEY `member_name` (`member_name`)
+	PRIMARY KEY (`member_id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 DROP TABLE IF EXISTS __classcolors;
@@ -224,22 +211,25 @@ CREATE TABLE `__member_ranks` (
 	`rank_prefix` varchar(75) COLLATE utf8_bin NOT NULL DEFAULT '',
 	`rank_suffix` varchar(75) COLLATE utf8_bin NOT NULL DEFAULT '',
 	`rank_sortid` smallint(5) unsigned NOT NULL DEFAULT 0,
+	`rank_default`  tinyint(1) NOT NULL DEFAULT 0,
+	`rank_icon` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
 	UNIQUE KEY `rank_id` (`rank_id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 DROP TABLE IF EXISTS __member_profilefields;
 CREATE TABLE `__member_profilefields` (
 	`name` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
-	`fieldtype` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`type` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
 	`category` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
-	`language` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`lang` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
 	`size` smallint(5) DEFAULT NULL,
 	`image` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`visible` tinyint(1) NOT NULL DEFAULT 0,
+	`sort` int(11) NOT NULL DEFAULT 1,
 	`enabled` tinyint(1) NOT NULL DEFAULT 0,
 	`undeletable` tinyint(1) NOT NULL DEFAULT 0,
 	`custom` tinyint(1) NOT NULL DEFAULT 0,
-	`options` text COLLATE utf8_bin,
+	`data` text COLLATE utf8_bin,
+	`options_language` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
 	PRIMARY KEY (`name`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
@@ -261,6 +251,7 @@ CREATE TABLE `__raids` (
 	`raid_value` float(6,2) NOT NULL DEFAULT '0.00',
 	`raid_added_by` varchar(30) COLLATE utf8_bin NOT NULL,
 	`raid_updated_by` varchar(30) COLLATE utf8_bin DEFAULT NULL,
+	`raid_additional_data` TEXT NULL DEFAULT NULL COLLATE 'utf8_bin',
 	PRIMARY KEY (`raid_id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
@@ -272,6 +263,25 @@ CREATE TABLE `__raid_attendees` (
 	KEY `member_id` (`member_id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
+DROP TABLE IF EXISTS __groups_raid;
+CREATE TABLE `__groups_raid` (
+	`groups_raid_id` int(11) NOT NULL AUTO_INCREMENT,
+	`groups_raid_name` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`groups_raid_color` varchar(10) COLLATE utf8_bin DEFAULT NULL,
+	`groups_raid_desc` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`groups_raid_system` tinyint(1) NOT NULL DEFAULT '0',
+	`groups_raid_default` tinyint(1) NOT NULL DEFAULT '0',
+	`groups_raid_sortid` smallint(5) unsigned NOT NULL DEFAULT '0',
+	PRIMARY KEY (`groups_raid_id`)
+)	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+DROP TABLE IF EXISTS __groups_raid_members;
+CREATE TABLE `__groups_raid_members` (
+	`group_id` int(22) NOT NULL,
+	`user_id` int(22) NOT NULL,
+	`grpleader` int(1) NOT NULL DEFAULT '0'
+)	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
 # --------------------------------------------------------
 ### Multidkp & ItemPools
 
@@ -280,6 +290,7 @@ CREATE TABLE `__multidkp` (
 	`multidkp_id` int(11) unsigned NOT NULL AUTO_INCREMENT,
 	`multidkp_name` varchar(255) COLLATE utf8_bin NOT NULL,
 	`multidkp_desc` text COLLATE utf8_bin NOT NULL,
+	`multidkp_sortid` int(11) unsigned NOT NULL DEFAULT '0',
 	PRIMARY KEY (`multidkp_id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
@@ -306,36 +317,6 @@ CREATE TABLE `__multidkp2itempool` (
 	PRIMARY KEY (`multidkp2itempool_itempool_id`, `multidkp2itempool_multi_id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
-# --------------------------------------------------------
-### News
-
-DROP TABLE IF EXISTS __news;
-CREATE TABLE `__news` (
-	`news_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
-	`news_headline` varchar(255) COLLATE utf8_bin NOT NULL,
-	`news_message` text COLLATE utf8_bin NOT NULL,
-	`news_date` int(11) NOT NULL,
-	`user_id` smallint(5) unsigned NOT NULL,
-	`showRaids_id` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`extended_message` text COLLATE utf8_bin NOT NULL,
-	`nocomments` tinyint(4) NOT NULL,
-	`news_permissions` tinyint(4) NOT NULL,
-	`news_flags` tinyint(4) NOT NULL DEFAULT '0',
-	`news_category` int(10) unsigned DEFAULT '1',
-	`news_start` varchar(11) COLLATE utf8_bin NOT NULL DEFAULT '',
-	`news_stop` varchar(11) COLLATE utf8_bin NOT NULL DEFAULT '',
-	PRIMARY KEY (`news_id`),
-	KEY `user_id` (`user_id`)
-)	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
-
-DROP TABLE IF EXISTS __news_categories;
-CREATE TABLE `__news_categories` (
-	`category_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-	`category_name` text COLLATE utf8_bin,
-	`category_icon` text COLLATE utf8_bin,
-	`category_color` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	PRIMARY KEY (`category_id`)
-)	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 # --------------------------------------------------------
 ### Logging
@@ -353,6 +334,8 @@ CREATE TABLE `__logs` (
 	`log_flag` smallint(3) NOT NULL DEFAULT '0',
 	`user_id` smallint(5) NOT NULL DEFAULT '0',
 	`username` VARCHAR(30) COLLATE utf8_bin NOT NULL,
+	`log_record` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`log_record_id` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
 	PRIMARY KEY (`log_id`),
 	KEY `user_id` (`user_id`),
 	KEY `log_tag` (`log_tag`),
@@ -371,35 +354,35 @@ CREATE TABLE `__styles` (
 	`style_author` varchar(100) COLLATE utf8_bin DEFAULT NULL,
 	`enabled` enum('0','1') COLLATE utf8_bin NOT NULL DEFAULT '0',
 	`template_path` varchar(30) COLLATE utf8_bin NOT NULL DEFAULT 'default',
-	`body_background` varchar(6) COLLATE utf8_bin DEFAULT NULL,
-	`body_link` varchar(6) COLLATE utf8_bin DEFAULT NULL,
+	`body_background` varchar(10) COLLATE utf8_bin DEFAULT NULL,
+	`body_link` varchar(10) COLLATE utf8_bin DEFAULT NULL,
 	`body_link_style` varchar(30) COLLATE utf8_bin DEFAULT NULL,
-	`body_hlink` varchar(6) COLLATE utf8_bin DEFAULT NULL,
+	`body_hlink` varchar(10) COLLATE utf8_bin DEFAULT NULL,
 	`body_hlink_style` varchar(30) COLLATE utf8_bin DEFAULT NULL,
-	`header_link` varchar(6) COLLATE utf8_bin DEFAULT NULL,
+	`header_link` varchar(10) COLLATE utf8_bin DEFAULT NULL,
 	`header_link_style` varchar(30) COLLATE utf8_bin DEFAULT NULL,
-	`header_hlink` varchar(6) COLLATE utf8_bin DEFAULT NULL,
+	`header_hlink` varchar(10) COLLATE utf8_bin DEFAULT NULL,
 	`header_hlink_style` varchar(30) COLLATE utf8_bin DEFAULT NULL,
-	`tr_color1` varchar(6) COLLATE utf8_bin DEFAULT NULL,
-	`tr_color2` varchar(6) COLLATE utf8_bin DEFAULT NULL,
-	`th_color1` varchar(6) COLLATE utf8_bin DEFAULT NULL,
+	`tr_color1` varchar(10) COLLATE utf8_bin DEFAULT NULL,
+	`tr_color2` varchar(10) COLLATE utf8_bin DEFAULT NULL,
+	`th_color1` varchar(10) COLLATE utf8_bin DEFAULT NULL,
 	`fontface1` varchar(60) COLLATE utf8_bin DEFAULT NULL,
 	`fontface2` varchar(60) COLLATE utf8_bin DEFAULT NULL,
 	`fontface3` varchar(60) COLLATE utf8_bin DEFAULT NULL,
 	`fontsize1` tinyint(4) DEFAULT NULL,
 	`fontsize2` tinyint(4) DEFAULT NULL,
 	`fontsize3` tinyint(4) DEFAULT NULL,
-	`fontcolor1` varchar(6) COLLATE utf8_bin DEFAULT NULL,
-	`fontcolor2` varchar(6) COLLATE utf8_bin DEFAULT NULL,
-	`fontcolor3` varchar(6) COLLATE utf8_bin DEFAULT NULL,
-	`fontcolor_neg` varchar(6) COLLATE utf8_bin DEFAULT NULL,
-	`fontcolor_pos` varchar(6) COLLATE utf8_bin DEFAULT NULL,
+	`fontcolor1` varchar(10) COLLATE utf8_bin DEFAULT NULL,
+	`fontcolor2` varchar(10) COLLATE utf8_bin DEFAULT NULL,
+	`fontcolor3` varchar(10) COLLATE utf8_bin DEFAULT NULL,
+	`fontcolor_neg` varchar(10) COLLATE utf8_bin DEFAULT NULL,
+	`fontcolor_pos` varchar(10) COLLATE utf8_bin DEFAULT NULL,
 	`table_border_width` tinyint(3) DEFAULT NULL,
-	`table_border_color` varchar(6) COLLATE utf8_bin DEFAULT NULL,
+	`table_border_color` varchar(10) COLLATE utf8_bin DEFAULT NULL,
 	`table_border_style` varchar(30) COLLATE utf8_bin DEFAULT NULL,
-	`input_color` varchar(6) COLLATE utf8_bin DEFAULT NULL,
+	`input_color` varchar(10) COLLATE utf8_bin DEFAULT NULL,
 	`input_border_width` tinyint(3) DEFAULT NULL,
-	`input_border_color` varchar(6) COLLATE utf8_bin DEFAULT NULL,
+	`input_border_color` varchar(10) COLLATE utf8_bin DEFAULT NULL,
 	`input_border_style` varchar(30) COLLATE utf8_bin DEFAULT NULL,
 	`attendees_columns` enum('1','2','3','4','5','6','7','8','9','10') COLLATE utf8_bin NOT NULL DEFAULT '6',
 	`logo_position` VARCHAR(6) NULL DEFAULT NULL,
@@ -409,6 +392,8 @@ CREATE TABLE `__styles` (
 	`column_right_width` VARCHAR(20) COLLATE utf8_bin NULL DEFAULT '',
 	`column_left_width` VARCHAR(20) COLLATE utf8_bin NULL DEFAULT '',
 	`portal_width` VARCHAR(20) COLLATE utf8_bin NULL DEFAULT '',
+	`background_pos` VARCHAR(20) NULL DEFAULT 'normal',
+	`background_type` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0',
 	PRIMARY KEY (`style_id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
@@ -434,7 +419,7 @@ CREATE TABLE IF NOT EXISTS `__links` (
 	`link_window` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
 	`link_menu` tinyint(4) NOT NULL DEFAULT '0',
 	`link_sortid` int(11) NOT NULL DEFAULT '0',
-	`link_visibility` tinyint(3) unsigned NOT NULL DEFAULT '0',
+	`link_visibility` TEXT COLLATE 'utf8_bin' NOT NULL,
 	`link_height` int(12) NOT NULL DEFAULT '4024',
 	PRIMARY KEY (`link_id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
@@ -447,6 +432,7 @@ CREATE TABLE IF NOT EXISTS `__comments` (
 	`date` varchar(255) COLLATE utf8_bin DEFAULT NULL,
 	`text` text COLLATE utf8_bin,
 	`page` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+	`reply_to` INT(11) UNSIGNED NOT NULL DEFAULT '0',
 	PRIMARY KEY (`id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
@@ -454,15 +440,11 @@ DROP TABLE IF EXISTS __portal;
 CREATE TABLE IF NOT EXISTS `__portal` (
 	`id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
 	`name` varchar(50) COLLATE utf8_bin NOT NULL DEFAULT '',
-	`enabled` tinyint(1) NOT NULL DEFAULT 0,
-	`settings` tinyint(1) NOT NULL DEFAULT 0,
 	`path` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
 	`contact` varchar(100) COLLATE utf8_bin DEFAULT NULL,
 	`url` varchar(100) COLLATE utf8_bin DEFAULT NULL,
 	`autor` varchar(100) COLLATE utf8_bin DEFAULT NULL,
 	`version` varchar(7) COLLATE utf8_bin NOT NULL DEFAULT '',
-	`position` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '0',
-	`number` mediumint(8) DEFAULT NULL,
 	`plugin` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT '',
 	`visibility` varchar(255) COLLATE utf8_bin NOT NULL DEFAULT 'a:1:{i:0;i:0;}',
 	`collapsable` tinyint(1) NOT NULL DEFAULT 1,
@@ -470,24 +452,83 @@ CREATE TABLE IF NOT EXISTS `__portal` (
 	PRIMARY KEY (`id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
-DROP TABLE IF EXISTS __pages;
-CREATE TABLE IF NOT EXISTS `__pages` (
-	`page_id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
-	`page_title` varchar(255) COLLATE utf8_bin NOT NULL,
-	`page_content` text COLLATE utf8_bin,
-	`page_visibility` text COLLATE utf8_bin NOT NULL,
-	`page_menu_link` varchar(255) COLLATE utf8_bin NOT NULL,
-	`page_edit_user` smallint(5) NOT NULL,
-	`page_edit_date` int(11) NOT NULL,
-	`page_alias` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`page_comments` tinyint(4) DEFAULT '0',
-	`page_voting` tinyint(4) DEFAULT '0',
-	`page_votes` int(10) DEFAULT '0',
-	`page_ratingpoints` int(10) DEFAULT '0',
-	`page_voters` text COLLATE utf8_bin,
-	`page_rating` int(10) DEFAULT '0',
-	PRIMARY KEY (`page_id`)
-)	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+DROP TABLE IF EXISTS __portal_blocks;
+CREATE TABLE `__portal_blocks` (
+	`id` INT(10) NOT NULL AUTO_INCREMENT,
+	`name` VARCHAR(255) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`wide_content` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+DROP TABLE IF EXISTS __portal_layouts;
+CREATE TABLE `__portal_layouts` (
+	`id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`name` VARCHAR(255) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`blocks` TEXT COLLATE 'utf8_bin' NOT NULL,
+	`modules` TEXT COLLATE 'utf8_bin' NOT NULL,
+	PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+
+# --------------------------------------------------------
+### Articles
+DROP TABLE IF EXISTS __articles;
+CREATE TABLE `__articles` (
+	`id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`title` VARCHAR(255) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`text` MEDIUMTEXT COLLATE 'utf8_bin' NOT NULL,
+	`category` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`featured` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0',
+	`comments` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0',
+	`votes` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0',
+	`published` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0',
+	`show_from` VARCHAR(11) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`show_to` VARCHAR(11) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`user_id` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`date` INT(11) UNSIGNED NOT NULL DEFAULT '0',
+	`previewimage` TEXT COLLATE 'utf8_bin' NOT NULL,
+	`alias` VARCHAR(255) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`hits` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`sort_id` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`tags` TEXT COLLATE 'utf8_bin' NOT NULL,
+	`votes_count` INT(11) UNSIGNED NOT NULL DEFAULT '0',
+	`votes_sum` INT(11) UNSIGNED NOT NULL DEFAULT '0',
+	`votes_users` TEXT COLLATE 'utf8_bin' NULL DEFAULT NULL,
+	`last_edited` INT(11) UNSIGNED NOT NULL DEFAULT '0',
+	`last_edited_user` INT(11) UNSIGNED NOT NULL DEFAULT '0',
+	`page_objects` TEXT NULL DEFAULT NULL,
+	`hide_header` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0',
+	`index` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`undeletable` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+DROP TABLE IF EXISTS __article_categories;
+CREATE TABLE `__article_categories` (
+	`id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`name` VARCHAR(255) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`alias` VARCHAR(255) COLLATE utf8_bin NOT NULL DEFAULT '',
+	`portal_layout` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`description` TEXT COLLATE utf8_bin NOT NULL,
+	`per_page` INT(3) UNSIGNED NOT NULL DEFAULT '25',
+	`permissions` TEXT COLLATE utf8_bin NOT NULL,
+	`published` TINYINT(4) UNSIGNED NOT NULL DEFAULT '0',
+	`parent` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`sort_id` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`list_type` INT(3) UNSIGNED NOT NULL DEFAULT '1',
+	`aggregation` TEXT COLLATE utf8_bin NOT NULL,
+	`featured_only` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`notify_on_onpublished_articles` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`social_share_buttons` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`show_childs` TINYINT(1) UNSIGNED NOT NULL DEFAULT '1',
+	`article_published_state` TINYINT(1) UNSIGNED NOT NULL DEFAULT '1',
+	`hide_header` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`sortation_type` INT(3) UNSIGNED NOT NULL DEFAULT '1',
+	`featured_ontop` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`hide_on_rss` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
 
 # --------------------------------------------------------
 ### Repository
@@ -496,10 +537,11 @@ DROP TABLE IF EXISTS __repository;
 CREATE TABLE `__repository` (
 	`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
 	`plugin` varchar(255) COLLATE utf8_bin NOT NULL,
+	`plugin_id` INT(1) NULL,
 	`name` varchar(255) COLLATE utf8_bin DEFAULT NULL,
 	`date` varchar(255) COLLATE utf8_bin DEFAULT NULL,
 	`author` varchar(255) COLLATE utf8_bin DEFAULT NULL,
-	`shortdesc` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+	`description` text COLLATE utf8_bin,
 	`version` varchar(255) COLLATE utf8_bin DEFAULT NULL,
 	`version_ext` varchar(255) COLLATE utf8_bin DEFAULT NULL,
 	`category` varchar(255) COLLATE utf8_bin DEFAULT NULL,
@@ -509,6 +551,7 @@ CREATE TABLE `__repository` (
 	`dep_coreversion` varchar(255) COLLATE utf8_bin DEFAULT NULL,
 	`rating` int(10) unsigned NOT NULL DEFAULT '0',
 	`updated` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+	`bugtracker_url` TEXT COLLATE utf8_bin NULL,
 	PRIMARY KEY (`id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
@@ -539,11 +582,13 @@ DROP TABLE IF EXISTS __calendars;
 CREATE TABLE `__calendars` (
 	`id` int(10) unsigned NOT NULL AUTO_INCREMENT,
 	`name` VARCHAR(255) COLLATE utf8_bin NOT NULL DEFAULT '',
-	`color` VARCHAR(20) COLLATE utf8_bin DEFAULT NULL,
+	`color` VARCHAR(10) COLLATE utf8_bin DEFAULT NULL,
 	`private` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
 	`feed` VARCHAR(255) COLLATE utf8_bin DEFAULT NULL,
 	`system` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
 	`type` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`restricted` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`affiliation` VARCHAR(30) COLLATE utf8_bin  NOT NULL DEFAULT 'user',
 	PRIMARY KEY (`id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
@@ -583,3 +628,60 @@ CREATE TABLE `__calendar_raid_templates` (
 	`tpldata` text COLLATE utf8_bin,
 	PRIMARY KEY (`id`)
 )	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+DROP TABLE IF EXISTS __groups_raid_members;
+CREATE TABLE `__groups_raid_members` (
+	`group_id` int(22) NOT NULL,
+	`member_id` int(22) NOT NULL,
+	`grpleader` int(1) NOT NULL DEFAULT '0'
+)	DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+DROP TABLE IF EXISTS __user_profilefields;
+CREATE TABLE `__user_profilefields` (
+	`id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`name` VARCHAR(255) NOT NULL,
+	`lang_var` VARCHAR(255) NOT NULL,
+	`type` VARCHAR(30) NOT NULL,
+	`length` INT(10) UNSIGNED NOT NULL DEFAULT '30',
+	`minlength` INT(10) UNSIGNED NOT NULL DEFAULT '1',
+	`validation` TEXT NOT NULL COLLATE 'utf8_bin',
+	`required` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`show_on_registration` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`enabled` TINYINT(1) UNSIGNED NOT NULL DEFAULT '0',
+	`sort_order` INT(10) UNSIGNED NOT NULL DEFAULT '0',
+	`is_contact` TINYINT(3) UNSIGNED NOT NULL DEFAULT '0',
+	`contact_url` TEXT NULL COLLATE 'utf8_bin',
+	`icon_or_image` TEXT NULL COLLATE 'utf8_bin',
+	`bridge_field` TEXT NULL COLLATE 'utf8_bin',
+	`options` TEXT NULL COLLATE 'utf8_bin',
+	`editable` TINYINT(1) UNSIGNED NOT NULL DEFAULT '1',
+	PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+DROP TABLE IF EXISTS __notification_types;
+CREATE TABLE `__notification_types` (
+	`id` VARCHAR(50) NOT NULL,
+	`name` VARCHAR(50) NOT NULL,
+	`category` VARCHAR(50) NULL DEFAULT NULL,
+	`prio` INT(11) NOT NULL DEFAULT '0',
+	`default` TINYINT(4) NOT NULL DEFAULT '0',
+	`group` TINYINT(4) NOT NULL DEFAULT '0',
+	`group_name` VARCHAR(80) NULL DEFAULT NULL,
+	`group_at` INT(5) NOT NULL DEFAULT '0',
+	`icon` VARCHAR(50) NULL DEFAULT NULL,
+	PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+DROP TABLE IF EXISTS __notifications;
+CREATE TABLE `__notifications` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`type` VARCHAR(50) NOT NULL,
+	`user_id` INT(11) NOT NULL,
+	`time` INT(11) NOT NULL,
+	`read` TINYINT(4) NOT NULL DEFAULT '0',
+	`username` TEXT NULL,
+	`dataset_id` VARCHAR(255) NULL DEFAULT NULL,
+	`link` TEXT NULL,
+	`additional_data` TEXT NULL,
+	PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8 COLLATE=utf8_bin;

@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,9 +25,7 @@ if ( !defined('EQDKP_INC') ){
 
 if (!class_exists("repository")) {
 	class repository extends gen_class {
-		public static $shortcuts = array('user', 'config', 'time', 'pdh', 'pfh', 'jquery', 'tpl', 'game', 'pm',
-			'puf'	=> 'urlfetcher', 'objStyles'=> 'styles'
-		);
+		public static $shortcuts = array('puf'	=> 'urlfetcher', 'objStyles'=> 'styles');
 		
 		//Dummy URL, should be a secure connection
 		private $RepoEndpoint	= "";
@@ -65,14 +66,13 @@ AyE90DBDSehGSqq0uR1xcO1bADznQ2evEXM4agOsn2fvZjA3oisTAZevJ7XHZRcx
 		public $update_count	= 0;
 		private $extensions 	= array();
 		public $updates = array();
-		private $plusversion, $user_auth, $host_mode, $new_version = false;		
+		private $plusversion, $user_auth, $new_version = false;		
 
 		//Constructor
 		public function __construct(){
 			$this->RepoEndpoint		= EQDKP_REPO_URL."repository.php?function=";
 			$this->plusversion		= VERSION_INT;
 			$this->user_auth		= $this->user->check_auth('a_', false);
-			$this->host_mode		= $this->user->check_hostmode(false);
 			$this->updates			= $this->BuildUpdateArray();
 			//reduce caching time if it's a tester
 			if ($this->getChannel() != "stable"){
@@ -148,7 +148,7 @@ AyE90DBDSehGSqq0uR1xcO1bADznQ2evEXM4agOsn2fvZjA3oisTAZevJ7XHZRcx
 
 		// fetch the extension list and save to database
 		private function fetchExtensionList(){
-			$response = $this->puf->fetch($this->RepoEndpoint.'extension_list'.$this->getChannelURL()."&core=".$this->plusversion, "", 1);
+			$response = $this->puf->fetch($this->RepoEndpoint.'extension_list'.$this->getChannelURL()."&core=".$this->plusversion, "", 10);
 			if ($response){
 				$this->ResetExtensionList();		
 				$arrJson = json_decode($response);
@@ -161,20 +161,22 @@ AyE90DBDSehGSqq0uR1xcO1bADznQ2evEXM4agOsn2fvZjA3oisTAZevJ7XHZRcx
 							}
 							
 							$this->pdh->put('repository', 'insert', array(array(
-								'plugin'			=> $ext->plugin,
-								'name'				=> $ext->name,
-								'date'				=> $ext->releasedate,
-								'author'			=> $ext->author,
-								'shortdesc'			=> $ext->shortdesc,
-								'version'			=> $ext->version,
-								'category'			=> $ext->category,
-								'level'				=> $ext->level,
-								'changelog'			=> $ext->changelog,
+								'plugin'			=> (string)$ext->plugin,
+								'plugin_id'			=> (int)$ext->plugin_id,
+								'name'				=> (string)$ext->name,
+								'date'				=> (int)$ext->releasedate,
+								'author'			=> (string)$ext->author,
+								'description'		=> (string)$ext->shortdesc,
+								'version'			=> (string)$ext->version,
+								'category'			=> (int)$ext->category,
+								'level'				=> (string)$ext->level,
+								'changelog'			=> (string)$ext->changelog,
 								'updated'			=> $this->time->time,
 								'rating'			=> (int)round((float)$ext->rating),
-								'dep_coreversion'	=> $ext->dep_coreversion,
+								'dep_coreversion'	=> (string)$ext->dep_coreversion,
 								'version_ext'		=> (isset($ext->version_ext)) ? $ext->version_ext : $ext->version,
 								'dep_php'			=> ($ext->dep_php) ? $ext->dep_php : '',
+								'bugtracker_url'	=> (string)$ext->bugtracker_url,
 							)));
 						}
 					}
@@ -187,8 +189,8 @@ AyE90DBDSehGSqq0uR1xcO1bADznQ2evEXM4agOsn2fvZjA3oisTAZevJ7XHZRcx
 				$plist = $this->pdh->get('repository', 'repository');
 				if ($plist == null){
 					$this->pdh->put('repository', 'insert', array(array(
-								'plugin'			=> 'dummy',
-								'name'				=> 'dummy',
+						'plugin'			=> 'no_connection',
+						'name'				=> 'no_connection',
 					)));
 				}
 				$this->pdh->process_hook_queue();				
@@ -197,8 +199,8 @@ AyE90DBDSehGSqq0uR1xcO1bADznQ2evEXM4agOsn2fvZjA3oisTAZevJ7XHZRcx
 		}
 
 		// generate download link for extension
-		public function getExtensionDownloadLink($intCategory, $strExtensionName){
-			$response = $this->puf->fetch($this->RepoEndpoint.'download_link&core='.$this->plusversion.'&category='.intval($intCategory).'&name='.$strExtensionName, "", 1);
+		public function getExtensionDownloadLink($intExtensionID, $intCategory, $strExtensionName){
+			$response = $this->puf->fetch($this->RepoEndpoint.'downloadid_link&id='.$intExtensionID.'&core='.$this->plusversion.'&category='.intval($intCategory).'&name='.$strExtensionName, "", 5);
 			$arrJson = json_decode($response);
 			if ($arrJson && (int)$arrJson->status == 1 && strlen((string)$arrJson->link)){
 				return array('link' => (string)$arrJson->link, 'hash' => (string)$arrJson->hash, 'signature' => (string)$arrJson->signature);
@@ -209,7 +211,7 @@ AyE90DBDSehGSqq0uR1xcO1bADznQ2evEXM4agOsn2fvZjA3oisTAZevJ7XHZRcx
 
 		// generate download link for core update
 		public function getCoreUpdateDownloadLink(){
-			$response = $this->puf->fetch($this->RepoEndpoint.'core_update&old='.$this->plusversion.'&new='.$this->new_version.$this->getChannelURL(), "", 1);
+			$response = $this->puf->fetch($this->RepoEndpoint.'core_update&old='.$this->plusversion.'&new='.$this->new_version.$this->getChannelURL(), "", 5);
 			$arrJson = json_decode($response);
 			if ($arrJson && (int)$arrJson->status == 1 && strlen((string)$arrJson->link)){
 				return array('link' => (string)$arrJson->link, 'hash' => (string)$arrJson->hash, 'signature' => (string)$arrJson->signature);
@@ -491,14 +493,10 @@ AyE90DBDSehGSqq0uR1xcO1bADznQ2evEXM4agOsn2fvZjA3oisTAZevJ7XHZRcx
 											//Module belongs to an plugin
 											$moduleid = array_search($value['plugin'], $arrPortalList);
 											if (strlen($this->pdh->get('portal', 'plugin', array($moduleid)))) break;
-											if ($only_installed){
-												$status = (int)$this->pdh->get('portal', 'enabled', array($moduleid));
-												if ($status != 1) break;
-											}
-
+											
+											$blnUpdateAvailable = (compareVersion(trim($value['version']),$this->pdh->get('portal', 'version', array($moduleid)))==1);
 											if ($blnUpdateAvailable) $recent_version = $this->pdh->get('portal', 'version', array($moduleid));
 										}
-
 								break;
 
 								//Games
@@ -541,6 +539,7 @@ AyE90DBDSehGSqq0uR1xcO1bADznQ2evEXM4agOsn2fvZjA3oisTAZevJ7XHZRcx
 							if ($blnUpdateAvailable){
 								$pluginscheck[$value['plugin']] = array(
 											'plugin'			=> $value['plugin'],
+											'plugin_id'			=> $value['plugin_id'],
 											'name'				=> $value['name'],
 											'version'			=> $value['version_ext'],
 											'version_int'		=> $value['version'],
@@ -639,5 +638,4 @@ AyE90DBDSehGSqq0uR1xcO1bADznQ2evEXM4agOsn2fvZjA3oisTAZevJ7XHZRcx
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_repository', repository::$shortcuts);
 ?>

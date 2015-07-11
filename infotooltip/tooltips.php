@@ -1,20 +1,22 @@
 <?php
-
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 define('EQDKP_INC', true);
@@ -43,16 +45,36 @@ $eqdkp_path = httpHost().$strPath;
 
 ?>
 
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
 var EQdkpTooltip = new function(){
 	//Init Vars
 	var mmocms_root_path = '<?php echo $eqdkp_path; ?>';
-	var cache_tooltips = new Array();
+	var cached_itts = new Array();
 	var cache_labels = new Array();
 	
 	function addResources(){
 		
 		if ("complete" != document.readyState && "loaded" != document.readyState) setTimeout(addResources, 50);
-		else {      
+		else {
 			var head = document.getElementsByTagName("head")[0];
 			//Jquery CSS
 			var ac = document.createElement("link");
@@ -61,10 +83,10 @@ var EQdkpTooltip = new function(){
 			ac.rel = 'stylesheet';
 			head.appendChild(ac);
 
-			<?php if (is_file($eqdkp_root_path.'infotooltip/includes/'.$itt->config['game'].'.css')) { ?>
+			<?php if (is_file($eqdkp_root_path.'games/'.$itt->config['game'].'/infotooltip/'.$itt->config['game'].'.css')) { ?>
 			//Game-Specific CSS
 			var ac2 = document.createElement("link");
-			ac2.href = mmocms_root_path  + "infotooltip/includes/<?php echo $itt->config['game'];?>.css";
+			ac2.href = mmocms_root_path  + "games/<?php echo $itt->config['game'];?>/infotooltip/<?php echo $itt->config['game'];?>.css";
 			ac2.type = 'text/css';
 			ac2.rel = 'stylesheet';
 			head.appendChild(ac2);
@@ -112,7 +134,7 @@ var EQdkpTooltip = new function(){
 			});
 		})(jQuery);
 		
-		jQuery('body').append('<style type="text/css">.ui-infotooltip, .ui-tooltip, .ui-tooltip-content { border: 0px;}</style>');
+		jQuery('body').append('<style type="text/css">.ui-infotooltip, .ui-tooltip, .ui-tooltip-content { border: 0px;} .ui-infotooltip { box-shadow:0 0 0 0 !important; max-width: 450px !important; padding: 0px; position: absolute;z-index: 9999;border-radius: 0px !important; background:none !important;}</style>');
 		
 		console.log("script loaded successful");
 		replaceContent();
@@ -130,65 +152,52 @@ var EQdkpTooltip = new function(){
 				
 				item_data['name'] = itemname.toString();
 				var is_numeric = /^[0-9]+$/.test(itemname);
-				console.log(is_numeric);
 				var itemdatatag = ""
 				if (is_numeric){
 					item_data['game_id'] = parseInt(itemname);
 					itemdatatag = 'data-game_id="'+item_data['game_id']+'"';
 				}
-				console.log(itemname.substring(0, 3) == 'id:');
 				if (itemname.substring(0, 3) == 'id:'){
 					myitemid = itemname.substr(3);
 					item_data['game_id'] = myitemid;
-					itemdatatag = 'data-game_id="'+myitemid+'"';
+					itemdatatag = 'data-game_id="'+item_data['game_id']+'"';
 					item_data['name'] = myitemid;
 					itemname = myitemid;
 				}
 				
 				var out = '<span class="infotooltip" id="bb_'+parseInt(random)+ parseInt(random2) +'" data-name="'+itemname.toString()+'" '+itemdatatag+' title="0'+ mmo_encode64(js_array_to_php_array(item_data)) +'">'+itemname+'</span>';
-				console.log(out);	
+
 				$(this).html(out);
 			});
-									
+
 			$('.infotooltip').infotooltips();
 			
 			$('.infotooltip').tooltip({
+				track: true,
+				open: function(event, ui) {
+					$(ui.tooltip).siblings(".tooltip").remove();
+				},
 				content: function(response) {
 					var direct = $(this).attr('title').substr(0,1);
-					if(direct == 1) {
+					var mytitle = $(this).attr('title');
+					if(direct == '1') {
 						$(this).attr('title', '');
 						return '';
 					}
-					gameid = ($(this).attr('data-game_id')) ? $(this).attr('data-game_id') : 0;
-					jsondata = {"name": $(this).attr('data-name'), "game_id": gameid}
-					var mytitle = $(this).attr('title');
-					
-					if (cache_tooltips['t_'+ mytitle] != undefined){
-						return cache_tooltips['t_'+ mytitle];
-					} else {
-						var bla = $.get( mmocms_root_path + 'infotooltip/infotooltip_feed.php?direct=1&jsondata='+$(this).attr('title'), jsondata, response);
-						bla.success(function(data) {
-							cache_tooltips['t_'+mytitle] = $.trim(data);
-						});
+					if (mytitle == ''){
+						return;
 					}
-					return 'Laden...';
-				},
-				open: function() {
-					var tooltip = $(this).tooltip('widget');
-					tooltip.removeClass('ui-tooltip ui-widget ui-corner-all ui-widget-content');
-					tooltip.addClass('ui-infotooltip');
-					$(document).mousemove(function(event) {
-						tooltip.position({
-							my: 'left center',
-							at: 'right center',
-							offset: '50 25',
-							of: event
+					if (cached_itts['t_'+$(this).attr('title')] != undefined){
+						return cached_itts['t_'+$(this).attr('title')];
+					} else {
+						var bla = $.get(mmocms_root_path+'infotooltip/infotooltip_feed.php?direct=1&data='+$(this).attr('title'), response);
+						bla.success(function(data) {
+							cached_itts['t_'+mytitle] = $.trim(data);
 						});
-					});
+						return 'Loading...';
+					}
 				},
-				close: function() {
-					$(document).unbind('mousemove');
-				}
+				tooltipClass: "ui-infotooltip",
 			});
 		});
 	}
@@ -199,54 +208,51 @@ var EQdkpTooltip = new function(){
 		addResources();
 	}
 	
-		function base64_encode (data) {
-	  // http://kevin.vanzonneveld.net
-	  // +   original by: Tyler Akins (http://rumkin.com)
-	  // +   improved by: Bayron Guevara
-	  // +   improved by: Thunder.m
-	  // +   improved by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
-	  // +   bugfixed by: Pellentesque Malesuada
-	  // +   improved by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
-	  // +   improved by: Rafał Kukawski (http://kukawski.pl)
-	  // *     example 1: base64_encode('Kevin van Zonneveld');
-	  // *     returns 1: 'S2V2aW4gdmFuIFpvbm5ldmVsZA=='
-	  // mozilla has this native
-	  // - but breaks in 2.0.0.12!
-	  //if (typeof this.window['btoa'] == 'function') {
-	  //    return btoa(data);
-	  //}
-	  var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-	  var o1, o2, o3, h1, h2, h3, h4, bits, i = 0,
+	function base64_encode (data) {
+		// http://kevin.vanzonneveld.net
+		// +   original by: Tyler Akins (http://rumkin.com)
+		// +   improved by: Bayron Guevara
+		// +   improved by: Thunder.m
+		// +   improved by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+		// +   bugfixed by: Pellentesque Malesuada
+		// +   improved by: Kevin van Zonneveld (http://kevin.vanzonneveld.net)
+		// +   improved by: Rafał Kukawski (http://kukawski.pl)
+		// *     example 1: base64_encode('Kevin van Zonneveld');
+		// *     returns 1: 'S2V2aW4gdmFuIFpvbm5ldmVsZA=='
+		// mozilla has this native
+		// - but breaks in 2.0.0.12!
+		//if (typeof this.window['btoa'] == 'function') {
+		//    return btoa(data);
+		//}
+		var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+		var o1, o2, o3, h1, h2, h3, h4, bits, i = 0,
 		ac = 0,
 		enc = "",
 		tmp_arr = [];
 
-	  if (!data) {
-		return data;
-	  }
+		if (!data) {
+			return data;
+		}
 
-	  do { // pack three octets into four hexets
-		o1 = data.charCodeAt(i++);
-		o2 = data.charCodeAt(i++);
-		o3 = data.charCodeAt(i++);
+		do { // pack three octets into four hexets
+			o1 = data.charCodeAt(i++);
+			o2 = data.charCodeAt(i++);
+			o3 = data.charCodeAt(i++);
 
-		bits = o1 << 16 | o2 << 8 | o3;
+			bits = o1 << 16 | o2 << 8 | o3;
 
-		h1 = bits >> 18 & 0x3f;
-		h2 = bits >> 12 & 0x3f;
-		h3 = bits >> 6 & 0x3f;
-		h4 = bits & 0x3f;
+			h1 = bits >> 18 & 0x3f;
+			h2 = bits >> 12 & 0x3f;
+			h3 = bits >> 6 & 0x3f;
+			h4 = bits & 0x3f;
 
-		// use hexets to index into b64, and append result to encoded string
-		tmp_arr[ac++] = b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
-	  } while (i < data.length);
+			// use hexets to index into b64, and append result to encoded string
+			tmp_arr[ac++] = b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
+		} while (i < data.length);
 
-	  enc = tmp_arr.join('');
-
-	  var r = data.length % 3;
-
-	  return (r ? enc.slice(0, r - 3) : enc) + '==='.slice(r || 3);
-
+		enc = tmp_arr.join('');
+		var r = data.length % 3;
+		return (r ? enc.slice(0, r - 3) : enc) + '==='.slice(r || 3);
 	}
 
 

@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2007
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 // EQdkp required files/vars
 define('EQDKP_INC', true);
@@ -24,11 +27,6 @@ $eqdkp_root_path = './../';
 include_once ($eqdkp_root_path . 'common.php');
 
 class ManagePageLayouts extends page_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'pdh', 'jquery', 'core', 'config', 'pfh', 'html', 'game', 'pdc', 'pdl'	=> 'plus_debug_logger', 'xmltools'=>'xmltools');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
 	private $multi_pools = array();
 
 	public function __construct(){
@@ -53,16 +51,24 @@ class ManagePageLayouts extends page_generic {
 		$layout_def['data']['description'] = addslashes($this->in->get('description', 'No description given.'));
 		$page_list = $this->pdh->get_page_list();
 	
-		//options
-		$options = $this->in->getArray('params', 'string');
-		foreach($options as $key => $value){
-			$layout_def['options'][$key]['value'] = $value;
+		registry::load('form');
+
+		//general options
+		if (is_array($layout_def['options']) && !empty($layout_def['options'])){
+
+			foreach ($layout_def['options'] as $key=>$value) {
+				$name = 'params_'.$key;
+
+				$layout_def['options'][$key]['value'] = form::value($name, $value);
+			}
 		}
-	
+
 		//substitutions
-		$subs = $this->in->getArray('subs', 'string');
-		foreach($subs as $key => $value){
-			$layout_def['substitutions'][$key]['value'] = $value;
+		if (is_array($layout_def['substitutions']) && !empty($layout_def['substitutions'])){
+			foreach ($layout_def['substitutions'] as $key=>$value){
+				$name = 'subs_'.$key;
+				$layout_def['options'][$key]['value'] = form::value($name, $value);
+			}
 		}
 	
 		//leaderboard
@@ -86,6 +92,7 @@ class ManagePageLayouts extends page_generic {
 					$layout_def['pages'][$page][$page_object]['table_sort_dir'] = $this->in->get($prefix.':table_sort_dir', 'desc');
 					$layout_def['pages'][$page][$page_object]['table_sort_col'] = 0;
 					if($this->in->get($prefix.':default_pool', -1) >= 0) $layout_def['pages'][$page][$page_object]['default_pool'] = $this->in->get($prefix.':default_pool');
+					if($this->in->get($prefix.':default_pool_ov', -1) >= 0) $layout_def['pages'][$page][$page_object]['default_pool_ov'] = $this->in->get($prefix.':default_pool_ov');
 					$layout_def['pages'][$page][$page_object]['table_presets'] = array();
 					$presets = $this->in->getArray($prefix.':td_add', 'string');
 					$def_sort_column_id = 0;
@@ -117,44 +124,37 @@ class ManagePageLayouts extends page_generic {
 	}
 
 	public function add_preset() {
-		$new_preset_xml = $this->in->get('new_preset_xml', '', 'raw');
-		if ($new_preset_xml != ""){
-			try {
-				$newxml = new SimpleXMLElement($new_preset_xml);
-			} catch(Exception $e) {
-				$this->pdl->log('php_error', 'EXCEPTION', 0, $e->getMessage(), __FILE__, __LINE__);
-				$message = array('title' => $this->user->lang('error'), 'text' => $this->user->lang('lm_up_xml_error'), 'color' => 'red');
-				$this->display($message, 1, $this->in->get('new_preset_xml', '', 'raw'));
-			}
-			$arr = $this->xmltools->simplexml2array($newxml, true);
-			$changed = false;
-			$user_presets = $this->pdh->get_user_presets();
-			$user_presets_lang = $this->pdh->get_user_preset_lang();
-	
-			foreach($arr as $preset_name => $options){
-				$ps[0] = $options['module'];
-				$ps[1] = $options['tag'];
-				$cpars = array();
-				if(is_array($options['cpar'])){
-					foreach($options['cpar'] as $parameter){
-						$cpars[] = $parameter;
-					}
-				}
-				$dpars = array();
-				if(is_array($options['dpar'])){
-					foreach($options['dpar'] as $parameter){
-						$dpars[] = $parameter;
-					}
-				}
-				$ps[2] = $cpars;
-				$ps[3] = $dpars;		
-				$this->pdh->update_user_preset($preset_name, $ps, $options['lang']);
-				$changed = true;
+		$strModul = $this->in->get('pdh_r_module');
+		$strTag = $this->in->get('pdh_method');
+		
+		$arrParams = $this->in->getArray('param', 'string');
+		$arrCaption = $this->in->getArray('caption', 'string');
+		
+		$strPresetName = $strTag.'_'.substr(md5(rand()), 0, 8);
+		
+		if ($strModul !="" && $strTag != ""){
+			$strColumnTitle = $this->in->get('lang');
+			
+			$ps[0] = $strModul;
+			$ps[1] = $strTag;
+			
+			foreach($arrParams as $param){
+				if ($param === 'true') $param = true;
+				if ($param === 'false') $param = false;
+				
+				$ps[2][] = (is_numeric($param)) ? intval($param) : $param;
 			}
 			
-			if($changed) $this->pdc->flush();
+			foreach($arrCaption as $caption){
+				$ps[3][] = (is_numeric($caption)) ? intval($caption) : $caption; 
+			}
+			
+			
+			$this->pdh->update_user_preset($strPresetName, $ps, $strColumnTitle);
+			$this->pdc->flush();
 		}
-		$this->display(false, '1');
+
+		$this->display(false);
 	}
 	
 	public function delete_preset(){
@@ -256,16 +256,98 @@ class ManagePageLayouts extends page_generic {
 					'DPARAM'	=> implode(', ', $value[3]),
 				));
 			}
-		}	
+		}
+		
+		$arrReadModules = $this->pdh->get_read_modules();
+		$arrModuleDD = array('' => '');
+		foreach($arrReadModules as $strReadModule => $val){
+			$arrModuleDD[$strReadModule] = $strReadModule;
+		}
+		
+		
+		$arrMethods = array('' => '');
+		if ($this->in->get('pdh_r_module') != ""){
+			$object = register('pdh_r_'.$this->in->get('pdh_r_module'));
+			$methods = get_class_methods($object);
+			foreach($methods as $strMethodName){
+				if (strpos($strMethodName, 'get_') === 0){
+					$strMethodName_withoutget = substr($strMethodName, 4);
+					if (strpos($strMethodName_withoutget, 'caption_') === 0) continue;
+					
+					if (strpos($strMethodName_withoutget, 'html_') === 0){					
+						continue;
+					} else {
+						if (!isset($arrMethods['html_'.$strMethodName_withoutget])) {
+							$arrMethods[$strMethodName_withoutget] = $strMethodName_withoutget;
+						}
+					}
+				}
+				
+			}		
+		}
+		
+		if ($this->in->get('pdh_r_module') != "" && $this->in->get('pdh_method') != "" && $this->in->get('pdh_r_module') == $this->in->get('pdh_r_old')){			
+			$className = 'pdh_r_'.$this->in->get('pdh_r_module');
+			$methodName = 'get_'.$this->in->get('pdh_method');
+			if (method_exists($className, $methodName)){			
+				$r = new ReflectionMethod($className, $methodName);
+				$params = $r->getParameters();
+							
+				foreach ($params as $param) {
+					try{
+						$default = $param->getDefaultValue();
+						if ($default === true) $default = 'true';
+						if ($default === false) $default = 'false';
+					}catch(ReflectionException $e){
+						$default = '';
+					}
+
+					$this->tpl->assign_block_vars('param_row', array(
+						'NAME' 			=> $param->getName(),
+						'IS_OPTIONAL'	=> $param->isOptional(),
+						'DEFAULT'		=> $default,
+					));
+				}
+			}
+			
+			//Caption
+			$strCaptionMethod = str_replace(array('html_', 'get_'), array('', 'get_caption_'), $methodName);
+
+			if (method_exists($className, $strCaptionMethod)){
+				$r = new ReflectionMethod($className, $strCaptionMethod);
+				$params = $r->getParameters();
+					
+				foreach ($params as $param) {
+					try{
+						$default = $param->getDefaultValue();
+						if ($default === true) $default = 'true';
+						if ($default === false) $default = 'false';
+					}catch(ReflectionException $e){
+						$default = '';
+					}
+			
+					$this->tpl->assign_block_vars('caption_row', array(
+							'NAME' 			=> $param->getName(),
+							'IS_OPTIONAL'	=> $param->isOptional(),
+							'DEFAULT'		=> $default,
+					));
+				}
+			}
+		}
 		
 		$this->tpl->assign_vars(array (
 			'NEW_PRESET_XML'			=> $readd_xml,
-			'LAYOUT_DROPDOWN'			=> $this->html->DropDown('new_layout_source', $layout_options, $this->config->get('eqdkp_layout')),
-			'JS_LM_TABS'				=> $this->jquery->Tab_header('lm_tabs'),
+			'LAYOUT_DROPDOWN'			=> new hdropdown('new_layout_source', array('options' => $layout_options, 'value' => $this->config->get('eqdkp_layout'))),
+			'JS_LM_TABS'				=> $this->jquery->Tab_header('lm_tabs', true),
 			'CSRF_DEL_TOKEN'			=> $this->CSRFGetToken('del'),
 			'CSRF_DELPRESET_TOKEN'		=> $this->CSRFGetToken('del_pre'),
+			
+			'PDH_R_DD'					=> new hdropdown('pdh_r_module', array('options' => $arrModuleDD, 'value' => $this->in->get('pdh_r_module'), 'js'=>'onchange="this.form.submit()"')),
+			'PDH_METHODS_DD'			=> new hdropdown('pdh_method', array('options' => $arrMethods, 'value' => $this->in->get('pdh_method'), 'js'=>'onchange="this.form.submit()"')),
+			'PDH_R_OLD'					=> new hhidden('pdh_r_old', array('value' => $this->in->get('pdh_r_module'))),	
 		));
-		$this->jquery->Tab_Select('lm_tabs', $tab);	
+		
+		//$this->jquery->Tab_Select('lm_tabs', $tab);	
 	
 		$this->core->set_vars(array (
 			'page_title'		=> $this->user->lang('lm_title'),
@@ -323,6 +405,7 @@ class ManagePageLayouts extends page_generic {
 
 		// The value fields
 		$(".sortable", row).attr("name", prefix+"[sortable]["+selected+"]");
+		$("label.sortable input", row).attr("name", prefix+"[sortable]["+selected+"]");		
 		$(".default_sort", row).val(selected);
 		$(".td_add", row).attr("name", prefix+"[td_add]["+selected+"]");
 		$(".th_add", row).attr("name", prefix+"[th_add]["+selected+"]");
@@ -370,13 +453,15 @@ class ManagePageLayouts extends page_generic {
 		$table_sort_dirs['asc'] = $this->user->lang('lm_sort_asc');
 		$table_sort_dirs['desc'] = $this->user->lang('lm_sort_desc');
 
+		registry::load('form');
+		
 		//general options
 		if (is_array($layout_def['options']) && !empty($layout_def['options'])){
 			foreach ($layout_def['options'] as $key=>$value){
-				$value['name'] = 'params['.$value['name'].']';
+				$name = 'params_'.$key;
 				$this->tpl->assign_block_vars('param_row', array(
 					'NAME'	=> $value['lang'],
-					'FIELD'	=> $this->html->widget($value),
+					'FIELD'	=> form::field($name, $value),
 				));
 			}
 		}
@@ -384,10 +469,10 @@ class ManagePageLayouts extends page_generic {
 		//substitutions
 		if (is_array($layout_def['substitutions']) && !empty($layout_def['substitutions'])){
 			foreach ($layout_def['substitutions'] as $key=>$value){
-				$value['name'] = 'subs['.$value['name'].']';
+				$name = 'subs_'.$key;
 				$this->tpl->assign_block_vars('subs_row', array(
 					'NAME'	=> $value['lang'],
-					'FIELD'	=> $this->html->widget($value),
+					'FIELD'	=> form::field($name, $value),
 				));
 			}
 		}
@@ -420,9 +505,9 @@ class ManagePageLayouts extends page_generic {
 				$this->tpl->assign_vars(array(
 					'LB_MAXPERCOLUMN'	=> $page_settings['listmembers_leaderboard']['maxpercolumn'],
 					'LB_MAXPERROW'	=> $page_settings['listmembers_leaderboard']['maxperrow'],
-					'LB_SORTDIR'	=> $this->html->DropDown('lb_sortdir', $table_sort_dirs, $page_settings['listmembers_leaderboard']['sort_direction']),
-					'LB_COLUMN_DD'	=> $this->html->DropDown('lb_columns', array('classid' => $this->user->lang('class'), 'defaultrole' => $this->user->lang('role')), $column_type),
-					'LB_POOL_DD'	=> $this->html->DropDown('lb_default_pool', $this->pdh->aget('multidkp', 'name', 0, array($this->pdh->get('multidkp', 'id_list'))), $page_settings['listmembers_leaderboard']['default_pool']),
+					'LB_SORTDIR'	=> new hdropdown('lb_sortdir', array('options' => $table_sort_dirs, 'value' => $page_settings['listmembers_leaderboard']['sort_direction'])),
+					'LB_COLUMN_DD'	=> new hdropdown('lb_columns', array('options' => array('classid' => $this->user->lang('class'), 'defaultrole' => $this->user->lang('role')), 'value' => $column_type)),
+					'LB_POOL_DD'	=> new hdropdown('lb_default_pool', array('options' => $this->pdh->aget('multidkp', 'name', 0, array($this->pdh->get('multidkp', 'id_list'))), 'value' => $page_settings['listmembers_leaderboard']['default_pool'])),
 					'CLASSDISPLAY'	=> ($column_type == 'classid') ? '' : 'style="display: none;"',
 					'ROLEDISPLAY'	=> ($column_type == 'defaultrole') ? '' : 'style="display: none;"',
 				));
@@ -430,7 +515,7 @@ class ManagePageLayouts extends page_generic {
 					$classes = $page_settings['listmembers_leaderboard']['columns'];
 					$roles = $this->pdh->get('roles', 'id_list');
 				} else {
-					$classes = array_keys($this->game->get('classes', 'id_0'));
+					$classes = array_keys($this->game->get_primary_classes(array('id_0')));
 					$roles = $page_settings['listmembers_leaderboard']['columns'];
 				}
 				$arrGameClasses = array_keys($this->game->get('classes', 'id_0'));
@@ -442,13 +527,13 @@ class ManagePageLayouts extends page_generic {
 				foreach($classes as $class){
 					$this->tpl->assign_block_vars('page_row.class_row', array(
 						'CLASS'	=> $class,
-						'NAME'	=>	$this->game->decorate('classes', array($class)).' '.$this->game->get_name('classes', $class),
+						'NAME'	=>	$this->game->decorate('primary', $class).' '.$this->game->get_name('primary', $class),
 					));
 				}
 				foreach($roles as $role){
 					$this->tpl->assign_block_vars('page_row.role_row', array(
 						'ROLE'	=> $role,
-						'NAME'	=>	$this->game->decorate('roles', array($role)).' '.$this->pdh->get('roles', 'name', array($role)),
+						'NAME'	=>	$this->game->decorate('roles', $role).' '.$this->pdh->get('roles', 'name', array($role)),
 					));
 				}
 			}
@@ -456,11 +541,18 @@ class ManagePageLayouts extends page_generic {
 			//Roster-Settings
 			if ($page == 'roster'){
 				$this->tpl->assign_vars(array(
-					'ROSTER_DD'	=> $this->html->DropDown('roster_classorrole', array('class' => $this->user->lang('class'), 'role' => $this->user->lang('role')), $this->config->get('roster_classorrole')),
+					'ROSTER_DD'	=> new hdropdown('roster_classorrole', array('options' => array('class' => $this->user->lang('class'), 'role' => $this->user->lang('role'), 'raidgroup' => $this->user->lang('raidevent_raid_groupsmenu')), 'value' => $this->config->get('roster_classorrole'))),
 					'ROSTER_SHOW_TWINKS' => ($this->config->get('roster_show_twinks')) ? ' checked="checked"' : '',
 					'ROSTER_SHOW_HIDDEN' => ($this->config->get('roster_show_hidden')) ? ' checked="checked"' : '',
 				));
 			}
+			
+			//SK Startlist
+			/*
+			if ($page == 'listmembers' && ($layout_def['base_layout'] == 'sk' || $layout_def['base_layout'] == 'sk_bottom' || $layout_def['base_layout'] == 'sk_fixed')){
+								
+			}
+			*/
 						
 			//iterate through defined objects
 			foreach($page_settings as $page_object => $options) {
@@ -481,19 +573,26 @@ class ManagePageLayouts extends page_generic {
 					if(in_array('%dkp_id%', $options['table_subs']) && '%dkp_id%' != $options['table_main_sub']) {
 						$this->init_multipools();
 						if(!isset($options['default_pool'])) $options['default_pool'] = 0;
+						if(!isset($options['default_pool_ov'])) $options['default_pool_ov'] = 1;
 						$add_setts[] = array(
 							'LANG'	=> $this->user->lang('lm_default_pool'),
-							'FIELD'	=> $this->html->DropDown($page.'['.$page_object.'][default_pool]', $this->multi_pools, $options['default_pool']),
+							'FIELD'	=> new hdropdown($page.'['.$page_object.'][default_pool]', array('options' => $this->multi_pools, 'value' => $options['default_pool'])),
+						);
+						$arrOvPools = $this->multi_pools;
+						unset($arrOvPools[0]);
+						$add_setts[] = array(
+							'LANG'	=> $this->user->lang('lm_default_pool_ov'),
+							'FIELD'	=> new hdropdown($page.'['.$page_object.'][default_pool_ov]', array('options' => $arrOvPools, 'value' => $options['default_pool_ov'])),
 						);
 					}
 					$this->tpl->assign_block_vars('page_row.page_object_row', array(
 						'TABLE_TITLE'		=> $this->user->lang('lm_'.$page_object),
 						'ID'				=> $page_object_id,
 						'NAME'				=> $page_object,
-						'DROPDOWN'			=> $this->html->DropDown('dp'.$page_object_id, $pps, '', '', '', 'input', 'dp'.$page_object_id, array(), ((count($pps) == 0) ? true : false)),
+						'DROPDOWN'			=> new hdropdown('dp'.$page_object_id, array('options' => $pps, 'id' => 'dp'.$page_object_id, 'disabled' => ((count($pps) == 0) ? true : false))),
 						'PREFIX'			=> $page.'['.$page_object.']',
-						'NUMBERS'			=> $this->html->CheckBox($page.'['.$page_object.'][numbers]', '', $options['show_numbers']),
-						'TABLE_SORT_DIR'	=> $this->html->DropDown($page.'['.$page_object.'][table_sort_dir]', $table_sort_dirs, $options['table_sort_dir'], '', '', 'input', $page.'_'.$page_object.'_sort_dir'),
+						'NUMBERS'			=> new hradio($page.'['.$page_object.'][numbers]', array('value' => $options['show_numbers'])),
+						'TABLE_SORT_DIR'	=> new hdropdown($page.'['.$page_object.'][table_sort_dir]', array('options' => $table_sort_dirs, 'value' => $options['table_sort_dir'], 'id' => $page.'_'.$page_object.'_sort_dir')),
 						'DISABLED'			=> (count($pps) == 0) ? 'disabled="disabled"' : '',
 						'S_ADD_SETTS'		=> (count($add_setts) > 0) ? true : false,
 					));
@@ -501,7 +600,7 @@ class ManagePageLayouts extends page_generic {
 						$preset = $column_options['name'];
 						$this->tpl->assign_block_vars('page_row.page_object_row.preset_row', array(
 							'NAME'			=> ($this->pdh->get_preset_description($preset)) ? $this->pdh->get_preset_description($preset) : $preset,
-							'SORTABLE'		=> $this->html->CheckBox($page.'['.$page_object.'][sortable]['.$preset.']', '', $column_options['sort'], '1', 'sortable'),
+							'SORTABLE'		=> new hradio($page.'['.$page_object.'][sortable]['.$preset.']', array('value' => $column_options['sort'], 'class' => 'sortable')),
 							'CODE'			=> $preset,
 							'DEFAULT_SORT'	=> (isset($options['table_sort_col']) && $options['table_sort_col'] == $column_id) ? 'checked="checked"' : '',
 							'TH_ADD'		=> sanitize($column_options['th_add']),
@@ -541,6 +640,5 @@ class ManagePageLayouts extends page_generic {
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_ManagePageLayouts', ManagePageLayouts::__shortcuts());
 registry::register('ManagePageLayouts');
 ?>

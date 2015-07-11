@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,7 +24,6 @@ if ( !defined('EQDKP_INC') ){
 }
 
 	class logs extends gen_class {
-		public static $shortcuts = array('pm', 'pdh', 'user', 'time');
 
 		public $pluginname	= 'core';
 		public $plugins		= array();
@@ -30,6 +32,8 @@ if ( !defined('EQDKP_INC') ){
 			//Create Plugin List
 			$this->plugins[] = 'core';
 			$this->plugins[] = 'calendar';
+			$this->plugins[] = 'article';
+			$this->plugins[] = 'article_category';
 			foreach ($this->pm->get_plugins() as $key){
 				$this->plugins[] = $key;
 			}
@@ -39,9 +43,9 @@ if ( !defined('EQDKP_INC') ){
 			$this->pluginname 	= $name;
 		}
 
-		public function add($tag, $value, $admin_action=true, $plugin='', $result=1, $userid = false, $process_hooks=1){
+		public function add($tag, $value, $record_id = '', $record = '',  $admin_action=true, $plugin='', $result=1, $userid = false, $process_hooks=1){
 			$plugin = ($plugin != '') ? $plugin : $this->pluginname;
-			$this->pdh->put('logs', 'add_log', array($tag, $value, $admin_action, $plugin, $result, $userid));
+			$this->pdh->put('logs', 'add_log', array($tag, $value, $record_id, $record, $admin_action, $plugin, $result, $userid));
 			if($process_hooks) $this->pdh->process_hook_queue();
 		}
 
@@ -61,6 +65,39 @@ if ( !defined('EQDKP_INC') ){
 			}
 			return $variable;
 		}
+		
+		public function option_lang($option){
+			return ($option == 1) ? '{L_OPTION_TRUE}' : '{L_OPTION_FALSE}';
+		}
+		
+		/*
+		 * $arrOld = array(1,2,3)
+		 * $arrNew = array(4,5,6)
+		 * $arrLang = array("1", "2", "3")
+		 * $arrFlags = array(0,0,1)
+		 */
+		public function diff($arrOld, $arrNew, $arrLang, $arrFlags=array(), $blnOnlyNewKeys=false){
+			$arrChanged = array();
+			if ($arrOld && !$blnOnlyNewKeys){
+				foreach($arrOld as $key => $val){
+					if ($arrNew[$key] != $val){
+						$arrChanged[$arrLang[$key]] = array('old' => $val, 'new' => $arrNew[$key], 'flag' => ((isset($arrFlags[$key])) ? $arrFlags[$key] : 0)); 
+					}
+				}
+			} elseif($arrOld && $blnOnlyNewKeys){
+				foreach($arrNew as $key => $val){
+					if ($arrOld[$key] != $val){
+						$arrChanged[$arrLang[$key]] = array('old' => $arrOld[$key], 'new' => $val, 'flag' => ((isset($arrFlags[$key])) ? $arrFlags[$key] : 0));
+					}
+				}
+			} else {
+				foreach($arrNew as $key => $val){
+					if (isset($arrLang[$key])) $arrChanged[$arrLang[$key]] = $arrNew[$key];
+				}	
+			}
+			
+			return (count($arrChanged)) ? $arrChanged : false;
+		}
+		
 	}
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_logs', logs::$shortcuts);
 ?>

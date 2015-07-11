@@ -1,14 +1,23 @@
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li class="current"><a>{L_manexport_title}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
 <fieldset class="settings mediumsettings">
 	<legend>{L_manexport_title}</legend>
 	
 	<dl>
 		<dt><label>{L_export_memberitems}</label></dt>
-		<dd><input type="checkbox" id="memberitems" value="1" onchange="ajax_reload_export()" checked="checked" /></dd>
+		<dd><input type="checkbox" id="memberitems" value="1" onchange="ajax_reload_export()" checked="checked"/></dd>
 	</dl>
 	
 	<dl>
 		<dt><label>{L_export_memberadjustments}</label></dt>
-		<dd><input type="checkbox" id="memberadjs" value="1" onchange="ajax_reload_export()" checked="checked" /></dd>
+		<dd><input type="checkbox" id="memberadjs" value="1" onchange="ajax_reload_export()" checked="checked"/></dd>
 	</dl>
 	
 	<dl>

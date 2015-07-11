@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,9 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "html_pdh_tag_table" ) ) {
 	class html_pdh_tag_table extends gen_class {
-		public static $shortcuts = array('pdh', 'pdc', 'jquery', 'config', 'tpl', 'user',
-			'timekeeper' => 'timekeeper',
-		);
 
 		private $columns				= array();
 		private $sort_cid				= 1;
@@ -47,7 +47,8 @@ if ( !class_exists( "html_pdh_tag_table" ) ) {
 		private $cache_suffix			= '';
 		private $settings				= array();
 
-		private $dt_cssjs = false;
+		private $dt_cssjs 				= false;
+		private $dt_arrow 				= false;
 
 		public function __construct($hptt_settings, $full_list, $filtered_list, $sub_array, $cache_suffix = '', $sort_suffix = 'sort'){
 			$this->settings			= $hptt_settings;
@@ -57,7 +58,7 @@ if ( !class_exists( "html_pdh_tag_table" ) ) {
 			$this->initialise($hptt_settings);
 			$this->full_list		= $full_list;
 			$this->filtered_list	= $filtered_list;
-			$this->cache_suffix		= ($cache_suffix != '') ? '_'.$cache_suffix : '';
+			$this->cache_suffix		= '_'.$this->user->lang_name.(($cache_suffix != '') ? '_'.$cache_suffix : '');
 			$this->sort_suffix		= $sort_suffix;
 
 		}
@@ -108,6 +109,10 @@ if ( !class_exists( "html_pdh_tag_table" ) ) {
 		public function get_column_count(){
 			return $this->column_count;
 		}
+		
+		public function setPageRef($strPageRef){
+			$this->settings['page_ref'] = $strPageRef;
+		}
 
 		private function sort_view_list($sort_string){
 			if($sort_string != ''){
@@ -123,7 +128,7 @@ if ( !class_exists( "html_pdh_tag_table" ) ) {
 			}
 
 			if(array_key_exists($this->sort_cid, $this->columns)){
-				//don't use the cached data if an used module is outdated
+				//don't use the cached data if a used module is outdated
 				$cached_view_list = $this->pdc->get($this->page.$this->cache_suffix.'_vlc_'.$this->sort_cid.'_'.$this->sort_direction);
 				if($cached_view_list === NULL){
 					$id_position = array_search($this->id_tag, $this->columns[$this->sort_cid]['2']);
@@ -144,20 +149,20 @@ if ( !class_exists( "html_pdh_tag_table" ) ) {
 			if(!empty($this->view_list)) $this->view_list = array_slice($this->view_list, $pagination_start, $pagination_length);
 		}
 
-		public function get_html_table($sort_string = '', $url_suffix = '', $pagination_start = null, $pagination_length = 1, $footer_text = null, $no_footer=false){
+		public function get_html_table($sort_string = '', $url_suffix = '', $pagination_start = null, $pagination_length = 1, $footer_text = null, $no_footer=false, $arrCheckboxCheck=false){
 			$this->sort_view_list($sort_string);
 
 			if(isset($pagination_start))
 				$this->paginate($pagination_start, $pagination_length);
 			$table	 = $this->get_html_super_header_row();
 			$table	 .= $this->get_html_header_row($url_suffix, $this->settings['show_select_boxes'], $this->settings['show_numbers']);
-			$table	 .= $this->get_html_table_body();
+			$table	 .= $this->get_html_table_body($arrCheckboxCheck);
 			if(!$no_footer) $table	 .= $this->get_html_footer_row($footer_text);
 			if($this->sub_array['%no_root%']) $table = str_replace('{ROOT_PATH}', $this->root_path, $table);
 			return $table;
 		}
 
-		public function get_html_table_body(){
+		public function get_html_table_body($arrCheckboxCheck=false){
 			$table = '';
 
 			$this->cached_table_rows = $this->pdc->get($this->page.$this->cache_suffix);
@@ -167,7 +172,7 @@ if ( !class_exists( "html_pdh_tag_table" ) ) {
 
 			if(!empty($this->view_list)) {
 				foreach($this->view_list as $view_id){
-					$table .= $this->get_html_row($view_id);
+					$table .= $this->get_html_row($view_id,$arrCheckboxCheck);
 				}
 			}
 
@@ -240,11 +245,15 @@ if ( !class_exists( "html_pdh_tag_table" ) ) {
 			return "<tr>\n{$prefix}{$header}</tr>\n";
 		}
 
-		public function get_html_row($view_id){
+		public function get_html_row($view_id,$arrCheckboxCheck=false){
 			$prefix = '';
 			$hptt_checkboxname	= (isset($this->settings['selectbox_name'])) ? $this->settings['selectbox_name'] : 'selected_ids';
 			if($this->settings['show_select_boxes']){
-				$prefix  .= "\t".'<td class="nowrap" align="center"><input type="checkbox" name="'.$hptt_checkboxname.'[]" value="'.((isset($this->settings['selectbox_valueprefix'])) ? $this->settings['selectbox_valueprefix'] : '').$view_id.'" id="cbrow'.$this->counter.'" /></td>'."\n";
+				$blnShowCheckbox = true;				
+				if ($arrCheckboxCheck !== false) {
+					$blnShowCheckbox = $this->pdh->get($arrCheckboxCheck[0],$arrCheckboxCheck[1],array($view_id));
+				}
+				$prefix  .= ($blnShowCheckbox) ? "\t".'<td class="nowrap" align="center"><input type="checkbox" name="'.$hptt_checkboxname.'[]" value="'.((isset($this->settings['selectbox_valueprefix'])) ? $this->settings['selectbox_valueprefix'] : '').$view_id.'" id="cbrow'.$this->counter.'" /></td>'."\n" : '<td></td>';
 			}
 			if(isset($this->settings['show_numbers']) && $this->settings['show_numbers']){
 				$prefix .= "\t".'<td><div style="float:right;">'.$this->counter.'</div></td>'."\n";
@@ -265,14 +274,17 @@ if ( !class_exists( "html_pdh_tag_table" ) ) {
 					$td_add = $column['td_add'];
 					$this->sub_array[$this->id_tag] = $view_id;
 
-					$view_row .= "\t".'<td '.$td_add.'>';
-					if($this->config->get('pk_detail_twink') AND $this->settings['show_detail_twink']) {
-						$view_row .= $this->detail_twink(array_search($this->id_tag, $params, true), array_search('%with_twink%', $params, true), $cid, $module, $tag, $params);
+					$view_row .= "\t".'<td '.$td_add.' class="twinktd">';
+					if($this->config->get('detail_twink') AND $this->settings['show_detail_twink']) {
+						$view_row .= $this->detail_twink(array_search('%member_id%', $params, true), array_search('%with_twink%', $params, true), $cid, $module, $tag, $params);
+					} elseif(isset($this->settings['perm_detail_twink']) && $this->settings['perm_detail_twink']) {
+						$view_row .= $this->detail_twink(array_search('%member_id%', $params, true), array_search('%with_twink%', $params, true), $cid, $module, $tag, $params);
 					} else {
 						$view_row .= $this->pdh->geth($module, $tag, $params, $this->sub_array);
 					}
 					$view_row .= "</td>\n";
 				}
+				$this->dt_arrow = false;
 				$this->cached_table_rows[$view_id] = str_replace($this->SID, "{SID}", $view_row);
 				$this->not_cached_row_count++;
 			}
@@ -287,7 +299,25 @@ if ( !class_exists( "html_pdh_tag_table" ) ) {
 			if($sub_arr != null) {
 				$params = $this->pdh->post_process_preset( $params, $sub_arr );
 			}
+			if($wt_key !== false) {
+				$params[$wt_key] = false; //single values everywhere
+			}
 			$data = array();
+			$main_id = $params[$main_id_key];
+			$members = $this->pdh->get('member', 'other_members', $main_id);
+			$members[] = $main_id;
+			$id_position = array_search($this->id_tag, $this->columns[$this->sort_cid]['2']);
+			$sort_params = $this->pdh->post_process_preset($this->columns[$this->sort_cid]['2'], $this->sub_array);
+			$sort_wt_pos = array_search('%with_twink%', $sort_params, true);
+			$sort_params[$sort_wt_pos] = false;
+			$members = $this->pdh->sort($members, $this->columns[$this->sort_cid]['0'], $this->columns[$this->sort_cid]['1'], $this->sort_direction, $sort_params, $id_position);
+			$method = 'get_html_'.$tag;
+			foreach($members as $member_id) {
+				if($member_id) {
+					$params[$main_id_key] = $member_id;
+					$data[$member_id] = $this->pdh->geth($module, $tag, $params);
+				}
+			}
 			if(strpos($type, 'lang:') !== false) {
 				$data[0] = $this->pdh->get_lang($module, substr($type, 5));
 			} elseif($type == 'summed_up') {
@@ -296,64 +326,51 @@ if ( !class_exists( "html_pdh_tag_table" ) ) {
 			} else {
 				$data[0] = '&nbsp;';
 			}
-			if($wt_key !== false) {
-				$params[$wt_key] = false; //single values everywhere
-			}
-			$main_id = $params[$main_id_key];
-			$members = $this->pdh->get('member', 'other_members', $main_id);
-			$members[] = $main_id;
-			$method = 'get_html_'.$tag;
-			foreach($members as $member_id) {
-				if($member_id) {
-					$params[$main_id_key] = $member_id;
-					$data[$member_id] = $this->pdh->geth($module, $tag, $params);
-				}
-			}
 			return $data;
 		}
-
+		
 		public function detail_twink($view_id_key, $wt_key, $cid, $module, $tag, $params) {
 			$dt_tags = $this->pdh->get_dt_tags($module);
 			if (!$dt_tags) $dt_tags = array();
-			$member_id = $this->sub_array[$this->id_tag];
-			if(!array_key_exists($tag, $dt_tags) OR !$this->pdh->get('member', 'other_members', $member_id)) {
+			$member_id = $this->sub_array['%member_id%'];
+			if(!array_key_exists($tag, $dt_tags) || !$this->pdh->get('member', 'other_members', $member_id)) {
 				return $this->pdh->geth($module, $tag, $params, $this->sub_array); //no detail-twink available for this tag
 			}
 			$data = $this->detail_twink_data($view_id_key, $wt_key, $dt_tags[$tag], $module, $tag, $params, $this->sub_array);
-			uksort($data, array($this, 'dt_sort_by_name'));
-			$add = ($cid == 0) ? '<img src="'.$this->root_path.'images/arrows/right_arrow.png" alt="right" class="toggle_members" id="toggle_member_'.$member_id.'" /> ' : '';
-			$default = '<div style="height:20px;padding:1px; white-space: nowrap;">'.$add.$data[(($dt_tags[$tag] == 'summed_up') ? 0 : $member_id)].'</div>';
-			$hidden_start = '<div class="toggle_member_'.$member_id.'" style="display:none;">';
-			$hidden = '';
+			$add = '';
+			if(!$this->dt_arrow && !$this->settings['perm_detail_twink']) {
+				$add = '<i class="fa fa-caret-square-o-down fa-fw toggle_members" id="toggle_member_'.$member_id.'""></i> ';
+				$this->dt_arrow = true;
+			}
+			$default = $add.'<div style="height:20px; padding:1px; white-space:nowrap; display:inline-block;" class="def_toggle_member_'.$member_id.'">'.$data[(($dt_tags[$tag] == 'summed_up') ? 0 : $member_id)].'</div>';
+			$sub_start = '<div class="toggle_member_'.$member_id.'" style="display:'.(($this->settings['perm_detail_twink']) ? 'block' : 'none').';">';
+			$sub = '';
 			foreach($data as $mem_id => $out) {
-				if($mem_id != $member_id AND $mem_id != 0) {
-					$hidden .= '<div style="height:20px; padding:1px; white-space: nowrap; '.(($add) ? 'margin-left:14px;' : '').'">'.$out.'</div>';
-				}
+				$sub .= '<div style="height:20px; padding:1px; white-space: nowrap;">'.$out.'</div>';
 			}
-			$hidden_end = '<div style="height:20px;padding:1px; '.(($add) ? 'margin-left:14px;' : '').'">'.$data[(($dt_tags[$tag] == 'summed_up') ? $member_id : 0)].'</div>';
-			if (intval($this->config->get('pk_detail_twink')) && intval($this->config->get('pk_show_twinks')) && $dt_tags[$tag] == 'summed_up'){
-				return $hidden_end.$hidden_start.$hidden.$default.'</div>';
+			$sub_end = '</div>';
+			if($this->settings['perm_detail_twink']) {
+				return $sub_start.$sub.$sub_end;
 			}
-
-			return ($dt_tags[$tag] == 'summed_up') ? $hidden_start.$hidden_end.$hidden.'</div>'.$default : $default.$hidden_start.$hidden.$hidden_end.'</div>';
+			return $default.$sub_start.$sub.$sub_end;
 		}
 
 		private function detail_twink_css_js() {
-			if(!$this->dt_cssjs AND $this->config->get('pk_detail_twink') AND $this->settings['show_detail_twink']) {
+			if(!$this->dt_cssjs AND ($this->config->get('detail_twink') AND $this->settings['show_detail_twink'])) {
 				$this->tpl->add_css('.toggle_members { cursor: default; width: 10px; height: 10px; }');
 				$this->tpl->add_js("$('.toggle_members').toggle(function(){
-								$('.'+$(this).attr('id')).attr('style', 'display:block;');
-								$(this).attr('src', '".$this->root_path."images/arrows/down_arrow.png');
+								$('.'+$(this).attr('id')).attr('style', 'display:inline-block;');
+								$('.def_'+$(this).attr('id')).hide();
+								$(this).removeClass('fa-caret-square-o-down');
+								$(this).addClass('fa-caret-square-o-up');
 							},function(){
-								$('.'+$(this).attr('id')).attr('style', 'display:none;');
-								$(this).attr('src', '".$this->root_path."images/arrows/right_arrow.png');
+								$('.'+$(this).attr('id')).hide();
+								$('.def_'+$(this).attr('id')).show();
+								$(this).removeClass('fa-caret-square-o-up');
+								$(this).addClass('fa-caret-square-o-down');
 							});", 'docready');
 				$this->dt_cssjs = true;
 			}
-		}
-
-		private function dt_sort_by_name($a, $b) {
-			return strcmp($this->pdh->get('member', 'name', $a), $this->pdh->get('member', 'name', $b));
 		}
 
 		public function get_html_footer_row($footer_text){
@@ -369,5 +386,4 @@ if ( !class_exists( "html_pdh_tag_table" ) ) {
 		}
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_html_pdh_tag_table', html_pdh_tag_table::$shortcuts);
 ?>

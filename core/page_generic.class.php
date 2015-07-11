@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2010
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if(!defined('EQDKP_INC')){
 	die('Do not access this file directly.');
@@ -22,8 +25,6 @@ if(!defined('EQDKP_INC')){
 
 if(!class_exists('page_generic')){
 	class page_generic extends gen_class {
-		public static $shortcuts = array('config', 'in', 'jquery', 'time', 'user', 'pdh', 'tpl', 'core', 'env');
-
 		private $cd_module = false;
 		private $cd_tag = false;
 		private $cd_params = array('%id%');
@@ -32,7 +33,7 @@ if(!class_exists('page_generic')){
 		private $pre_check = '';
 		private $params = array();
 		
-		private $handler = array(
+		protected $handler = array(
 			'del'	=> array('process' => 'delete', 'csrf'=>true),
 			'add'	=> array('process' => 'add', 'csrf'=>true),
 			'upd'	=> array('process' => 'update', 'csrf'=>true),
@@ -41,10 +42,11 @@ if(!class_exists('page_generic')){
 		
 		protected $url_id = false;
 		protected $simple_head = '';
+		protected $action = '';
 	
 		public function __construct($pre_check, $handler=false, $pdh_call=array(), $params=null, $cb_name='', $url_id='') {
 			$this->pre_check = $pre_check;
-			$this->simple_head = ($this->in->get('simple_head', false)) ? 'simple' : 'full';
+			$this->simple_head = ($this->in->exists('simple_head')) ? 'simple' : 'full';
 			$this->simple_head_url = ($this->simple_head == 'simple') ? '&amp;simple_head=simple' : '';
 			$this->url_id_ext = '';
 			if($url_id) {
@@ -66,9 +68,18 @@ if(!class_exists('page_generic')){
 			foreach($this->handler as $key => &$handle) {
 				if(!isset($handle['check'])) $handle['check'] = $this->pre_check.$key;
 			}
-			
+			$this->action = $this->env->phpself.$this->SID.$this->simple_head_url.$this->url_id_ext;
 			$this->tpl->assign_vars(array(
-				'ACTION'	=> $this->env->phpself.$this->SID.$this->simple_head_url.$this->url_id_ext,
+				'ACTION'	=> $this->action,
+			));
+		}
+		
+		public function set_url_id($name, $param){
+			$this->url_id = $param;
+			$this->url_id_ext = '&amp;'.$name.'='.$param;
+			$this->action = $this->env->phpself.$this->SID.$this->simple_head_url.$this->url_id_ext;
+			$this->tpl->assign_vars(array(
+				'ACTION'	=> $this->action,
 			));
 		}
 		
@@ -108,20 +119,21 @@ if(!class_exists('page_generic')){
 		}
 		
 		protected function process() {
-			foreach($this->handler as $key => $process) {
+			foreach($this->handler as $key => $process) {				
 				if($this->in->exists($key) AND !is_array(current($process))) {
-					if($this->pre_check) $this->user->check_auth($process['check']);
+					if($this->pre_check && $process['check'] !== false) $this->user->check_auth($process['check']);
 					
 					if(isset($process['csrf']) && $process['csrf']) {
 						$blnResult = $this->checkCSRF($key);
 						if (!$blnResult) break;
 					}
-					$this->$process['process']();
+
+					if(method_exists($this, $process['process'])) $this->$process['process']();
 					break;
 				} elseif($this->in->get($key) AND is_array(current($process))) {
 					foreach($process as $subprocess) {
 						if($subprocess['value'] == $this->in->get($key)) {
-							if($this->pre_check) $this->user->check_auth($subprocess['check']);
+							if($this->pre_check && $subprocess['check'] !== false) $this->user->check_auth($subprocess['check']);
 							
 							if(isset($subprocess['csrf']) && $subprocess['csrf']) {
 								$blnResult = $this->checkCSRF($key);
@@ -164,7 +176,9 @@ if(!class_exists('page_generic')){
 			$strAction = get_class($this).$strProcess;
 			$blnCheckGet = $this->user->checkCsrfGetToken($this->in->get('link_hash'), $strAction);
 			$blnCheckPost = $this->user->checkCsrfPostToken($this->in->get($this->user->csrfPostToken()));
-			if ($blnCheckGet || $blnCheckPost) {
+			$blnCheckPostOld = $this->user->checkCsrfPostToken($this->in->get($this->user->csrfPostToken(true)));
+			
+			if ($blnCheckGet || $blnCheckPost || $blnCheckPostOld) {
 				return true;
 			}
 			$this->core->message($this->user->lang('error_invalid_session_key'), $this->user->lang('error'), 'red');
@@ -177,5 +191,4 @@ if(!class_exists('page_generic')){
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_page_generic', page_generic::$shortcuts);
 ?>

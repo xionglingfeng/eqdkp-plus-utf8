@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2010
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 define('EQDKP_INC', true);
 define('IN_ADMIN', true);
@@ -22,10 +25,6 @@ $eqdkp_root_path = './../';
 include_once($eqdkp_root_path.'common.php');
 
 class Manage_Events extends page_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'pdh', 'jquery', 'core', 'config', 'game');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 	public function __construct(){
 		$handler = array(
@@ -89,44 +88,54 @@ class Manage_Events extends page_generic {
 			$event['mdkp2event'] = $this->pdh->get('event', 'multidkppools', array($event['id']));
 		}
 
-		//get icons
-		if($this->game->icon_exists('events')) {
-			$this->tpl->assign_var('ICONS', true);
-			$events_folder = $this->root_path.'games/'.$this->config->get('default_game').'/events';
+		//Get Icons
+			$events_folder = $this->pfh->FolderPath('event_icons', 'files');
 			$files = scandir($events_folder);
-			$ignorefiles = array('.', '..', '.svn', 'index.html');
+			$ignorefiles = array('.', '..', '.svn', 'index.html', '.tmb');
+			
 			$icons = array();
 			foreach($files as $file) {
-				if(!in_array($file, $ignorefiles)) $icons[] = $file;
+				if(!in_array($file, $ignorefiles)) $icons[] = $events_folder.'/'.$file;
+			}
+			
+			$events_folder = $this->root_path.'games/'.$this->config->get('default_game').'/icons/events';
+			if (is_dir($events_folder)){
+				$files = scandir($events_folder);
+				foreach($files as $file) {
+					if(!in_array($file, $ignorefiles)) $icons[] = $events_folder.'/'.$file;
+				}
 			}
 			$num = count($icons);
 			$fields = (ceil($num/6))*6;
-			$i=0;
+			$i = 0;
+
 			while($i<$fields)
 			{
 				$this->tpl->assign_block_vars('files_row', array());
+				$this->tpl->assign_var('ICONS', true);
 				$b = $i+6;
 				for($i; $i<$b; $i++)
 				{
-					$icon = (isset($icons[$i])) ? $icons[$i] : '';
-					$this->tpl->assign_block_vars('files_row.fields', array(
-						'NAME'		=> $icon,
-						'CHECKED'	=> (isset($event['icon']) AND $icon == $event['icon']) ? ' checked="checked"' : '',
-						'IMAGE'		=> "<img src='".$this->root_path."games/".$this->config->get("default_game")."/events/".$icon."' alt='".$icon."' width='48px' />",
+				$icon = (isset($icons[$i])) ? $icons[$i] : '';
+				$this->tpl->assign_block_vars('files_row.fields', array(
+						'NAME'		=> pathinfo($icon, PATHINFO_FILENAME).'.'.pathinfo($icon, PATHINFO_EXTENSION),
+						'CHECKED'	=> (isset($event['icon']) AND pathinfo($icon, PATHINFO_FILENAME).'.'.pathinfo($icon, PATHINFO_EXTENSION) == $event['icon']) ? ' checked="checked"' : '',
+						'IMAGE'		=> "<img src='".$icon."' alt='".$icon."' width='48px' style='eventicon' />",
 						'CHECKBOX'	=> ($i < $num) ? true : false)
 					);
 				}
 			}
-		} else {
-			$this->tpl->assign_var('NO_ICONS', false);
-		}
+		
+		//Image Uploader
+		$this->jquery->fileBrowser('all', 'image', $this->pfh->FolderPath('event_icons','files', 'absolute'), array('title' => $this->user->lang('upload_eventicon'), 'onclosejs' => '$(\'#eventSubmBtn\').click();'));
 
 		$this->confirm_delete(sprintf($this->user->lang('confirm_delete_event'), ((isset($event['name'])) ? $event['name'] : ''), count($this->pdh->get('raid', 'raidids4eventid', array($event['id'])))), 'manage_events.php'.$this->SID.'&event_id='.$event['id'], false, array('height' => 220));
+
 		$this->tpl->assign_vars(array(
 			'S_UPD'			=> ($event['id']) ? TRUE : FALSE,
 			'EVENT_ID'		=> $event['id'],
 			'NAME'			=> (isset($event['name'])) ? $event['name'] : '',
-			'VALUE'			=> $event['value'],
+			'VALUE'			=> $this->pdh->geth('event', 'value', array($event['id'])),
 			'MDKP2EVENT' 	=> $this->jquery->Multiselect('mdkp2event', $this->pdh->aget('multidkp', 'name', 0, array($this->pdh->get('multidkp', 'id_list'))), $event['mdkp2event']),
 			'CALENDAR'		=> ($this->in->get('calendar') == 'true') ? '1' : '0'
 		));
@@ -184,13 +193,12 @@ class Manage_Events extends page_generic {
 		if(empty($event['name']) AND !$norefresh) {
 			$this->update(array('title' => $this->user->lang('missing_values'), 'text' => $this->user->lang('name'), 'color' => 'red'));
 		}
-		$event['value'] = $this->in->get('value',0.0);
+		$event['value'] = $this->in->get('value', 0.0);
 		$event['icon'] = $this->in->get('icon','');
 		$event['id'] = $this->in->get('event_id',0);
 		$event['mdkp2event'] = $this->in->getArray('mdkp2event', 'int');
 		return $event;
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_Manage_Events', Manage_Events::__shortcuts());
 registry::register('Manage_Events');
 ?>

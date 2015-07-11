@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,10 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "pdh_r_calendars" ) ) {
 	class pdh_r_calendars extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'db'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 		public $default_lang = 'english';
 		public $calendars;
@@ -45,21 +44,24 @@ if ( !class_exists( "pdh_r_calendars" ) ) {
 			if($this->calendars !== NULL){
 				return true;
 			}
-
-			$query = $this->db->query("SELECT * FROM __calendars");
-			while ( $row = $this->db->fetch_record($query) ){
-				$this->calendars[$row['id']] = array(
-					'id'						=> $row['id'],
-					'name'						=> $row['name'],
-					'color'						=> $row['color'],
-					'private'					=> $row['private'],
-					'feed'						=> $row['feed'],
-					'system'					=> $row['system'],
-					'type'						=> $row['type'],
-				);
+			
+			$objQuery = $this->db->query("SELECT * FROM __calendars");
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$this->calendars[$row['id']] = array(
+						'id'				=> $row['id'],
+						'name'				=> $row['name'],
+						'color'				=> $row['color'],
+						'private'			=> $row['private'],
+						'feed'				=> $row['feed'],
+						'system'			=> $row['system'],
+						'type'				=> $row['type'],
+						'restricted'		=> $row['restricted'],
+						'affiliation'		=> $row['affiliation'],
+					);
+				}
+				$this->pdc->put('pdh_calendars_table', $this->calendars, null);
 			}
-			$this->db->free_result($query);
-			if($query) $this->pdc->put('pdh_calendars_table', $this->calendars, null);
 		}
 
 		//1 = raid, 2=event 3=feed
@@ -114,10 +116,17 @@ if ( !class_exists( "pdh_r_calendars" ) ) {
 			return 	$this->calendars[$id]['feed'];
 		}
 
+		public function get_restricted($id){
+			return 	(isset($this->calendars[$id]['restricted'])) ? $this->calendars[$id]['restricted'] : 0;
+		}
+
+		public function get_affiliation($id){
+			return 	(isset($this->calendars[$id]['affiliation'])) ? $this->calendars[$id]['affiliation'] : 'user';
+		}
+
 		public function get_type($id){
 			return (isset($this->calendars[$id])) ? $this->calendars[$id]['type'] : '';
 		}
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_calendars', pdh_r_calendars::__shortcuts());
 ?>

@@ -1,34 +1,36 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
 	die('Do not access this file directly.');
 }
 	class auto_point_adjustments extends gen_class {
-		public static $shortcuts = array('pfh', 'pdc', 'time', 'user');
-		public static $dependencies = array('pdc');
+		public static $dependencies = array('pdc', 'pfh', 'pdl');
 
 		private $apa_tab			= array();
 		private $apa_tab_file		= 'apatab.php';
 		
 		private $apa_func_file		= 'apafunc.php';
 		private $calc_func			= array();
-		private $func_args			= array('value', 'ref_date', 'date');
+		private $func_args			= array('value', 'ref_date', 'date', 'ref_val');
 		private $valid_symbols		= array('+', '-', '*', '/', ',', '(', ')', '?', ':', '==', '<=', '>=', '>', '<', '!=', '!', '&&', '||', '%'); //symbols left of a symbol should not occur in symbols to the right of them
 		
 		private $decayed_pools		= array();
@@ -38,6 +40,7 @@ if ( !defined('EQDKP_INC') ){
 		private $cached_data		= array();
 		private $ttls				= array();
 		private $needs_update		= array();
+		private $call_start			= false;
 		
 		public $available_types		= array();
 
@@ -75,7 +78,7 @@ if ( !defined('EQDKP_INC') ){
 
 		public function add_apa($type, $options=array()) {
 			//generate unique id
-			$unique_id = uniqid();
+			$unique_id = unique_id();
 			//check if all necessary information are given
 			if(!$this->type_exists($type)) return false;
 			$required = $this->get_apa_type($type)->required();
@@ -123,6 +126,11 @@ if ( !defined('EQDKP_INC') ){
 			$this->save_apa_tab($this->apa_tab);
 			return true;
 		}
+		
+		public function recalculate_apa($apa_id){
+			$apa_obj = $this->get_apa_type($this->apa_tab[$apa_id]['type']);
+			$apa_obj->recalculate($apa_id);
+		}
 
 		public function list_apas(){
 			return $this->apa_tab;
@@ -142,7 +150,7 @@ if ( !defined('EQDKP_INC') ){
 		
 		public function get_apa_id($dkp_id, $module) {
 			foreach($this->apa_tab as $apa_id => $options) {
-				if(!isset($apa_modules[$options['type']])) $apa_modules[$options['type']] = $this->get_apa_type($options['type'])->modules_affected();
+				if(!isset($apa_modules[$options['type']])) $apa_modules[$options['type']] = $this->get_apa_type($options['type'])->modules_affected($apa_id);
 				if(in_array($dkp_id, $options['pools']) && in_array($module, $apa_modules[$options['type']])) return $apa_id;
 			}
 			return false;
@@ -181,11 +189,11 @@ if ( !defined('EQDKP_INC') ){
 		public function is_decay($module, $pool) {
 			if(empty($this->apa_tab)) return false;
 			if(empty($this->decayed_pools)) {
-				foreach($this->apa_tab as $apa) {
-					$modules = $this->get_apa_type($apa['type'])->modules_affected();
+				foreach($this->apa_tab as $apa_id=> $apa) {
+					$modules = $this->get_apa_type($apa['type'])->modules_affected($apa_id);
 					foreach($apa['pools'] as $dkp_id) {
-						foreach($modules as $module) {
-							$this->decayed_pools[$dkp_id][] = $module;
+						foreach($modules as $_module) {
+							$this->decayed_pools[$dkp_id][] = $_module;
 						}
 					}
 				}
@@ -217,19 +225,40 @@ if ( !defined('EQDKP_INC') ){
 		 * @return 		float
 		 */
 		public function get_decay_val($module, $dkp_id, $date=0, $data=array()) {
+			if(!$this->call_start) $this->call_start = true;
 			if(!$date) $date = $this->time->time;
 			$apa_id = $this->get_apa_id($dkp_id, $module);
-			//load cached data
 			$cache_date = $this->get_apa_type($this->apa_tab[$apa_id]['type'])->get_cache_date($date, $apa_id);
 			if(!isset($this->cached_data[$apa_id][$cache_date])) $this->cached_data[$apa_id][$cache_date] = $this->pdc->get('apa_'.$apa_id.'_'.$cache_date);
 			//check if update is necessary
 			if(!isset($this->cached_data[$apa_id][$cache_date][$module][$data['id']]) || $this->needs_update($module, $data['id'])) {
-				list($val, $ttl) = $this->get_apa_type($this->apa_tab[$apa_id]['type'])->get_decay_val($apa_id, $cache_date, $module, $dkp_id, $data);
-				$this->cached_data[$apa_id][$cache_date][$module][$data['id']] = $val;
+				list($val, $adj, $ttl) = $this->get_apa_type($this->apa_tab[$apa_id]['type'])->get_decay_val($apa_id, $cache_date, $module, $dkp_id, $data);
+				$this->cached_data[$apa_id][$cache_date][$module][$data['id']]['val'] = $val;
+				$this->cached_data[$apa_id][$cache_date][$module][$data['id']]['adj'] = $adj;
 				$this->ttls[$apa_id][$cache_date] = $ttl;
-				$this->update_done($module, $data['id']);
+				// only flag update done if this is the top-level call (so cache entries for older cache_dates get reset as well)
+				if($this->call_start) $this->update_done($module, $data['id']);
 			}
-			return $this->cached_data[$apa_id][$cache_date][$module][$data['id']];
+			$this->call_start = false;
+			return $this->cached_data[$apa_id][$cache_date][$module][$data['id']]['val'];
+		}
+		
+		public function get_decay_history($module, $dkp_id, $data=array()) {
+			$apa_id = $this->get_apa_id($dkp_id, $module);
+			// init cache with a call to get_decay_val
+			$this->get_decay_val($module, $dkp_id, 0, $data);
+			// create history array
+			$arrOut = array();
+			foreach($this->cached_data[$apa_id] as $cache_date => $decay_data) {				
+				$arrOut[] = array(
+					'value' 	=> $decay_data[$module][$data['id']]['adj'],
+					'date'		=> $cache_date,
+					'type'		=> 'apa',
+					'id'		=> $apa_id,
+					'character' => $char_id,
+				);
+			}
+			return $arrOut;
 		}
 		
 		public function enqueue_update($module, $ids) {
@@ -334,19 +363,15 @@ if ( !defined('EQDKP_INC') ){
 		}
 
 		public function __destruct() {
-			#foreach($this->ttls as $apa_id => $data) {
-			#	foreach($data as $cache_date => $ttl) {
-			#		$this->pdc->put('apa_'.$apa_id.'_'.$cache_date, $this->cached_data[$apa_id][$cache_date], $ttl);
-			#	}
-			#}
-			#$this->pdc->put('apa_update_table', $this->needs_update, 15768000); //cache half a year
-			#unset($this->cached_data);
-			#unset($this->ttls);
+			foreach($this->ttls as $apa_id => $data) {
+				foreach($data as $cache_date => $ttl) {
+					$this->pdc->put('apa_'.$apa_id.'_'.$cache_date, $this->cached_data[$apa_id][$cache_date], $ttl);
+				}
+			}
+			$this->pdc->put('apa_update_table', $this->needs_update, 15768000); //cache half a year
+			unset($this->cached_data);
+			unset($this->ttls);
 			parent::__destruct();
 		}
 	}//end class
-if(version_compare(PHP_VERSION, '5.3.0', '<')) {
-	registry::add_const('short_auto_point_adjustments', auto_point_adjustments::$shortcuts);
-	registry::add_const('dep_auto_point_adjustments', auto_point_adjustments::$dependencies);
-}
 ?>

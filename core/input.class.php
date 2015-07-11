@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2010
-* Date:		$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link		http://eqdkp-plus.com
-* @package		eqdkp-plus
-* @version		$Rev$
-* 
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if ( !defined('EQDKP_INC') ){
 	header('HTTP/1.0 404 Not Found');exit;
@@ -24,6 +27,7 @@ class input extends gen_class {
 
 	public $_cache		= array();
 	public $_caching	= true;
+	public $_own		= array();
 
 	/**
 	* Get the Superglobal we're using
@@ -39,31 +43,33 @@ class input extends gen_class {
 		if (filter_has_var(INPUT_GET, $key)){
 			return INPUT_GET;
 		}
-
-		if (filter_has_var(INPUT_COOKIE, $key)){
-			return INPUT_COOKIE;
-		}
-
-		if (filter_has_var(INPUT_SERVER, $key)){
-			return INPUT_SERVER;
-		}
-
-		if (filter_has_var(INPUT_ENV, $key)){
-			return INPUT_ENV;
-		}
-
+		
 		// the fallback
 		return false;
 	}
-
+	
 	/**
-	* Get the type of the thing..
+	* Injects an own input parameter with value
 	*
 	* @var string
-	* @access private
+	* @var string
+	* @access public
 	*/
-	private function _type($default, $nonget=false){
-		$type = ($nonget) ? $default : gettype($default);
+	public function inject($strKey, $strValue){
+		$this->_own[$strKey] = $strValue;
+	}
+	
+	private function _getType($default, $owntype){
+		if (strlen($owntype)){
+			return $owntype;
+		} elseif(strlen($default)){
+			return gettype($default);
+		}
+		return 'string';
+	}
+	
+	
+	private function _getFilter($type){
 		switch($type){
 			case 'int':					$out = FILTER_SANITIZE_NUMBER_INT;		break;
 			case 'integer':				$out = FILTER_SANITIZE_NUMBER_INT;		break;
@@ -71,30 +77,41 @@ class input extends gen_class {
 			case 'raw':					$out = FILTER_UNSAFE_RAW;				break;
 			//float and double need a special handling, so "0,5" can be correctly interpreted as 0.5 (function floatvalue() )
 			case 'float':
-			case 'double':				$out = FILTER_SANITIZE_NUMBER_FLOAT; 	break;
+			case 'double':
 			case 'string':
+			case 'noencquotes':
 			default:					$out = FILTER_SANITIZE_STRING;
 		}
 		return $out;
 	}
-
+	
+	
 	private function _convert($value, $type){
 		switch($type){
-			case FILTER_SANITIZE_NUMBER_FLOAT:		$out = $this->floatvalue($value);	break;
-			case FILTER_SANITIZE_NUMBER_INT:		$out = intval($value);		break;
-			default:								$out = $value;
+			case 'int':					
+			case 'integer': $out = intval($value);
+				break;
+
+			case 'float':
+			case 'double': $out = $this->floatvalue($value);
+				break;
+			
+			default: $out = $value;
 		}
+		return $out;
+	}
+	
+	private function _options($type){
+		switch($type){
+			case 'noencquotes' : $out = FILTER_FLAG_NO_ENCODE_QUOTES;
+				break;
+				
+			default: $out = '';
+		}
+		
 		return $out;
 	}
 
-	private function _options($filter){
-		switch($filter){
-			case FILTER_SANITIZE_NUMBER_FLOAT:	$out = FILTER_FLAG_ALLOW_FRACTION;	break;
-			//case FILTER_SANITIZE_STRING:		$out = FILTER_FLAG_NO_ENCODE_QUOTES; break;
-			default:							$out = '';
-		}
-		return $out;
-	}
 
 	/**
 	* Get an input variable from a superglobal. POST > SESSION > GET
@@ -116,19 +133,14 @@ class input extends gen_class {
 		//get the data
 		eval("if(isset(\$_GET".$allkey.")) \$get = \$_GET".$allkey.";");
 		eval("if(isset(\$_POST".$allkey.")) \$post = \$_POST".$allkey.";");
-		eval("if(isset(\$_SESSION".$allkey.")) \$session = \$SESSION".$allkey.";");
-		eval("if(isset(\$_COOKIE".$allkey.")) \$cookie = \$_COOKIE".$allkey.";");
+
 		if(isset($get)) {
 			$retval = $get;
 		}
 		if(isset($post)) {
 			$retval = $post;
-		} elseif(isset($session)) {
-			$retval = $session;
 		}
-		if(isset($cookie)) {
-			$retval = $cookie;
-		}
+
 		return $retval;
 	}
 
@@ -142,20 +154,30 @@ class input extends gen_class {
 	* @return mixed
 	*/
 	public function get($key, $default='', $owntype=''){
-		$filter	= (($owntype) ? $this->_type($owntype, true) : $this->_type($default));
+		$type = $this->_getType($default, $owntype);
+		$filter = $this->_getFilter($type);
+		$options = $this->_options($type);
+		$cache_name = md5($filter.'.'.$options);
 	
-		if($this->_caching && isset($this->_cache[$filter][$key])){
-			$out = $this->_cache[$filter][$key];
+		if($this->_caching && isset($this->_cache[$cache_name][$key])){
+			$out = $this->_cache[$cache_name][$key];
 		}else{	
 			if(strpos($key,':')) {
-				$out		= filter_var($this->_get_deep(explode(':', $key),$default), $filter, $this->_options($filter));
+				$out		= filter_var($this->_get_deep(explode(':', $key),$default), $filter, $options);
 			} else {
-				$out		= filter_input($this->_superglobal($key), $key, $filter, $this->_options($filter));
+				$out		= filter_input($this->_superglobal($key), $key, $filter, $options);
+				//Could be in own array
+				if ($out === false || $out === NULL){
+					if (isset($this->_own[$key])){
+						$out = filter_var($this->_own[$key], $filter, $options);
+					}
+				}
+				
 			}
 			$out		= ($out === false || $out === NULL || $out === '') ? $default : $out;
-			$this->_cache[$filter][$key] = $out;
+			$this->_cache[$cache_name][$key] = $out;
 		}
-		return (isset($filter) && $filter != '') ? $this->_convert($out, $filter) : $out;
+		return (isset($filter) && $filter != '') ? $this->_convert($out, $type) : $out;
 	}
 
 	/**
@@ -168,14 +190,14 @@ class input extends gen_class {
 	* @param string $max_depth Maximum depth to recurse to
 	* @return array
 	*/
-	public function getArray($key, $type, $max_depth = 10){
+	public function getArray($key, $type = 'string', $max_depth = 10){
 		if(strpos($key, ':')) {
 			$checkarr = $this->_get_deep(explode(':', $key), array());
 		} else {
 			$checkarr = is_array($key) ? $_POST : (isset($_POST[$key])) ? $_POST[$key] : false;
 		}
-		$valarr		= is_array($type) ? $type : $this->_type($type, true);
-		return (!$checkarr) ? array() : filter_var_array($checkarr, $valarr);
+		$valarr		= is_array($type) ? $type : $this->_getType(false, $type);
+		return (!$checkarr) ? array() : filter_var_array($checkarr, $this->_getFilter($valarr));
 	}
 
 	/**
@@ -190,10 +212,10 @@ class input extends gen_class {
 			if(is_array($this->getArray($key, $type))){
 				$retval = true;
 			}
-		}else{
-			if($this->_superglobal($key) !== false){
+		}elseif($this->_superglobal($key) !== false){
 				$retval = true;
-			}
+		}elseif(isset($this->_own[$key])){
+				$retval = true;
 		}
 		return $retval;
 	}
@@ -205,7 +227,7 @@ class input extends gen_class {
 	* @return float
 	*/
 	public function floatvalue($value) {
-		return floatval(preg_replace('#^([-]*[0-9\.,]+?)((\.|,)([0-9-]+))*$#e', "str_replace(array('.', ','), '', '\\1') . '.\\4'", $value));
+		return floatval(preg_replace('#([-]?)([0-9]+)([\.,]?)([0-9]*)#', "\\1\\2.\\4", $value));
 	}
 
 	/**
@@ -216,6 +238,31 @@ class input extends gen_class {
 	*/
 	public function decode_entity($value){
 		return html_entity_decode($value, ENT_QUOTES);
+	}
+	
+	public function getCookie($key, $default='') {
+		$type = $this->_getType($default, '');
+		$filter = $this->_getFilter($type);
+		
+		$out		= filter_input(INPUT_COOKIE, $key, $filter, $this->_options($type));
+		$out		= ($out === false || $out === NULL || $out === '') ? $default : $out;
+
+		return (isset($filter) && $filter != '') ? $this->_convert($out, $type) : $out;
+	}
+	
+	public function getSession($key, $default='') {
+		$type = $this->_getType($default, '');
+		$filter = $this->_getFilter($type);
+		
+		$out		= filter_input(INPUT_SESSION, $key, $filter, $this->_options($type));
+		$out		= ($out === false || $out === NULL || $out === '') ? $default : $out;
+
+		return (isset($filter) && $filter != '') ? $this->_convert($out, $type) : $out;
+	}
+	
+	public function getEQdkpCookie($key, $default=''){
+		$cookie_name = registry::register('config')->get('cookie_name') . '_' . $key;
+		return $this->getCookie($cookie_name, $default);
 	}
 }
 ?>

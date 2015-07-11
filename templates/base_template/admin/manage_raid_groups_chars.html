@@ -1,0 +1,113 @@
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li><a href="{EQDKP_ROOT_PATH}admin/manage_raid_groups.php{SID}">{L_manage_raid_groups}</a></li>
+		<li class="current"><a>{GROUP_NAME}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
+<form method="post" action="{ACTION}" name="post">
+	<div class="contentHeader">
+		<h1 class="contentTitle">{L_manage_raid_groups}: {GROUP_NAME}<input type="hidden" name="g" value="{GRP_ID}" /></h1>
+	</div>
+
+		<div id="members">
+			<table id="raid_groups_table" class="table fullwidth colorswitch">
+				<tr>
+					<th width="20"><input type="checkbox" id="selall_usergr" /></th>
+					<th>
+						<a href="{U_MANAGE_MEMBERS}&amp;o=0.0">
+							<span class="down_arrow{RED00}"></span>
+						</a> 
+						<a href="{U_MANAGE_MEMBERS}&amp;o=0.1">
+							<span class="up_arrow{RED01}"></span>
+						</a> 
+						{L_name}
+					</th>
+					<th class="hiddenSmartphone">{L_level}</th>
+					<th>{L_rank}</th>
+					<th class="hiddenSmartphone">{L_class}</th>
+					<th class="hiddenSmartphone">{L_active}</th>
+				</tr>
+				<tr>
+					<th align="center" colspan="7">{L_grpleaders}</th>
+				</tr>
+				<!-- BEGIN char_row_grpleader -->
+				<tr>
+					<td>
+					<!-- IF S_USERGROUP_ADMIN -->
+						<input type="checkbox" name="group_raid[{char_row_grpleader.ID}]" value="{char_row_grpleader.ID}" class="usercheckbox" />
+					<!-- ENDIF -->
+					</td>
+					<td>
+						<a href="manage_members.php{SID}&amp;m={char_row_grpleader.ID}">{char_row_grpleader.NAME}</a>
+					</td>
+					<td class="hiddenSmartphone">{char_row_grpleader.LEVEL}</td>
+					<td>{char_row_grpleader.RANK}</td>
+					<td class="hiddenSmartphone">{char_row_grpleader.CLASS}</td>
+					<td class="hiddenSmartphone">{char_row_grpleader.ACTIVE}</td>
+				</tr>
+				<!-- END char_row_grpleader -->
+				
+				
+				<tr>
+					<th colspan="7" />{L_group_members}</th>
+				</tr>
+				<!-- BEGIN char_row -->
+				<tr>
+					<td><input type="checkbox" name="group_raid[{char_row.ID}]" value="{char_row.ID}" class="usercheckbox" /></td>
+					<td>
+						<a href="manage_members.php{SID}&amp;m={char_row.ID}">{char_row.NAME}</a>
+					</td>
+					<td class="hiddenSmartphone">{char_row.LEVEL}</td>
+					<td>{char_row.RANK}</td>
+					<td class="hiddenSmartphone">{char_row.CLASS}</td>
+					<td class="hiddenSmartphone">{char_row.ACTIVE}</td>
+				</tr>
+				<!-- END char_row -->
+				<tr>
+					<th colspan="7">
+						{BUTTON_MENU} 
+					<input type="submit" name="del_group_members" value="{L_delete_selected_from_group}" class="mainoption bi_delete" id="del_group_members" style="display:none;" /> 
+					<input type="submit" name="add_grpleader" value="{L_add_grpleader}" class="mainoption bi_new" id="add_grpleader"  style="display:none;"/>
+					<input type="submit" name="remove_grpleader" value="{L_remove_grpleader}" class="mainoption bi_new" id="remove_grpleader"  style="display:none;"/>
+					</th>
+				</tr>
+				
+				</table>
+				<br />
+				<fieldset class="settings mediumsettings" class="settings">
+						<legend>{L_add_member_to_group}</legend>
+						{ADD_USER_DROPDOWN}
+						<br /><br />
+						<button class="mainoption" type="submit" name="add_group_members" id="add_group_members"><i class="fa fa-plus"></i>{L_add_selected_char_to_group}</button>
+				</fieldset>
+		</div>
+	<div class="contentFooter">
+		<button class="mainoption" type="button" name="back" onclick="window.location='manage_raid_groups.php{SID}'"><i class="fa fa-chevron-left"></i>{L_back}</button>
+	</div>
+
+{CSRF_TOKEN}
+</form>
+<script type="text/javascript">
+//<![CDATA[
+$(document).ready(function(){
+	$('.changepermcolor').change(function() {
+		if($(this).prop('checked')){
+			$('#span_'+this.id).attr('class', 'positive');
+		}else{
+			$('#span_'+this.id).attr('class', 'negative');
+		}
+	});
+	
+	$("#selall_usergr").click(function(){
+		var checked_status = this.checked;
+		$(".usercheckbox").each(function(){
+			$(this).prop("checked", checked_status).trigger('change');
+		});
+	});
+});
+//]]>
+</script>

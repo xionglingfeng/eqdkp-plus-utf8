@@ -1,0 +1,94 @@
+<!-- IF S_NORMAL_HEADER -->
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		{BREADCRUMB}
+	</ul>
+	<div class="clear"></div>
+</div>
+<!-- ENDIF -->
+<section data-article-id="{ARTICLE_ID}" data-article-category-id="{ARTICLE_REAL_CATEGORY}" class="article_detail_container <!-- IF S_FEATURED -->featured<!-- ENDIF -->">
+	<!-- IF not S_HIDE_HEADER -->
+	<nav>
+		<!-- IF S_PREV_ARTICLE -->
+		<a href="{U_PREV_ARTICLE}" title="{PREV_TITLE}"><i class="fa fa-chevron-left"></i> {PREV_TITLE}</a>
+		<!-- ENDIF -->
+
+		<!-- IF S_NEXT_ARTICLE -->
+		<a href="{U_NEXT_ARTICLE}" title="{NEXT_TITLE}" class="floatRight">{NEXT_TITLE} <i class="fa fa-chevron-right"></i></a>
+		<!-- ENDIF -->
+		<div class="clear"></div>
+		<br />
+	</nav>
+	
+	<header>
+		<div class="contentHeader">
+			<h1 class="contentTitle">
+				<!-- IF not ARTICLE_PUBLISHED -->
+				<i class="fa fa-eye-slash fa-lg "></i>
+				<!-- ENDIF -->
+				
+			<span class="<!-- IF S_INLINE_EDIT -->headline_inlineedit<!-- ENDIF -->">{ARTICLE_TITLE}</span>
+				<!-- IF S_TOOLBAR --> 
+				<div class="floatRight">
+					<div class="toolbar-button">
+						<span class="{ARTICLE_TOOLBAR} toolbar"><i class="fa fa-cog"></i></span>
+					</div>
+				</div>
+				<!-- ENDIF -->
+				<div class="floatRight">
+					<a href="{PERMALINK}" title="{L_permalink}"><i class="fa fa-link"></i></a>
+				</div>
+			</h1>
+		</div>
+		<div class="news_author">
+			<div class="floatLeft">
+				<i class="fa fa-clock-o"></i> {ARTICLE_TIMETAG} &bull; <i class="fa fa-user"></i> {ARTICLE_AUTHOR} <!-- IF S_COMMENTS --> &bull; <a href="#comments"><i class="fa fa-comments"></i>{COMMENTS_COUNTER}</a><!-- ENDIF -->
+			</div>
+			<div class="news_social floatRight">
+				{ARTICLE_SOCIAL_BUTTONS}
+			</div>
+			<div class="clear"></div>
+		</div>
+	</header>
+
+	<!-- ENDIF -->
+
+	<!-- IF S_PAGINATION -->
+	<aside class="articleSitemap">
+		<ul>
+		<!-- BEGIN articlesitemap_row -->
+		<li <!-- IF articlesitemap_row.ACTIVE-->class="active"<!-- ENDIF -->>{articlesitemap_row.LINK}</li>
+		<!-- END articlesitemap_row -->
+		</ul>
+	</aside>
+	<!-- ENDIF -->
+	<article class="article_content <!-- IF S_INLINE_EDIT -->article-inlineedit<!-- ENDIF -->">
+		<!-- IF not ARTICLE_PUBLISHED -->
+		<div class="infobox infobox-large infobox-red clearfix">
+			<i class="fa fa-eye-slash fa-lg"></i> {L_article_unpublished_note}
+		</div>
+		<!-- ENDIF -->
+	
+		<!-- PRE ARTICLE_CONTENT -->
+	</article>
+	<div class="clear"></div>
+	{PAGINATION}
+
+	<footer class="tags-container">
+		<!-- IF S_TAGS -->
+		 <ul class="tags">
+			<!-- BEGIN tag_row -->
+			<li><a href="{tag_row.U_TAG}">{tag_row.TAG}</a></li>
+			<!-- END tag_row -->
+		</ul>
+		<!-- ENDIF -->
+		<div class="<!-- IF S_TAGS -->floatRight<!-- ENDIF -->">{ARTICLE_RATING}</div>
+		<div class="clear"></div>
+	</footer>
+	<div class="contentDivider"></div>
+
+	<span id="comments"></span>
+	{COMMENTS}
+
+</section>

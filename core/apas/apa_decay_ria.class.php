@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,40 +25,39 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "apa_decay_ria" ) ) {
 	class apa_decay_ria extends apa_type_generic {
-		public static $shortcuts = array('user', 'time', 'pdc', 'pdh', 'config', 'pdl', 'apa'=>'auto_point_adjustments');
+		public static $shortcuts = array('apa'=>'auto_point_adjustments');
 
 		protected $ext_options = array(
 			'zero_time'	=> array(
-				'name'		=> 'zero_time',
 				'type'		=> 'dropdown',
 				'options'	=> array(),
-				'value'		=> 3,
+				'default'	=> 3,
 			),
 			'decay_time' => array(
-				'name'		=> 'decay_time',
 				'type'		=> 'spinner',
 				'max'		=> 99,
 				'min'		=> 1,
 				'step'		=> 1,
 				'size'		=> 2,
-				'value'		=> 1
+				'default'	=> 1
 			),
 			'start_date' => array(
-				'name'		=> 'start_date',
 				'type'		=> 'datepicker',
-				'options'	=> array('timepicker' => true),
-				'value'		=> 0,
+				'timepicker' => true,
+				'default'	=> 'now',
 				'class'		=> 'input'
 			),
+			'modules' => array(
+				'type' => 'multiselect',
+				'options' => array('item' => 'Items', 'raid' => 'Raids', 'adjustment' => 'Adjustments'),
+			),				
 			'calc_func' => array(
-				'name'		=> 'calc_func',
 				'type'		=> 'dropdown',
 				'options'	=> array(),
-				'value'		=> 0,
 			)
 		);
 		
-		private $modules_affected = array('item', 'raid', 'adjustment');
+		private $modules_affected = array();
 		
 		private $cached_data = array();
 
@@ -75,6 +77,10 @@ if ( !class_exists( "apa_decay_ria" ) ) {
 			$layout = $this->pdh->make_editable($this->config->get('eqdkp_layout'));
 			if(!$layout) return false;
 			//generate presets
+			$this->modules_affected = $this->apa->get_data('modules', $apa_id);
+			if(count($this->modules_affected) == 0) return true;
+			
+			
 			foreach($this->modules_affected as $module) {
 				$preset_name = $module.'_decay_'.$apa_id;
 				$pools = $this->apa->get_data('pools', $apa_id);
@@ -93,17 +99,23 @@ if ( !class_exists( "apa_decay_ria" ) ) {
 					foreach($single_page['table_presets'] as $preset) {
 						$key_conv[$i] = $i+$added;
 						if($preset['name'] == 'rvalue') {
-							$new_presets[$i+1] = $preset;
-							$new_presets[$i+1]['name'] = 'raid_decay_'.$apa_id;
-							$added++;
+							if(in_array('raid', $this->modules_affected)){
+								$new_presets[$i+1] = $preset;
+								$new_presets[$i+1]['name'] = 'raid_decay_'.$apa_id;
+								$added++;
+							}
 						} elseif($preset['name'] == 'ivalue') {
-							$new_presets[$i+1] = $preset;
-							$new_presets[$i+1]['name'] = 'item_decay_'.$apa_id;
-							$added++;
+							if(in_array('item', $this->modules_affected)){
+								$new_presets[$i+1] = $preset;
+								$new_presets[$i+1]['name'] = 'item_decay_'.$apa_id;
+								$added++;
+							}
 						} elseif($preset['name'] == 'adj_value') {
-							$new_presets[$i+1] = $preset;
-							$new_presets[$i+1]['name'] = 'adjustment_decay_'.$apa_id;
-							$added++;
+							if(in_array('adjustment', $this->modules_affected)){
+								$new_presets[$i+1] = $preset;
+								$new_presets[$i+1]['name'] = 'adjustment_decay_'.$apa_id;
+								$added++;
+							}
 						}
 						$i++;
 					}
@@ -121,6 +133,7 @@ if ( !class_exists( "apa_decay_ria" ) ) {
 		}
 		
 		public function update_layout_changes($apa_id) {
+			$this->modules_affected = $this->apa->get_data('modules', $apa_id);
 			foreach($this->modules_affected as $module) {
 				$preset_name = $module.'_decay_'.$apa_id;
 				$this->pdh->update_user_preset($preset_name, false, $this->apa->get_data('name', $apa_id));
@@ -140,6 +153,7 @@ if ( !class_exists( "apa_decay_ria" ) ) {
 				}
 			}
 			$this->pdh->save_layout($this->config->get('eqdkp_layout'), $layout_def);
+			$this->modules_affected = $this->apa->get_data('modules', $apa_id);
 			foreach($this->modules_affected as $module) {
 				$preset_name = $module.'_decay_'.$apa_id;
 				$this->pdh->delete_user_preset($preset_name);
@@ -147,8 +161,8 @@ if ( !class_exists( "apa_decay_ria" ) ) {
 			return true;
 		}
 		
-		public function modules_affected() {
-			return $this->modules_affected;
+		public function modules_affected($apa_id) {
+			return $this->apa->get_data('modules', $apa_id);
 		}
 		
 		// get date of last calculation
@@ -157,7 +171,6 @@ if ( !class_exists( "apa_decay_ria" ) ) {
 			$exectime = $this->apa->get_data('exectime', $apa_id); //exectime as seconds from midnight
 			$decay_start = $this->apa->get_data('start_date', $apa_id); //start_date for fetching first day (wether we start on monday, thursday or w/e)
 			//set decay_start to next exectime
-			$exectime = $this->apa->get_data('exectime', $apa_id);
 			if(($decay_start%86400) > $exectime) $decay_start += 86400;
 			$decay_start = $decay_start + $exectime - $decay_start%86400;
 			//length of decay-period
@@ -171,15 +184,16 @@ if ( !class_exists( "apa_decay_ria" ) ) {
 			if($decay_start > $data['date']) return NULL;
 			if(($cache_date - $this->apa->get_data('zero_time', $apa_id)*2592000) > $data['date']) {
 				$decayed_val = 0;
+				$decay_adj = 0;
 			} else {
 				$previous_calc = $cache_date - $this->apa->get_data('decay_time', $apa_id)*86400;
 				$value = ($previous_calc < $data['date']) ? $data['value'] : $this->apa->get_decay_val($module, $dkp_id, $previous_calc, $data);
-				$decayed_val = $this->apa->run_calc_func($this->apa->get_data('calc_func', $apa_id), array($value, $cache_date, $data['date']));
+				$decayed_val = ($cache_date < $data['date']) ? $data['value'] : $this->apa->run_calc_func($this->apa->get_data('calc_func', $apa_id), array($value, $cache_date, $data['date'], $data['value']));
+				$decay_adj = $value - $decayed_val;
 			}
 			$ttl = $this->apa->get_data('decay_time', $apa_id)*86400*3; //3 times decay_period
-			return array($decayed_val, $ttl);
+			return array($decayed_val, $decay_adj, $ttl);
 		}
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_apa_decay_ria', apa_decay_ria::$shortcuts);
 ?>

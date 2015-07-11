@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,14 +25,13 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "pdh_r_points" ) ) {
 	class pdh_r_points extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'pdh', 'html', 'user');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
+		public static $shortcuts = array('apa' => 'auto_point_adjustments');
+		
 		public $default_lang = 'english';
 
 		public $points;
+		// initialise array to store multipools which are decayed
+		private $decayed = array();
 
 		public $hooks = array(
 			'adjustment_update',
@@ -56,7 +58,17 @@ if ( !class_exists( "pdh_r_points" ) ) {
 			'current' => 'summed_up',
 		);
 
-		public function reset(){
+		public function reset($affected_ids=array()){
+			//tell apas which ids to delete
+			if (empty($affected_ids)){
+				foreach($this->pdh->get('multidkp', 'id_list') as $mdkpid){
+					foreach($this->pdh->get('member', 'id_list')  as $memberid){
+						$apaAffectedIDs[] = $mdkpid.'_'.$memberid;
+					}
+				}
+			} else $apaAffectedIDs = $affected_ids;
+			$this->apa->enqueue_update('current', $apaAffectedIDs);
+			
 			$this->pdc->del('pdh_points_table');
 			$this->points = NULL;
 		}
@@ -161,9 +173,34 @@ if ( !class_exists( "pdh_r_points" ) ) {
 		public function get_html_adjustment($member_id, $multidkp_id, $event_id=0, $with_twink=true){
 			return '<span class="'.color_item($this->get_adjustment($member_id, $multidkp_id, $event_id, $with_twink)).'">'.runden($this->get_adjustment($member_id, $multidkp_id, $event_id, $with_twink)).'</span>';
 		}
+		
+		public function get_current_history($member_id, $multidkp_id, $from=0, $to=PHP_INT_MAX, $event_id=0, $itempool_id=0, $with_twink=true){
+			$arrPoints = $this->pdh->get('points_history', 'history', array($member_id, $multidkp_id, $from, $to, $event_id, $itempool_id, $with_twink));
+			$intValue = 0;
+			foreach($arrPoints as $val){
+				if ($val['type'] == 'earned') $intValue += (float)$val['value'];
+				if ($val['type'] == 'spent') $intValue -= (float)$val['value'];
+				if ($val['type'] == 'adjustment') $intValue += (float)$val['value'];
+			}
+			return $intValue;
+		}
 
 		public function get_current($member_id, $multidkp_id, $event_id=0, $itempool_id=0, $with_twink=true){
-			return ($this->get_earned($member_id, $multidkp_id, $event_id, $with_twink) - $this->get_spent($member_id, $multidkp_id, $event_id, $itempool_id, $with_twink) + $this->get_adjustment($member_id, $multidkp_id, $event_id, $with_twink));
+			if(!isset($this->decayed[$multidkp_id])) $this->decayed[$multidkp_id] = $this->apa->is_decay('current', $multidkp_id);
+			if($this->decayed[$multidkp_id]) {
+				$data =  array(
+					'id'			=> $multidkp_id.'_'.$member_id,
+					'member_id'		=> $member_id,
+					'dkp_id'		=> $multidkp_id,
+					'event_id'		=> $event_id,
+					'itempool_id'	=> $itempool_id,
+					'with_twink'	=> ($with_twink) ? true : false,
+					'date'			=> $this->time->time,
+				);
+				return $this->apa->get_decay_val('current', $multidkp_id, $this->time->time, $data);
+			} else {
+				return ($this->get_earned($member_id, $multidkp_id, $event_id, $with_twink) - $this->get_spent($member_id, $multidkp_id, $event_id, $itempool_id, $with_twink) + $this->get_adjustment($member_id, $multidkp_id, $event_id, $with_twink));
+			}
 		}
 
 		public function get_html_current($member_id, $multidkp_id,  $event_id=0, $itempool_id=0, $with_twink=true){
@@ -183,7 +220,7 @@ if ( !class_exists( "pdh_r_points" ) ) {
 				$tooltip = $this->user->lang('events').": <br />";
 				$events = $this->pdh->get('multidkp', 'event_ids', array($mdkpid));
 				if(is_array($events)) foreach($events as $event_id) $tooltip .= $this->pdh->get('event', 'name', array($event_id))."<br />";
-				$text = $this->html->ToolTip($tooltip, $text, '', $tt_options);
+				$text = new htooltip('tt_event'.(int)$mdkpid, array_merge(array('content' => $tooltip, 'label' => $text), $tt_options));
 			}
 			return $text;
 		}
@@ -277,5 +314,4 @@ if ( !class_exists( "pdh_r_points" ) ) {
 		}
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_points', pdh_r_points::__shortcuts());
 ?>

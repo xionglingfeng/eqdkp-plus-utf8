@@ -1,15 +1,37 @@
+<!-- IF S_NORMAL_HEADER -->
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li class="current"><a>{L_manadjs_title}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+<!-- ENDIF -->
+
+<!-- IF not S_POINTS_DISABLED -->
 <form method="post" action="{ACTION}" name="post">
-	<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch">
-		<tr>
-			<th colspan="{HPTT_COLUMN_COUNT}"><span style="float:left;">{L_manadjs_title}</span><span style="float:right;"><input type="button" name="addadj" value="{L_add_adjustment}" class="mainoption bi_new" onclick="window.location='manage_adjustments.php{SID}&amp;upd=true'"/></span></th>
-		</tr>
-			{ADJ_LIST}
-		<tr>
-			<th colspan="{HPTT_COLUMN_COUNT}"><input type="button" name="del" value="{L_delete_selected_adjs}" class="mainoption bi_delete" onclick="delete_warning();" />
-				<input type="hidden" name="del" value="1" disabled="disabled" id="mass_del_submit" />
-			</th>
-		</tr>
-		<tr class="pagination_row"><td colspan="{HPTT_COLUMN_COUNT}" align="center">{PAGINATION}</td></tr>
+	<div class="contentHeader">
+		<h1 class="contentTitle">{L_manadjs_title}</h1>
+	</div>
+	<div class="tableHeader floatRight">
+		<button class="mainoption" type="button" name="addadj" onclick="window.location='manage_adjustments.php{SID}&amp;upd=true'"><i class="fa fa-plus"></i>{L_add_adjustment}</button>
+	</div>
+	<table class="table fullwidth colorswitch scrollable-x">
+		{ADJ_LIST}
 	</table>
+	<div class="center pagination_wrapper">
+			{PAGINATION}
+	</div>
+	<div class="contentFooter">
+		<button class="mainoption" type="button" name="del" onclick="delete_warning();"><i class="fa fa-times"></i>{L_delete_selected_adjs}</button>
+		<input type="hidden" name="del" value="1" disabled="disabled" id="mass_del_submit" />
+	</div>
 	{CSRF_TOKEN}
 </form>
+
+<!-- ELSE -->
+<div class="infobox infobox-large infobox-red clearfix">
+	<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_disabled_points_info}
+</div>
+<!-- ENDIF -->

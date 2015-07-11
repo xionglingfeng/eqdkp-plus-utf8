@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2007
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if(!defined('EQDKP_INC')) {
 	die('Do not access this file directly.');
@@ -22,65 +25,52 @@ if(!defined('EQDKP_INC')) {
 
 if(!class_exists('pdh_w_links')) {
 	class pdh_w_links extends pdh_w_generic {
-		public static function __shortcuts() {
-		$shortcuts = array('pdh', 'db'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
-		public function __construct() {
-			parent::__construct();
-		}
-
-		public function save_links($p_linkname, $p_linkurl, $p_linkwindow, $p_link_visibility, $p_link_height){
-			$arrReturn = array();
-			foreach ( $p_linkname as $link_id => $link_name ){
-
-				//Insert a new link
-				if (strpos($link_id, 'new') === 0){
-					if (strlen($p_linkurl[$link_id]) && strlen($link_name)){
-						//get menu
-						$menuid = substr($link_id,-1);
-						$this->db->query("INSERT INTO __links :params", array(
-							'link_name'			=> $link_name,
-							'link_url'			=> $p_linkurl[$link_id],
-							'link_window'		=> ( isset($p_linkwindow[$link_id]) ) ? $p_linkwindow[$link_id] : 0,
-							'link_menu'			=> $menuid,
-							'link_visibility'	=> ( isset($p_link_visibility[$link_id]) ) ? $p_link_visibility[$link_id] : 0,
-							'link_height'		=> ( isset($p_link_height[$link_id]) && strlen($p_link_height[$link_id])) ? $p_link_height[$link_id] : 4024,
-						));
-						$arrReturn[$link_id] = $this->db->insert_id();
-					}				
-				} elseif (strlen($p_linkurl[$link_id]) && strlen($link_name)) {
-					//Update an existing link
-					$link_name			= ( isset($p_linkname[$link_id]) ) ? $p_linkname[$link_id] : '';
-					$link_url			= ( isset($p_linkurl[$link_id]) ) ? $p_linkurl[$link_id] : '';
-					$link_window		= ( isset($p_linkwindow[$link_id]) ) ? $p_linkwindow[$link_id] : 0;
-					$link_visibility	= ( isset($p_link_visibility[$link_id]) ) ? $p_link_visibility[$link_id] : 0;
-					$link_height		= ( isset($p_link_height[$link_id]) ) ? $p_link_height[$link_id] : 4024;
-					
-					$arrLink = $this->pdh->get('links', 'data', array($link_id));
-					if ($arrLink['name'] != $link_name OR $arrLink['url'] != $link_url OR (int)$arrLink['window'] != (int)$link_window OR (int)$arrLink['visibility'] != (int)$link_visibility OR (int)$arrLink['height'] != (int)$link_height){
-						$this->db->query("UPDATE __links SET :params WHERE link_id=?", array(
-							'link_name'			=> $link_name,
-							'link_url'			=> $link_url,
-							'link_window'		=> $link_window,
-							'link_visibility'	=> $link_visibility,
-							'link_height'		=> $link_height,
-						), $link_id);
-					}
-				} else {
-					$this->delete_link($link_id);
-				}	
+		
+		public function add($name, $url, $window=0, $visibility='[&#34;0&#34;]', $height=4024){
+			if (strlen($name)){
+				$objQuery = $this->db->prepare("INSERT INTO __links :p")->set(array(
+					'link_name'			=> $name,
+					'link_url'			=> $url,
+					'link_window'		=> $window,
+					'link_visibility'	=> $visibility,
+					'link_height'		=> $height,
+				))->execute();
+				
+				if ($objQuery){
+					$this->pdh->enqueue_hook('links');
+					return $objQuery->insertId;
+				}
 			}
-			$this->pdh->enqueue_hook('links');
-			return $arrReturn;
+			return false;
+		}
+		
+		public function update($id, $name, $url, $window, $visibility, $height, $force = false){
+			$data = $this->pdh->get('links', 'data', array($id));
+		
+			if ($force OR $data['name'] != $name OR $data['url'] != $url OR (int)$data['window'] != (int)$window OR $data['visibility'] != $visibility OR (int)$data['height'] != (int)$height){
+				$objQuery = $this->db->prepare("UPDATE __links :p WHERE link_id=?")->set(array(
+					'link_name'			=> $name,
+					'link_url'			=> $url,
+					'link_window'		=> $window,
+					'link_visibility'	=> $visibility,
+					'link_height'		=> $height,
+				))->execute($id);
+				
+				$this->pdh->enqueue_hook('links');
+				if (!$objQuery) return false;
+			}
+			return true;
 		}
 
 		public function delete_link($id){
-			$this->db->query("DELETE FROM __links WHERE link_id = '".$this->db->escape($id)."'");
+			$objQuery = $this->db->prepare("DELETE FROM __links WHERE link_id =?")->execute($id);
 			$this->pdh->enqueue_hook('links', array($id));
+		}
+		
+		public function deleteByName($strName){
+			$objQuery = $this->db->prepare("DELETE FROM __links WHERE link_name =?")->execute($strName);
+			$this->pdh->enqueue_hook('links');
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_w_links', pdh_w_links::__shortcuts());
 ?>

@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,10 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "pdh_r_calendar_events" ) ) {
 	class pdh_r_calendar_events extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'db', 'user', 'time', 'pdh'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 		public $default_lang = 'english';
 		public $events;
@@ -56,65 +55,82 @@ if ( !class_exists( "pdh_r_calendar_events" ) ) {
 		);
 
 		public function reset(){
-			$this->pdc->del('pdh_calendar_events_table');
-			$this->pdc->del('pdh_calendar_repeatable_events_table');
-			$this->events = NULL;
-			$this->repeatable_events = NULL;
+			$this->pdc->del('pdh_calendar_events_table.events');
+			$this->pdc->del('pdh_calendar_events_table.repeatable');
+			$this->pdc->del('pdh_calendar_events_table.timestamps');
+			$this->events				= NULL;
+			$this->repeatable_events	= NULL;
+			$this->event_timestamps		= NULL;
 		}
 
 		public function init(){
 			//cached data not outdated?
-			$this->events				= $this->pdc->get('pdh_calendar_events_table');
-			$this->repeatable_events	= $this->pdc->get('pdh_calendar_repeatable_events_table');
-			if($this->events !== NULL && $this->repeatable_events !== NULL){
+			$this->events				= $this->pdc->get('pdh_calendar_events_table.events');
+			$this->repeatable_events	= $this->pdc->get('pdh_calendar_events_table.repeatable');
+			$this->event_timestamps		= $this->pdc->get('pdh_calendar_events_table.timestamps');
+			if($this->events !== NULL && $this->repeatable_events !== NULL && $this->event_timestamps !== NULL){
 				return true;
 			}
-
-			$query = $this->db->query("SELECT * FROM __calendar_events");
-			while ( $row = $this->db->fetch_record($query) ){
-				$this->events[$row['id']] = array(
-					'id'					=> $row['id'],
-					'calendar_id'			=> $row['calendar_id'],
-					'name'					=> $row['name'],
-					'creator'				=> $row['creator'],
-					'timestamp_start'		=> $row['timestamp_start'],
-					'timestamp_end'			=> $row['timestamp_end'],
-					'allday'				=> $row['allday'],
-					'private'				=> $row['private'],
-					'visible'				=> $row['visible'],
-					'closed'				=> $row['closed'],
-					'notes'					=> $row['notes'],
-					'repeating'				=> $row['repeating'],
-					'cloneid'				=> $row['cloneid'],
-				);
-				$this->events[$row['id']]['extension'] = unserialize($row['extension']);
-
-				// set the repeatable array
-				if($row['repeating'] != 'none'){
-					$parentid	= ($row['cloneid'] > 0) ? $row['cloneid'] : $row['id'];
-					$this->repeatable_events[$parentid][] = $row['id'];
+			
+			$objQuery = $this->db->query("SELECT * FROM __calendar_events");
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$this->events[$row['id']] = array(
+						'id'					=> $row['id'],
+						'calendar_id'			=> $row['calendar_id'],
+						'name'					=> $row['name'],
+						'creator'				=> $row['creator'],
+						'timestamp_start'		=> $row['timestamp_start'],
+						'timestamp_end'			=> $row['timestamp_end'],
+						'allday'				=> $row['allday'],
+						'private'				=> $row['private'],
+						'visible'				=> $row['visible'],
+						'closed'				=> $row['closed'],
+						'notes'					=> $row['notes'],
+						'repeating'				=> $row['repeating'],
+						'cloneid'				=> $row['cloneid'],
+					);
+					$this->events[$row['id']]['extension']	= unserialize($row['extension']);
+					$this->event_timestamps[$row['id']]		= $row['timestamp_start'];
+	
+					// set the repeatable array
+					if($row['repeating'] != 'none'){
+						$parentid	= ($row['cloneid'] > 0) ? $row['cloneid'] : $row['id'];
+						$this->repeatable_events[$parentid][] = $row['id'];
+					}
 				}
+				
+				// sort the timestamps
+				if(is_array($this->event_timestamps)) asort($this->event_timestamps);
+	
+				// set the cache
+				$this->pdc->put('pdh_calendar_events_table.events', $this->events, null);
+				$this->pdc->put('pdh_calendar_events_table.repeatable', $this->repeatable_events, null);
+				$this->pdc->put('pdh_calendar_events_table.timestamps', $this->event_timestamps, null);
 			}
-			if($query){
-				$this->db->free_result($query);
-				$this->pdc->put('pdh_calendar_events_table', $this->events, null);
-				$this->pdc->put('pdh_calendar_repeatable_events_table', $this->repeatable_events, null);
-			}
+
 		}
 
-		public function get_id_list($raids_only=false, $start_date = 0, $end_date = 9999999999){
+		public function get_id_list($raids_only=false, $start_date = 0, $end_date = 9999999999, $calfilter=false){
 			$ids = array();
 			if(($start_date != 0) || ($end_date != 9999999999)){
-				$query = $this->db->query("SELECT id FROM __calendar_events WHERE timestamp_start BETWEEN '".$this->db->escape($start_date)."' AND '".$this->db->escape($end_date)."' OR timestamp_end BETWEEN '".$this->db->escape($start_date)."' AND '".$this->db->escape($end_date)."'");
-				if($raids_only) {
-					while ( $row = $this->db->fetch_record($query) ){
-						if($this->get_calendartype($row['id']) == '1'){
+				$sqlstring	 = "SELECT id FROM __calendar_events WHERE";
+				$sqlstring	.= (is_array($calfilter)) ? ' (calendar_id IN ('.implode(",", $calfilter).')) AND' : '';
+				$sqlstring	.= " ((timestamp_start BETWEEN ".$this->db->escapeString($start_date)." AND ".$this->db->escapeString($end_date).") OR (timestamp_end BETWEEN ".$this->db->escapeString($start_date)." AND ".$this->db->escapeString($end_date)."))";
+
+				$query = $this->db->query($sqlstring);
+				if ($query){
+					if($raids_only) {
+						$what2filter	= (($raids_only === 'appointments') ? '2' : '1');
+						while ( $row = $query->fetchAssoc() ){
+							if($this->get_calendartype($row['id']) == $what2filter){
+								$ids[] = $row['id'];
+							}
+						}
+					}else{
+						while ( $row = $query->fetchAssoc() ){
 							$ids[] = $row['id'];
 						}
-					}
-				}else{
-					while ( $row = $this->db->fetch_record($query) ){
-						$ids[] = $row['id'];
 					}
 				}
 			}else if(isset($this->events)){
@@ -122,6 +138,9 @@ if ( !class_exists( "pdh_r_calendar_events" ) ) {
 				if($raids_only) {
 					foreach($ids as $key => $id) {
 						if($this->get_calendartype($id) != '1' || $this->events[$id]['timestamp_end'] < $this->time->time) unset($ids[$key]);
+
+						// us the claendarfilter
+						if(is_array($calfilter) && !in_array($this->get_calendar_id($id), $calfilter)) unset($ids[$key]);
 					}
 				}
 			}
@@ -159,12 +178,16 @@ if ( !class_exists( "pdh_r_calendar_events" ) ) {
 				$raidname = $this->pdh->get('event', 'name', array($extension['raid_eventid']));
 				return ($raidname) ? $raidname : $this->user->lang('raidevent_raid_notitle');
 			}else{
-				return	$this->events[$id]['name'];
+				return	isset($this->events[$id]) ? $this->events[$id]['name'] : '';
 			}
 		}
 
 		public function get_creator($id){
 			return ($this->events[$id]['creator']) ? $this->pdh->get('user', 'name', array($this->events[$id]['creator'])) : '';
+		}
+
+		public function get_creatorid($id){
+			return ($this->events[$id]['creator']) ? $this->events[$id]['creator'] : 0;
 		}
 
 		public function get_date($id) {
@@ -195,15 +218,15 @@ if ( !class_exists( "pdh_r_calendar_events" ) ) {
 		}
 
 		public function get_time_start($id){
-			return 	$this->events[$id]['timestamp_start'];
+			return (isset($this->events[$id]['timestamp_start']) ? $this->events[$id]['timestamp_start'] : 0);
 		}
 
 		public function get_html_time_start($id) {
 			return $this->time->user_date($this->events[$id]['timestamp_start'], false, true);
 		}
 
-		public function get_time_end($id){
-			return $this->events[$id]['timestamp_end'];
+		public function get_time_end($id, $exclusivefix=false){
+			return ($exclusivefix) ? $this->time->adddays($this->events[$id]['timestamp_end']) : $this->events[$id]['timestamp_end'];
 		}
 
 		public function get_html_time_end($id) {
@@ -239,11 +262,11 @@ if ( !class_exists( "pdh_r_calendar_events" ) ) {
 		}
 
 		public function get_detailslink($id){
-			return '<a href="'.$this->root_path.'calendar/viewcalraid.php'.$this->SID.'&amp;eventid='.$id.'" class="arrowright"></a>';
+			return '<a href="'.$this->routing->build('calendarevent', $this->get_name($id), $id).'"><i class="fa fa-lg fa-arrow-right"></i></a>';
 		}
 
 		public function get_edit($id){
-			return '<img src="'.$this->root_path.'images/glyphs/edit.png" alt="'.$this->user->lang('calendar_edit').'" title="'.$this->user->lang('calendar_edit').'" onclick="editEvent(\''.$id.'\')"/>';
+			return '<i class="fa fa-pencil fa-lg hand" title="'.$this->user->lang('calendar_edit').'" onclick="editEvent(\''.$id.'\')"></i>';
 		}
 
 		public function get_raid_event($id){
@@ -251,6 +274,69 @@ if ( !class_exists( "pdh_r_calendar_events" ) ) {
 			$raideventname	= $this->pdh->get('event', 'name', array($this->events[$id]['extension']['raid_eventid']));
 			$raideventname	= ($this->get_raidstatus($id) == '1') ? '<span class="linethrough">'.$raideventname.'</span>' : $raideventname;
 			return $this->pdh->geth('event', 'icon', array($this->events[$id]['extension']['raid_eventid'])).' '.$raideventname;
+		}
+
+		public function get_next_event($id){
+			$this->helper_set_pointer($this->event_timestamps, $id);
+			next($this->event_timestamps);
+			$next_eventid	= key($this->event_timestamps);
+			reset($this->event_timestamps);
+			return ($next_eventid > 0 && $next_eventid != $id) ? $next_eventid : false;
+		}
+		
+		public function get_next_raid($id){
+			$this->helper_set_pointer($this->event_timestamps, $id);
+			$blnRaidFound = false;
+			$next_raid = 0;
+			
+			while(!$blnRaidFound){
+				$nextResult = next($this->event_timestamps);
+				if (!$nextResult) break;
+				
+				$next_eventid	= key($this->event_timestamps);
+				if ($this->get_calendartype($next_eventid) == '1'){
+					$next_raid = $next_eventid;
+					$blnRaidFound = true;
+					break;
+				}
+			}
+			reset($this->event_timestamps);
+			return ($next_raid > 0 && $next_raid != $id) ? $next_raid : false;
+		}
+		
+		public function get_prev_event($id){
+			$this->helper_set_pointer($this->event_timestamps, $id);
+			prev($this->event_timestamps);
+			$prev_eventid	= key($this->event_timestamps);
+			reset($this->event_timestamps);
+			return ($prev_eventid > 0 && $prev_eventid != $id) ? $prev_eventid : false;
+		}
+		
+		public function get_prev_raid($id){
+			$this->helper_set_pointer($this->event_timestamps, $id);
+			$blnRaidFound = false;
+			$prev_raid = 0;
+				
+			while(!$blnRaidFound){
+				$prevResult = prev($this->event_timestamps);
+				if (!$prevResult) break;
+		
+				$prev_eventid	= key($this->event_timestamps);
+				if ($this->get_calendartype($prev_eventid) == '1'){
+					$prev_raid = $prev_eventid;
+					$blnRaidFound = true;
+					break;
+				}
+			}
+			reset($this->event_timestamps);
+			return ($prev_raid > 0 && $prev_raid != $id) ? $prev_raid : false;
+		}
+		
+		private function helper_set_pointer(&$array,$key){
+			reset ($array);
+			while (key($array) !== $key) {
+				if (next($array) === false) throw new Exception('Invalid key');
+			}
 		}
 
 		public function get_search($search_value) {
@@ -262,14 +348,55 @@ if ( !class_exists( "pdh_r_calendar_events" ) ) {
 						$arrSearchResults[] = array(
 							'id'	=> $this->get_html_date($id).' '.$this->get_html_time_start($id),
 							'name'	=> $this->get_name($id),
-							'link'	=> $this->root_path.'calendar/viewcalraid.php'.$this->SID.'&amp;event_id='.$id,
+							'link'	=> $this->routing->build('calendarevent', $this->get_name($id), $id),
 						);
 					}
 				}
 			}
 			return $arrSearchResults;
 		}
+
+	    /* -----------------------------------------------------------------------
+	    * Planned raid to RLI/Raid creation
+	    * -----------------------------------------------------------------------*/
+		public function get_export_data($id, $json=false){
+			$exportdata = $this->get_data($id);
+			
+			// unset the extension sub array
+			unset($exportdata['extension']);
+			
+			//now, add the extension array on the same level
+			$exportdata =array_merge($exportdata, $this->get_extension($id));
+
+			// now add the attendee data
+			$exportdata['attendees']['confirmed']	= $this->pdh->get('calendar_raids_attendees', 'attendee_stats', array($id, '0'));
+			$exportdata['attendees']['signedin']	= $this->pdh->get('calendar_raids_attendees', 'attendee_stats', array($id, '1'));
+			$exportdata['attendees']['signedoff']	= $this->pdh->get('calendar_raids_attendees', 'attendee_stats', array($id, '2'));
+			$exportdata['attendees']['backup']		= $this->pdh->get('calendar_raids_attendees', 'attendee_stats', array($id, '3'));
+			$exportdata['attendees']['guests']		= $this->pdh->get('calendar_raids_guests', 'members', array($id));
+			
+			return ($json) ? json_encode($exportdata) : $exportdata;
+		}
+
+	    /* -----------------------------------------------------------------------
+	    * Statistic stuff
+		* - amount of raids in the x days
+	    * -----------------------------------------------------------------------*/
+
+		public function get_amount_raids($days, $retcount=true){
+			$raids = array_filter($this->events, function ($element) use (&$days) {
+				return ($element['timestamp_start'] > (time()-($days*86400))); 
+			});
+			return ($retcount) ? count($raids) : $raids;
+		}
+		
+		public function get_amount_raids_fromto($from, $to, $retcount=true){
+			$raids = array_filter($this->events, function ($element) use (&$from, &$to) {
+				return ($element['timestamp_start'] > ($from) && ($element['timestamp_end'] < $to));
+			});
+			return ($retcount) ? count($raids) : $raids;
+		}
+
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_calendar_events', pdh_r_calendar_events::__shortcuts());
 ?>

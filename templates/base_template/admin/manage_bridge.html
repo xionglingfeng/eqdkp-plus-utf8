@@ -28,7 +28,7 @@
 					handle_prefix(1);
 					load_prefixes(false);
 				} else {
-					error_message('{L_bridge_error_db}');
+					error_message({L_bridge_error_db|jsencode});
 					show_div('button_check_database');
 				}
 		 });
@@ -79,7 +79,7 @@
 						handle_usergroups(1);
 						load_usergroups();
 					} else {
-						error_message('{L_bridge_error_usertable}');
+						error_message({L_bridge_error_usertable|jsencode});
 						show_div('button_check_usertable') ;
 					}
 
@@ -121,7 +121,7 @@
 				 if ($.trim(data) == 'true'){
 					window.location = 'manage_bridge.php{SID}&activate=true';
 				} else {
-					error_message('{L_bridge_error_login}');
+					error_message({L_bridge_error_login|jsencode});
 					show_div('button_check_useraccount');
 				}
 			});
@@ -180,8 +180,8 @@
 			handle_prefix(0);
 			hide_div('error_message');
 			hide_div('success_message');
-			$("#radio_samedb1").attr("checked", false);
-			$("#radio_samedb2").attr("checked", false);
+			$("#radio_samedb1").prop("checked", false);
+			$("#radio_samedb2").prop("checked", false);
 	}
 
 	function onchange_prefix(){
@@ -231,19 +231,37 @@
 
 </script>
 
+<!-- IF S_NORMAL_HEADER -->
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li class="current"><a>{L_manage_bridge}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+<!-- ENDIF -->
+
 <div id="error_message" style="display:none;">
-	<div class="errorbox roundbox">
-		<div class="icon_false" id="error_message_txt"></div>
+	<div class="infobox infobox-large infobox-red clearfix">
+		<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> <span id="error_message_txt"></span>
 	</div>
 </div>
 
 <!-- IF S_ACTIVATE_MESSAGE -->
 <div id="success_message">
-<div class="greenbox roundbox">
-	<div class="icon_ok" id="error_message_txt">{L_bridge_success}</div>
-</div>
+	<div class="infobox infobox-large infobox-green clearfix">
+		<i class="fa fa-check fa-4x pull-left"></i> {L_bridge_success}
+	</div>
 </div>
 <!-- ENDIF -->
+
+<!-- IF S_PROFILEFIELDS_INFO -->
+<div class="infobox infobox-large infobox-blue clearfix">
+	<i class="fa fa-info-circle fa-4x pull-left"></i> {L_bridge_profilefields_info}
+</div>
+<!-- ENDIF -->
+
 
 <form method="post" action="{ACTION}&amp;edit=true" name="post">
   <fieldset class="settings">
@@ -343,8 +361,12 @@
 			<dl id="useraccount" <!-- IF S_BRIDGE_ACTIVE -->style="display:none;"<!-- ENDIF -->>
 				<dt><label>{L_bridge_userlogin}</label><br /><span>{L_bridge_userlogin_help}</span></dt>
 				<dd>
-					<input type="text" name="acc_username" id="acc_username" class="input username" />
+					<div class="input-icon"><i class="fa fa-user"></i>
+						<input type="text" name="acc_username" id="acc_username" class="input username" />
+					</div>
+					<div class="input-icon"><i class="fa fa-key"></i>
 					<input type="password" name="acc_password" id="acc_password" class="input password" />
+					</div>
 				</dd>
 			</dl>
 
@@ -354,15 +376,21 @@
 	<fieldset id="integration" class="settings">
 		<legend>{L_bridge_integration}</legend>
 			<dl>
-				<dt><label>{L_bridge_show_link}</label><br /><span>{L_bridge_show_link_help}</span></dt>
+				<dt><label>{L_bridge_url}</label><br /><span>{L_bridge_url_help}</span></dt>
 				<dd><label>
-					<input type="checkbox" name="cms_show_link" value="1" <!-- IF S_CMS_LINK -->checked="checked"<!-- ENDIF --> />
+					<input type="text" name="cms_url" class="input" value="{CMS_URL}" style="width:80%;"/>
 				</label></dd>
 			</dl>
 			<dl>
-				<dt><label>{L_bridge_url}</label><br /><span>{L_bridge_url_help}</span></dt>
+				<dt><label>{L_bridge_pwreset_url}</label><br /><span>{L_bridge_pwreset_url_help}</span></dt>
 				<dd><label>
-					<input type="text" name="cms_url" class="input" value="{CMS_URL}" />
+					<input type="text" name="cms_pwreset_url" class="input" value="{CMS_PWRESET_URL}"  style="width:80%;" />
+				</label></dd>
+			</dl>
+			<dl>
+				<dt><label>{L_bridge_reg_redirect_url}</label><br /><span>{L_bridge_reg_redirect_url_help}</span></dt>
+				<dd><label>
+					<input type="text" name="cms_reg_url" class="input" value="{CMS_REG_URL}"  style="width:80%;"/>
 				</label></dd>
 			</dl>
 			<dl>
@@ -371,52 +399,42 @@
 					{DD_EMBEDD_OPTIONS}
 				</label></dd>
 			</dl>
-
-			<dl>
-				<dt><label>{L_bridge_reg_redirect}</label><br /><span>{L_bridge_reg_redirect_help}</span></dt>
-				<dd><label>
-					<input type="checkbox" name="cms_reg_redirect" value="1" <!-- IF S_CMS_REG_REDIRECT -->checked="checked"<!-- ENDIF --> />
-				</label></dd>
-			</dl>
-			<dl>
-				<dt><label>{L_bridge_reg_redirect_url}</label><br /><span>{L_bridge_reg_redirect_url_help}</span></dt>
-				<dd><label>
-					<input type="text" name="cms_reg_url" class="input" value="{CMS_REG_URL}" />
-				</label></dd>
-			</dl>
-			<dl>
-				<dt><label>{L_bridge_reg_redirect_open}</label><br /><span>{L_bridge_reg_redirect_open_help}</span></dt>
-				<dd><label>
-					{DD_REG_EMBEDDED_OPTIONS}
-				</label></dd>
-			</dl>
 			<dl>
 				<dt><label>{L_bridge_onlycmsuserlogin}</label><br /><span>{L_bridge_onlycmsuserlogin_help}</span></dt>
 				<dd><label>
 					<input type="checkbox" name="cms_onlycmsuserlogin" value="1" <!-- IF S_ONLYCMSUSERLOGIN -->checked="checked"<!-- ENDIF --> />
 				</label></dd>
 			</dl>
+			
+			<dl>
+				<dt><label>{L_bridge_sync_usergroups}</label><br /><span>{L_bridge_sync_usergroups_help}</span></dt>
+				<dd><label>
+					{MS_SYNC_USERGROUPS}
+				</label></dd>
+			</dl>
 	</fieldset>
 	<!-- IF S_BRIDGE_SETTINGS -->
 	<fieldset id="bridge_options" class="settings">
 		<legend>{L_bridge_settings}</legend>
-			<!-- BEGIN field -->
+			<!-- BEGIN fields -->
 			<dl>
-				<dt><label>{field.NAME}</label><br /><span>{field.HELP}</span></dt>
-				<dd>{field.FIELD}</dd>
+				<dt><label>{fields.NAME}</label><br /><span>{fields.HELP}</span></dt>
+				<dd>{fields.FIELD}</dd>
 			</dl>
-			<!-- END field -->
+			<!-- END fields -->
 	</fieldset>
 	<!-- ENDIF -->
 	<!-- ENDIF -->
 
 	<div align="center">
-	<input type="button" class="mainoption bi_ok" id="button_check_database" onclick="check_database()" value="{L_bridge_continue}" style="display:none;" />
-	<input type="button" class="mainoption bi_ok" id="button_check_usertable" onclick="check_usertable()" value="{L_bridge_continue}" style="display:none;" />
-	<input type="button" class="mainoption bi_ok" id="button_check_useraccount" onclick="check_useraccount()" value="{L_bridge_continue}" style="display:none;" />
-	<input type="submit" class="mainoption bi_ok" id="submit_button" value="{L_save}" <!-- IF not S_BRIDGE_ACTIVE -->style="display:none;"<!-- ENDIF --> />
+		<button class="mainoption" type="button" id="button_check_database" onclick="check_database()" style="display:none;"><i class="fa fa-check"></i>{L_bridge_continue}</button>
+		<button class="mainoption" type="button" id="button_check_usertable" onclick="check_usertable()" style="display:none;"><i class="fa fa-check"></i>{L_bridge_continue}</button>
+		<button class="mainoption" type="button" id="button_check_useraccount" onclick="check_useraccount()" style="display:none;"><i class="fa fa-check"></i>{L_bridge_continue}</button>
+		<button class="mainoption" type="submit" id="submit_button" <!-- IF not S_BRIDGE_ACTIVE -->style="display:none;"<!-- ENDIF -->><i class="fa fa-check"></i>{L_save}</button>
 	</div>
-	<div id="loading_area" style="display:none;" align="center"><img src="{EQDKP_IMAGE_PATH}global/loading.gif" alt="{L_bridge_loading}" />{L_bridge_loading}</div>
+	<div id="loading_area" style="display:none;"  align="center">
+		<i class="fa fa-spinner fa-spin fa-lg"></i> {L_bridge_loading}
+	</div>
 
 	</div>
 {CSRF_TOKEN}

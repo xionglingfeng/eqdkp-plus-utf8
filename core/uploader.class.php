@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,7 +24,6 @@ if ( !defined('EQDKP_INC') ){
 }
 
 class uploader extends gen_class {
-	public static $shortcuts = array('core', 'pfh', 'in', 'tpl', 'config');
 
 	private $added_js = false;
 	
@@ -258,70 +260,70 @@ class uploader extends gen_class {
 			}
 
 			.php-file-tree .pft-directory {
-				list-style-image: url(".$this->root_path."images/glyphs/extensions/directory.png);
+				list-style-image: url(".$this->root_path."images/extensions/directory.png);
 			}
 
 			/* Default file */
-			.php-file-tree LI.pft-file { list-style-image: url(".$this->root_path."images/glyphs/extensions/file.png); }
+			.php-file-tree LI.pft-file { list-style-image: url(".$this->root_path."images/extensions/file.png); }
 			/* Additional file types */
-			.php-file-tree LI.ext-3gp { list-style-image: url(".$this->root_path."images/glyphs/extensions/film.png); }
-			.php-file-tree LI.ext-afp { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-afpa { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-asp { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-aspx { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-avi { list-style-image: url(".$this->root_path."images/glyphs/extensions/film.png); }
-			.php-file-tree LI.ext-bat { list-style-image: url(".$this->root_path."images/glyphs/extensions/application.png); }
-			.php-file-tree LI.ext-bmp { list-style-image: url(".$this->root_path."images/glyphs/extensions/picture.png); }
-			.php-file-tree LI.ext-c { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-cfm { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-cgi { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-com { list-style-image: url(".$this->root_path."images/glyphs/extensions/application.png); }
-			.php-file-tree LI.ext-cpp { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-css { list-style-image: url(".$this->root_path."images/glyphs/extensions/css.png); }
-			.php-file-tree LI.ext-doc { list-style-image: url(".$this->root_path."images/glyphs/extensions/doc.png); }
-			.php-file-tree LI.ext-exe { list-style-image: url(".$this->root_path."images/glyphs/extensions/application.png); }
-			.php-file-tree LI.ext-gif { list-style-image: url(".$this->root_path."images/glyphs/extensions/picture.png); }
-			.php-file-tree LI.ext-fla { list-style-image: url(".$this->root_path."images/glyphs/extensions/flash.png); }
-			.php-file-tree LI.ext-h { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-htm { list-style-image: url(".$this->root_path."images/glyphs/extensions/html.png); }
-			.php-file-tree LI.ext-html { list-style-image: url(".$this->root_path."images/glyphs/extensions/html.png); }
-			.php-file-tree LI.ext-jar { list-style-image: url(".$this->root_path."images/glyphs/extensions/java.png); }
-			.php-file-tree LI.ext-jpg { list-style-image: url(".$this->root_path."images/glyphs/extensions/picture.png); }
-			.php-file-tree LI.ext-jpeg { list-style-image: url(".$this->root_path."images/glyphs/extensions/picture.png); }
-			.php-file-tree LI.ext-js { list-style-image: url(".$this->root_path."images/glyphs/extensions/script.png); }
-			.php-file-tree LI.ext-lasso { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-log { list-style-image: url(".$this->root_path."images/glyphs/extensions/txt.png); }
-			.php-file-tree LI.ext-m4p { list-style-image: url(".$this->root_path."images/glyphs/extensions/music.png); }
-			.php-file-tree LI.ext-mov { list-style-image: url(".$this->root_path."images/glyphs/extensions/film.png); }
-			.php-file-tree LI.ext-mp3 { list-style-image: url(".$this->root_path."images/glyphs/extensions/music.png); }
-			.php-file-tree LI.ext-mp4 { list-style-image: url(".$this->root_path."images/glyphs/extensions/film.png); }
-			.php-file-tree LI.ext-mpg { list-style-image: url(".$this->root_path."images/glyphs/extensions/film.png); }
-			.php-file-tree LI.ext-mpeg { list-style-image: url(".$this->root_path."images/glyphs/extensions/film.png); }
-			.php-file-tree LI.ext-ogg { list-style-image: url(".$this->root_path."images/glyphs/extensions/music.png); }
-			.php-file-tree LI.ext-pcx { list-style-image: url(".$this->root_path."images/glyphs/extensions/picture.png); }
-			.php-file-tree LI.ext-pdf { list-style-image: url(".$this->root_path."images/glyphs/extensions/pdf.png); }
-			.php-file-tree LI.ext-php { list-style-image: url(".$this->root_path."images/glyphs/extensions/php.png); }
-			.php-file-tree LI.ext-png { list-style-image: url(".$this->root_path."images/glyphs/extensions/picture.png); }
-			.php-file-tree LI.ext-ppt { list-style-image: url(".$this->root_path."images/glyphs/extensions/ppt.png); }
-			.php-file-tree LI.ext-psd { list-style-image: url(".$this->root_path."images/glyphs/extensions/psd.png); }
-			.php-file-tree LI.ext-pl { list-style-image: url(".$this->root_path."images/glyphs/extensions/script.png); }
-			.php-file-tree LI.ext-py { list-style-image: url(".$this->root_path."images/glyphs/extensions/script.png); }
-			.php-file-tree LI.ext-rb { list-style-image: url(".$this->root_path."images/glyphs/extensions/ruby.png); }
-			.php-file-tree LI.ext-rbx { list-style-image: url(".$this->root_path."images/glyphs/extensions/ruby.png); }
-			.php-file-tree LI.ext-rhtml { list-style-image: url(".$this->root_path."images/glyphs/extensions/ruby.png); }
-			.php-file-tree LI.ext-rpm { list-style-image: url(".$this->root_path."images/glyphs/extensions/linux.png); }
-			.php-file-tree LI.ext-ruby { list-style-image: url(".$this->root_path."images/glyphs/extensions/ruby.png); }
-			.php-file-tree LI.ext-sql { list-style-image: url(".$this->root_path."images/glyphs/extensions/db.png); }
-			.php-file-tree LI.ext-swf { list-style-image: url(".$this->root_path."images/glyphs/extensions/flash.png); }
-			.php-file-tree LI.ext-tif { list-style-image: url(".$this->root_path."images/glyphs/extensions/picture.png); }
-			.php-file-tree LI.ext-tiff { list-style-image: url(".$this->root_path."images/glyphs/extensions/picture.png); }
-			.php-file-tree LI.ext-txt { list-style-image: url(".$this->root_path."images/glyphs/extensions/txt.png); }
-			.php-file-tree LI.ext-vb { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-wav { list-style-image: url(".$this->root_path."images/glyphs/extensions/music.png); }
-			.php-file-tree LI.ext-wmv { list-style-image: url(".$this->root_path."images/glyphs/extensions/film.png); }
-			.php-file-tree LI.ext-xls { list-style-image: url(".$this->root_path."images/glyphs/extensions/xls.png); }
-			.php-file-tree LI.ext-xml { list-style-image: url(".$this->root_path."images/glyphs/extensions/code.png); }
-			.php-file-tree LI.ext-zip { list-style-image: url(".$this->root_path."images/glyphs/extensions/zip.png); }
+			.php-file-tree LI.ext-3gp { list-style-image: url(".$this->root_path."images/extensions/film.png); }
+			.php-file-tree LI.ext-afp { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-afpa { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-asp { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-aspx { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-avi { list-style-image: url(".$this->root_path."images/extensions/film.png); }
+			.php-file-tree LI.ext-bat { list-style-image: url(".$this->root_path."images/extensions/application.png); }
+			.php-file-tree LI.ext-bmp { list-style-image: url(".$this->root_path."images/extensions/picture.png); }
+			.php-file-tree LI.ext-c { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-cfm { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-cgi { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-com { list-style-image: url(".$this->root_path."images/extensions/application.png); }
+			.php-file-tree LI.ext-cpp { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-css { list-style-image: url(".$this->root_path."images/extensions/css.png); }
+			.php-file-tree LI.ext-doc { list-style-image: url(".$this->root_path."images/extensions/doc.png); }
+			.php-file-tree LI.ext-exe { list-style-image: url(".$this->root_path."images/extensions/application.png); }
+			.php-file-tree LI.ext-gif { list-style-image: url(".$this->root_path."images/extensions/picture.png); }
+			.php-file-tree LI.ext-fla { list-style-image: url(".$this->root_path."images/extensions/flash.png); }
+			.php-file-tree LI.ext-h { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-htm { list-style-image: url(".$this->root_path."images/extensions/html.png); }
+			.php-file-tree LI.ext-html { list-style-image: url(".$this->root_path."images/extensions/html.png); }
+			.php-file-tree LI.ext-jar { list-style-image: url(".$this->root_path."images/extensions/java.png); }
+			.php-file-tree LI.ext-jpg { list-style-image: url(".$this->root_path."images/extensions/picture.png); }
+			.php-file-tree LI.ext-jpeg { list-style-image: url(".$this->root_path."images/extensions/picture.png); }
+			.php-file-tree LI.ext-js { list-style-image: url(".$this->root_path."images/extensions/script.png); }
+			.php-file-tree LI.ext-lasso { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-log { list-style-image: url(".$this->root_path."images/extensions/txt.png); }
+			.php-file-tree LI.ext-m4p { list-style-image: url(".$this->root_path."images/extensions/music.png); }
+			.php-file-tree LI.ext-mov { list-style-image: url(".$this->root_path."images/extensions/film.png); }
+			.php-file-tree LI.ext-mp3 { list-style-image: url(".$this->root_path."images/extensions/music.png); }
+			.php-file-tree LI.ext-mp4 { list-style-image: url(".$this->root_path."images/extensions/film.png); }
+			.php-file-tree LI.ext-mpg { list-style-image: url(".$this->root_path."images/extensions/film.png); }
+			.php-file-tree LI.ext-mpeg { list-style-image: url(".$this->root_path."images/extensions/film.png); }
+			.php-file-tree LI.ext-ogg { list-style-image: url(".$this->root_path."images/extensions/music.png); }
+			.php-file-tree LI.ext-pcx { list-style-image: url(".$this->root_path."images/extensions/picture.png); }
+			.php-file-tree LI.ext-pdf { list-style-image: url(".$this->root_path."images/extensions/pdf.png); }
+			.php-file-tree LI.ext-php { list-style-image: url(".$this->root_path."images/extensions/php.png); }
+			.php-file-tree LI.ext-png { list-style-image: url(".$this->root_path."images/extensions/picture.png); }
+			.php-file-tree LI.ext-ppt { list-style-image: url(".$this->root_path."images/extensions/ppt.png); }
+			.php-file-tree LI.ext-psd { list-style-image: url(".$this->root_path."images/extensions/psd.png); }
+			.php-file-tree LI.ext-pl { list-style-image: url(".$this->root_path."images/extensions/script.png); }
+			.php-file-tree LI.ext-py { list-style-image: url(".$this->root_path."images/extensions/script.png); }
+			.php-file-tree LI.ext-rb { list-style-image: url(".$this->root_path."images/extensions/ruby.png); }
+			.php-file-tree LI.ext-rbx { list-style-image: url(".$this->root_path."images/extensions/ruby.png); }
+			.php-file-tree LI.ext-rhtml { list-style-image: url(".$this->root_path."images/extensions/ruby.png); }
+			.php-file-tree LI.ext-rpm { list-style-image: url(".$this->root_path."images/extensions/linux.png); }
+			.php-file-tree LI.ext-ruby { list-style-image: url(".$this->root_path."images/extensions/ruby.png); }
+			.php-file-tree LI.ext-sql { list-style-image: url(".$this->root_path."images/extensions/db.png); }
+			.php-file-tree LI.ext-swf { list-style-image: url(".$this->root_path."images/extensions/flash.png); }
+			.php-file-tree LI.ext-tif { list-style-image: url(".$this->root_path."images/extensions/picture.png); }
+			.php-file-tree LI.ext-tiff { list-style-image: url(".$this->root_path."images/extensions/picture.png); }
+			.php-file-tree LI.ext-txt { list-style-image: url(".$this->root_path."images/extensions/txt.png); }
+			.php-file-tree LI.ext-vb { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-wav { list-style-image: url(".$this->root_path."images/extensions/music.png); }
+			.php-file-tree LI.ext-wmv { list-style-image: url(".$this->root_path."images/extensions/film.png); }
+			.php-file-tree LI.ext-xls { list-style-image: url(".$this->root_path."images/extensions/xls.png); }
+			.php-file-tree LI.ext-xml { list-style-image: url(".$this->root_path."images/extensions/code.png); }
+			.php-file-tree LI.ext-zip { list-style-image: url(".$this->root_path."images/extensions/zip.png); }
 			/* You can add millions of these... */
 		";
 		return $output;
@@ -342,5 +344,4 @@ class uploader extends gen_class {
 		return $output;
 	}
 }	//close class
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_uploader', uploader::$shortcuts);
 ?>

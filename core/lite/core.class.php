@@ -1,23 +1,25 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 class core extends gen_class {
-	public static $shortcuts = array('user', 'pdl', 'config', 'tpl', 'in', 'time');
 
 	public $error_message			= array();			// Array of errors		@public $error_message
 	public $header_inc				= false;			// Printed header?		@public $header_inc
@@ -26,8 +28,8 @@ class core extends gen_class {
 	public $error_template_file		= '';				// Error Tp filename	@public $template_file
 	public $default_game			= '';				// Defaultgame			@public $default_game
 	public $game_language			= '';				// Defaultgame			@public $default_game
-	public $icon_error				= '<img src="../templates/maintenance/images/failed.png" alt="" class="absmiddle"/>';
-	public $icon_ok					= '<img src="../templates/maintenance/images/ok.png" alt="" class="absmiddle" />';
+	public $icon_error				= '<i class="icon-red fa fa-times"></i>';
+	public $icon_ok					= '<i class="icon-green fa fa-check"></i>';
 
 	public function StatusIcon($mystat= 'ok') {
 		return ($mystat=='ok') ? $this->icon_ok : $this->icon_error;
@@ -63,30 +65,21 @@ class core extends gen_class {
 		$this->page_tail();
 	}
 
-	private function httpHost(){
-		$protocol = ($_SERVER['SSL_SESSION_ID'] || $_SERVER['HTTPS'] == 'on' || $_SERVER['HTTPS'] == 1) ? 'https://' : 'http://';
-		$xhost		= preg_replace('/[^A-Za-z0-9\.:-]/', '', $_SERVER['HTTP_X_FORWARDED_HOST']);
-		$host			= $_SERVER['HTTP_HOST'];
-		if (empty($host)){
-			$host  = $_SERVER['SERVER_NAME'];
-			$host .= ($_SERVER['SERVER_PORT'] != 80) ? ':' . $_SERVER['SERVER_PORT'] : '';
-		}
-		return $protocol.(!empty($xhost) ? $xhost . '/' : '').preg_replace('/[^A-Za-z0-9\.:-]/', '', $host);
-	}
-
 	public function check_auth(){
+		if(defined('EQDKP_UPDATE') && EQDKP_UPDATE) return true;
+		
 		if (!$this->user->check_auth('a_maintenance', false)){
 			if ($this->config->get('pk_maintenance_mode') == '1'){
-				redirect('maintenance/maintenance.php');
+				redirect('maintenance/maintenance.php'.$this->SID, false, false, false);
 			} else {
-				redirect('index.php');
+				redirect('index.php'.$this->SID, false, false, false);
 			}
 		}
 	}
 
 	public function create_breadcrump($name, $url = false) {
 		$this->tpl->assign_block_vars('breadcrumps', array (
-			'BREADCRUMP'	=> (($url) ? '<a href="'.$url.'">'.$name.'</a>' : $name)
+			'BREADCRUMP'	=> (($url) ? '<a href="'.$url.'">'.$name.'</a>' : '<a href="#">'.$name.'</a>')
 		));
 	}
 
@@ -130,15 +123,18 @@ class core extends gen_class {
 			'L_ADMIN_PANEL' => $this->user->lang('admin_acp'),
 			'L_MMODE' => $this->user->lang('maintenance_mode'),
 			'L_TASK_MANAGER' => $this->user->lang('task_manager'),
-			'U_MMODE' => $this->root_path.'maintenance/task_manager.php'.$this->SID,
+			'U_MMODE' => $this->root_path.'maintenance/'.$this->SID,
 			'L_ACTIVATE_INFO' => $this->user->lang('activate_info'),
 			'L_ACTIVATE_MMODE' => $this->user->lang('activate_mmode'),
 			'L_LEAVE_MMODE' => $this->user->lang('leave_mmode'),
 			'L_DEACTIVATE_MMODE' => $this->user->lang('deactivate_mmode'),
-			'S_MMODE_ACTIVE' => ($this->config->get('pk_maintenance_mode') == 1) ?  true : false,
+			'S_MMODE_ACTIVE' => ($this->config->get('pk_maintenance_mode') == 1 || (defined('EQDKP_UPDATE') && EQDKP_UPDATE)) ?  true : false,
 			'MAINTENANCE_MESSAGE' => $this->config->get('pk_maintenance_message'),
 			'S_SPLASH' => ($this->in->get('splash') == 'true') ? true : false,
 			'SID'	=> $this->SID,
+			'ROOT_PATH' => $this->root_path,
+			'L_MMODE_INFO'		=> $this->user->lang('mmode_info'),
+			'S_IS_ADMIN'	=> ($this->user->check_auth('a_maintenance', false)),
 		));
 		if($this->in->get('splash') == 'true') {
 			$this->tpl->assign_vars(array(
@@ -165,5 +161,4 @@ class core extends gen_class {
 		$this->tpl->display();
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_core', core::$shortcuts);
 ?>

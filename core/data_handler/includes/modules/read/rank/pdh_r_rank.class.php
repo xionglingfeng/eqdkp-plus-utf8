@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2009
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if ( !defined('EQDKP_INC') ){
 	die('Do not access this file directly.');
@@ -22,10 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "pdh_r_rank" ) ) {
 	class pdh_r_rank extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'db',	'game');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 		public $default_lang = 'english';
 		public $ranks;
@@ -47,19 +46,25 @@ if ( !class_exists( "pdh_r_rank" ) ) {
 		public function init(){
 			$this->ranks = $this->pdc->get('pdh_member_ranks');
 			if($this->ranks !== NULL) return true;
-
-			$r_result = $this->db->query("SELECT * FROM __member_ranks ORDER BY rank_sortid ASC;");
-			while($r_row = $this->db->fetch_record($r_result)){
-				$this->ranks[$r_row['rank_id']]['rank_id']	= $r_row['rank_id'];
-				$this->ranks[$r_row['rank_id']]['prefix']	= $r_row['rank_prefix'];
-				$this->ranks[$r_row['rank_id']]['suffix']	= $r_row['rank_suffix'];
-				$this->ranks[$r_row['rank_id']]['name']		= $r_row['rank_name'];
-				$this->ranks[$r_row['rank_id']]['hide']		= $r_row['rank_hide'];
-				$this->ranks[$r_row['rank_id']]['sortid']	= $r_row['rank_sortid'];
+			
+			$objQuery = $this->db->query("SELECT * FROM __member_ranks ORDER BY rank_sortid ASC;");
+			if($objQuery){
+				while($r_row = $objQuery->fetchAssoc()){
+					$this->ranks[$r_row['rank_id']]['rank_id']	= $r_row['rank_id'];
+					$this->ranks[$r_row['rank_id']]['prefix']	= $r_row['rank_prefix'];
+					$this->ranks[$r_row['rank_id']]['suffix']	= $r_row['rank_suffix'];
+					$this->ranks[$r_row['rank_id']]['name']		= $r_row['rank_name'];
+					$this->ranks[$r_row['rank_id']]['hide']		= (int)$r_row['rank_hide'];
+					$this->ranks[$r_row['rank_id']]['sortid']	= (int)$r_row['rank_sortid'];
+					$this->ranks[$r_row['rank_id']]['default']	= (int)$r_row['rank_default'];
+					$this->ranks[$r_row['rank_id']]['icon']		= $r_row['rank_icon'];
+				}
+				if (!isset($this->ranks[0])) {
+					$this->pdh->put('rank', 'add_rank', array(0, 'Default', 0, '', '', 0, 1));
+					$this->ranks[0] = array('rank_id' => 0,	'prefix' => '',	'suffix' => '',	'name' => 'Default', 'hide' => 0, 'sortid' => 0, 'default' => 1);
+				}
+				$this->pdc->put('pdh_member_ranks', $this->ranks);
 			}
-			if (!isset($this->ranks[0])) $this->ranks[0] = array('rank_id' => 0,	'prefix' => '',	'suffix' => '',	'name' => '', 'hide' => 0, 'sortid' => 0);
-			$this->db->free_result($r_result);
-			if($r_result) $this->pdc->put('pdh_member_ranks', $this->ranks);
 		}
 
 		public function get_id($name) {
@@ -84,12 +89,15 @@ if ( !class_exists( "pdh_r_rank" ) ) {
 		}
 
 		public function get_html_name($rank_id){
-			return $this->game->decorate('ranks', array($rank_id)).$this->ranks[$rank_id]['name'];
+			return $this->game->decorate('ranks', $rank_id).$this->ranks[$rank_id]['name'];
 		}
 
 		public function get_rank_image($rank_id){
-			$rankimage = (is_file("images/ranks/'.$rank_id.'.png")) ? "images/ranks/'.$this->ranks[$rank_id]['name'].'" : "images/roles/unknown.png";
-			return '<img src="'.$rankimage.'" alt="rank image" width="20"/>';
+			$strGameFolder = 'games/'.$this->game->get_game().'/icons/ranks/';
+			$strIcon = $this->get_icon($rank_id);
+			
+			$rankimage = (strlen($strIcon) && is_file($this->root_path.$strGameFolder.$strIcon)) ? $this->server_path.$strGameFolder.$strIcon : "";
+			return ($rankimage != "") ? '<img src="'.$rankimage.'" alt="rank image" width="20"/>' : '';
 		}
 
 		public function get_prefix($rank_id){
@@ -108,12 +116,29 @@ if ( !class_exists( "pdh_r_rank" ) ) {
 			return $this->ranks[$rank_id]['sortid'];
 		}
 		
+		public function get_icon($rank_id){
+			return $this->ranks[$rank_id]['icon'];
+		}
+		
+		public function get_html_icon($rank_id){
+			return $this->get_rank_image($rank_id);
+		}
+		
+		public function get_default_value($rank_id){
+			return $this->ranks[$rank_id]['default'];
+		}
+		
 		public function get_default(){
+			if(is_array($this->ranks)){
+				foreach($this->ranks as $key => $val){
+					if ($val['default'] == 1) return $key;
+				}
+			}
+			
 			$arrIDs = $this->get_id_list();
 			return ((isset($arrIDs[0])) ? $arrIDs[0] : 0);
 		}
 		
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_rank', pdh_r_rank::__shortcuts());
 ?>

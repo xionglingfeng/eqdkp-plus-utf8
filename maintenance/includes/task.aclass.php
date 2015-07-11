@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,12 +25,12 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "task" ) ){
 	abstract class task extends gen_class {
-		public static $shortcuts = array('user', 'config', 'tpl');
 
 		public $form_method			= "get";
 		public $author				= "unknown";
 		public $name				= "unknown";
 		public $version				= "0.0.0";
+		public $ext_version			= false;
 
 		public $task_dependencies	= array();
 		public $type				= 'update';			//types: update, plugin_update, fix, import
@@ -120,17 +123,17 @@ if ( !class_exists( "task" ) ){
 				array_push($this->steps, 0);
 			}
 			asort($this->steps);
-			$this->step_data = unserialize($this->config->get('maintenance_step_data_'.$this->task_name));
+			$this->step_data = $this->config->get('maintenance_step_data_'.$this->task_name);
 			$this->construct();
 		}
 
 		public function a_destruct() {
-			$this->destruct();
+			$this->destruct();		
 			if(!$this->end) {
 				$this->config->set('maintenance_task_'.$this->task_name, $this->task_name);
 				$this->config->set('maintenance_step_standby_'.$this->task_name, $this->current_step);
 				$this->config->set('maintenance_this_steps_'.$this->task_name, implode(',',$this->steps));
-				$this->config->set('maintenance_step_data_'.$this->task_name, serialize($this->step_data));
+				$this->config->set('maintenance_step_data_'.$this->task_name, $this->step_data);
 			}
 		}
 
@@ -186,5 +189,4 @@ if ( !class_exists( "task" ) ){
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_task', task::$shortcuts);
 ?>

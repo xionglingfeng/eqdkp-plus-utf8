@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if( !defined( 'EQDKP_INC' ) ) {
@@ -22,9 +25,6 @@ if( !defined( 'EQDKP_INC' ) ) {
 
 if( !class_exists( "plus_datahandler")){
 	class plus_datahandler extends gen_class {
-		public static $shortcuts = array('pdl', 'config', 'time', 'user', 'pfh', 'core',
-			'timekeeper' => 'timekeeper',
-		);
 		
 		public static $dependencies = array('pfh');
 
@@ -47,6 +47,7 @@ if( !class_exists( "plus_datahandler")){
 		
 		//layout stuff
 		private $system_settings			= array( );
+		private $system_name				= '';
 		
 		//page_objects stuff
 		private $page_objects = array();
@@ -95,6 +96,10 @@ if( !class_exists( "plus_datahandler")){
 			$text .= "<br />Line: ".$log_entry['args'][1];
 
 			return $text;
+		}
+		
+		public function get_read_modules(){
+			return $this->read_modules;
 		}
 
 		/*
@@ -468,7 +473,7 @@ if( !class_exists( "plus_datahandler")){
 				$get_method = 'get_'.$tag;
 				$value1		= $this->get( $module, $tag, $params1 );
 				$value2		= $this->get( $module, $tag, $params2 );
-				if(!is_numeric($value1) && !is_numeric($value2)) return strcasecmp($value1, $value2)*$direction;
+				if(!is_numeric($value1) && !is_numeric($value2)) return strnatcasecmp($value1, $value2)*$direction;
 				if( $value1 > $value2 ) {
 					return 1 * $direction;
 				}
@@ -476,6 +481,7 @@ if( !class_exists( "plus_datahandler")){
 					return( - 1 ) * $direction;
 				}
 			}
+			return 0;
 		}
 
 		public function sort( $id_list, $module, $tag, $direction = 'asc', $params = array( ), $id_position = 0 ) {
@@ -689,7 +695,7 @@ if( !class_exists( "plus_datahandler")){
 		}
 		
 		public function get_user_presets( ) {
-			if(empty($this->user_presets)) {
+			if(empty($this->user_presets) && !$this->presets_changed) {
 				$user_presets = array( );
 				$preset_file = $this->pfh->FilePath( 'layouts/presets_user.php', 'eqdkp' );
 				if(is_file($preset_file)) {
@@ -701,7 +707,7 @@ if( !class_exists( "plus_datahandler")){
 		}
 
 		public function get_user_preset_lang( ) {
-			if(empty($this->user_presets_lang)) {
+			if(empty($this->user_presets_lang)  && !$this->presets_changed) {
 				$preset_file = $this->pfh->FilePath( 'layouts/presets_user.php', 'eqdkp' );
 				if(is_file($preset_file)) {
 					include($preset_file);
@@ -753,6 +759,7 @@ if( !class_exists( "plus_datahandler")){
 		public function init_eqdkp_layout( $layout ) {
 			$this->system_settings = array( );
 			$this->system_settings = $this->get_eqdkp_layout( $layout );
+			$this->system_name = $layout;
 		}
 		
 		public function get_layout_config( $name = false ){
@@ -764,7 +771,7 @@ if( !class_exists( "plus_datahandler")){
 			return false;
 		}
 
-		public function get_eqdkp_layout( $layout ) {
+		public function get_eqdkp_layout( $layout, $blnWithPageObjectFile=false) {
 			//check if it is a default system file
 			$sys_file = $this->root_path.'core/data_handler/includes/systems/'.$layout.'.esys.php';
 			if( file_exists( $sys_file ) ) {
@@ -790,16 +797,18 @@ if( !class_exists( "plus_datahandler")){
 
 			//prepare substitution array
 			$system_def['config'] = array( );
-			if( is_array( $system_def['options'] ) && !empty( $system_def['options'] ) ) {
+			if( isset($system_def['options']) && is_array( $system_def['options'] ) && !empty( $system_def['options'] ) ) {
 				foreach( $system_def['options'] as $name => $options ) {
 					$system_def['config'][$name] = $options['value'];
 				}
 			}
 
-			//add plugin/portal pages/objects
+			//add plugin/portal pages/objects	
 			$this->init_page_objects();
-			if(isset($this->page_objects[$layout]) && is_array($this->page_objects[$layout])) $system_def['pages'] = array_merge_recursive($this->page_objects[$layout], $system_def['pages']);
-
+			if ($blnWithPageObjectFile) {
+				if(isset($this->page_objects[$layout]) && is_array($this->page_objects[$layout])) $system_def['pages'] = array_merge_recursive($this->page_objects[$layout], $system_def['pages']);
+			}
+				
 			return $system_def;
 		}
 
@@ -839,7 +848,7 @@ if( !class_exists( "plus_datahandler")){
 					return $settings;
 				} else {
 					if( $layoutname == '' ) {
-						return $this->get_page_settings( $page, $object, $this->system_settings['base_layout'] );
+						return $this->get_page_settings( $page, $object, $this->system_name );
 					} else {
 						$this->auto_update_layout($layoutname);
 						$layout = $this->get_eqdkp_layout( $layoutname );
@@ -924,6 +933,7 @@ if( !class_exists( "plus_datahandler")){
 
 		public function auto_update_layout( $layout_name ) {
 			$layout_def = $this->get_eqdkp_layout( $layout_name );
+
 			//check if base layout got some new settings
 			$layout_base = $this->get_eqdkp_layout( $layout_def['base_layout'] );
 			$changes = false;
@@ -975,55 +985,186 @@ if( !class_exists( "plus_datahandler")){
 					}
 				}
 			}
+			
+			//Pageobjects
+			if($layout_name == $layout_def['base_layout']){
+				$arrResult = $this->patch_pageobjects($layout_name, $layout_def, false);
+				$layout_def = $arrResult[0];
+				$changes = (!$changes) ? $arrResult[1] : $changes;
+				if($changes){
+					$user_layout_name = 'user_'.$layout_name;
+					$arrResult = $this->patch_pageobjects($user_layout_name, $layout_def);
+					$layout_def = $arrResult[0];
+					if($this->config->get('eqdkp_layout') == $layout_name) $this->config->set('eqdkp_layout', $user_layout_name);
+					$this->save_layout( $user_layout_name, $layout_def );
+				}
+				
+			} else {
+				$arrResult = $this->patch_pageobjects($layout_name, $layout_def);
+				$layout_def = $arrResult[0];
+				$changes = (!$changes) ? $arrResult[1] : $changes;
+				
+				if( $changes ){
+					$this->save_layout( $layout_name, $layout_def );
+				}
+			}
 
-			if( $changes )
-				$this->save_layout( $layout_name, $layout_def );
 		}
 
 		/******************************************************************************************************************************
 		 *
 		 * Adding new Pages/Objects
 		 */
-
-		public function add_page( $layout, $page, $data ) {
+		
+		public function patch_pageobjects($layout_name, $layout_def, $blnSetPatched=true){			
 			$this->init_page_objects();
-			if(isset($this->page_objects[$layout][$page])) return false;
-			$this->page_objects[$layout][$page] = $data;
+			$blnChanged = false;
+			
+			foreach ($this->page_objects as $key_pages => $pages){
+				$arrPatched = (isset($pages['_patched'])) ? $pages['_patched'] : array();
+				
+				$blnPatchedPage = false;
+				if (!in_array($layout_name, $arrPatched)){
+					//Patch whole Page Infos
+					$arrToPatch = array();
+					$arrToPatch['pages'][$key_pages] = $pages;
+					unset($arrToPatch['pages'][$key_pages]['_patched']);
+					$layout_def = array_merge_recursive($layout_def, $arrToPatch);
+					
+					if($blnSetPatched) $this->set_page_patched($key_pages, $layout_name);
+					
+					$blnPatchedPage = true;
+					$blnChanged = true;
+				}
+
+				//Next subs
+				foreach ($pages as $key_page => $page) {
+					$arrPatched = (isset($page['_patched'])) ? $page['_patched'] : array();
+					$blnPatchedObject = false;
+					
+					if ($blnPatchedPage) {
+						if($blnSetPatched) $this->set_object_patched($key_pages, $key_page, $layout_name);
+						$blnPatchedObject = true;
+					} elseif (!in_array($layout_name, $arrPatched)){
+						//Patch Object
+						$arrToPatch = array();
+						$arrToPatch['pages'][$key_pages][$key_page] = $page;
+						unset($arrToPatch['pages'][$key_pages][$key_page]['_patched']);
+						$layout_def = array_merge_recursive($layout_def, $arrToPatch);
+							
+						if($blnSetPatched) $this->set_object_patched($key_pages, $key_page, $layout_name);
+					
+						$blnChanged = true;
+						$blnPatchedObject = true;
+					}
+					
+					//Next table presets
+					if(isset($page['table_presets'])){
+						foreach ($page['table_presets'] as $key_preset => $preset) {
+							$arrPatched = (isset($preset['_patched'])) ? $preset['_patched'] : array();
+							$blnPatchedPreset = false;
+								
+							if ($blnPatchedObject) {
+								if($blnSetPatched) $this->set_tablepreset_patched($key_pages, $key_page, $preset['name'], $layout_name);
+							} elseif (!in_array($layout_name, $arrPatched)){
+								//Patch Preset
+								$arrToPatch = array();
+								$arrToPatch['pages'][$key_pages][$key_page]['table_presets'][] = $preset;
+								$layout_def = array_merge_recursive($layout_def, $arrToPatch);
+									
+								if($blnSetPatched) $this->set_tablepreset_patched($key_pages, $key_page, $preset['name'], $layout_name);
+									
+								$blnChanged = true;
+								$blnPatchedPreset = true;
+							}
+						
+						}
+					}
+					
+				}
+			}
+
+			return array($layout_def, $blnChanged);
+		}
+
+		public function add_page($page, $data ) {
+			$this->init_page_objects();
+			if(isset($this->page_objects[$page])) return false;
+			$this->page_objects[$page] = $data;
 			$this->page_objects_changed = true;
 		}
 
-		public function add_object( $layout, $page, $object, $data ) {
+		public function add_object($page, $object, $data ) {
 			$this->init_page_objects();
-			if(isset($this->page_objects[$layout][$page][$object])) return false;
-			$this->page_objects[$layout][$page][$object] = $data;
+			if(isset($this->page_objects[$page][$object])) return false;
+			$this->page_objects[$page][$object] = $data;
 			$this->page_objects_changed = true;
 		}
 		
-		public function add_object_tablepreset( $layout, $page, $object, $data ) {
+		private function set_page_patched($page, $strLayoutname){
 			$this->init_page_objects();
-			if (isset($this->page_objects[$layout][$page][$object]['table_presets'])){
-				foreach ($this->page_objects[$layout][$page][$object]['table_presets'] as $val){
+			if(!isset($this->page_objects[$page])) return false;
+			$arrPatched = (isset($this->page_objects[$page]['_patched'])) ? $this->page_objects[$page]['_patched'] : array();
+			$arrPatched[] = $strLayoutname;
+			$arrPatched = array_unique($arrPatched);
+			$this->page_objects[$page]['_patched'] = $arrPatched;
+			$this->page_objects_changed = true;
+		}
+		
+		private function set_object_patched($page, $object, $strLayoutname){
+			$this->init_page_objects();
+			if(!isset($this->page_objects[$page][$object])) return false;
+			$arrPatched = (isset($this->page_objects[$page][$object]['_patched'])) ? $this->page_objects[$page][$object]['_patched'] : array();
+			$arrPatched[] = $strLayoutname;
+			$arrPatched = array_unique($arrPatched);
+			$this->page_objects[$page][$object]['_patched'] = $arrPatched;
+			$this->page_objects_changed = true;
+		}
+		
+		private function set_tablepreset_patched($page, $object, $strTablepresetName, $strLayoutname){
+			$this->init_page_objects();
+			if(!isset($this->page_objects[$page][$object])) return false;
+			$arrPresets = $this->page_objects[$page][$object]['table_presets'];
+			foreach($arrPresets as $key => $preset){
+				if ($preset['name'] === $strTablepresetName){
+					$arrPatched = (isset($this->page_objects[$page][$object]['table_presets'][$key]['_patched'])) ? $this->page_objects[$page][$object]['table_presets'][$key]['_patched'] : array();
+					$arrPatched[] = $strLayoutname;
+					$arrPatched = array_unique($arrPatched);
+					$this->page_objects[$page][$object]['table_presets'][$key]['_patched'] = $arrPatched;
+					$this->page_objects_changed = true;
+					
+					return;
+				}
+			}
+		}
+		
+		
+		
+		public function add_object_tablepreset( $page, $object, $data ) {
+			$this->init_page_objects();
+			if (isset($this->page_objects[$page][$object]['table_presets'])){
+				foreach ($this->page_objects[$page][$object]['table_presets'] as $val){
 					if ($val['name'] == $data['name']) return false;
 				}
 			}
 			
-			$this->page_objects[$layout][$page][$object]['table_presets'][] = $data;
+			$this->page_objects[$page][$object]['table_presets'][] = $data;
 			$this->page_objects_changed = true;
 		}
 		
 		
 
-		public function delete_page( $layout, $page ) {
+		public function delete_page( $page ) {
 			$this->init_page_objects();
-			if(!isset($this->page_objects[$layout][$page])) return true;
-			unset($this->page_objects[$layout][$page]);
+			if(!isset($this->page_objects[$page])) return true;
+			unset($this->page_objects[$page]);
 			$this->page_objects_changed = true;
 		}
 
-		public function delete_object( $layout, $page, $object ) {
+		public function delete_object($page, $object ) {
 			$this->init_page_objects();
-			if(!isset($this->page_objects[$layout][$page][$object])) return true;
-			unset($this->page_objects[$layout][$page][$object]);
+			if(!isset($this->page_objects[$page][$object])) return true;
+			unset($this->page_objects[$page][$object]);
 			$this->page_objects_changed = true;
 		}
 
@@ -1051,5 +1192,4 @@ if( !class_exists( "plus_datahandler")){
 	//end class
 }
 //end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_plus_datahandler', plus_datahandler::$shortcuts);
 ?>

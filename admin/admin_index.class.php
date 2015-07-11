@@ -1,31 +1,36 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2002
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 if(!class_exists('admin_index')) {
 class admin_index extends gen_class {
-	public static $shortcuts = array('user', 'in', 'core', 'config', 'tpl', 'game', 'jquery', 'pm', 'time', 'pdh', 'db', 'pdc',
-		'xmltools'	=> 'xmltools',
+	public static $shortcuts = array(
 		'puf'		=> 'urlfetcher',
 		'UpdateCheck'	=> 'repository',
 	);
 
+	protected $core_updates			= '';
 	protected $extension_updates	= '';
-	protected $rsscachetime			= 48;
+	protected $rsscachetime			= 3;
 	public $admin_menu				= '';
+	public $admin_functions			= NULL;
 
 	public function __construct(){
 		$this->user->check_auth('a_');
@@ -33,29 +38,32 @@ class admin_index extends gen_class {
 			if($this->in->get('rssajax') == 'twitter') $this->ajax_twitterfeed();
 			if($this->in->get('rssajax') == 'notification') $this->ajax_notification();
 		}
+		
+		include_once($this->root_path.'core/admin_functions.class.php');
+		$this->admin_functions = register('admin_functions');
+		
 		if ($this->in->exists('ip_resolve')) $this->resolve_ip();
+		
 		$this->updatecheck();
 		$this->adminmenu_output();
 	}
 
 	private function resolve_ip(){
+		header('content-type: text/html; charset=UTF-8');
 		$out = "Could not resolve IP";
 		if ($this->in->get('ip_resolve') != ""){
-			$return = $this->puf->fetch("http://www.geoplugin.net/php.gp?ip=".$this->in->get('ip_resolve'));
+			$return = $this->admin_functions->resolve_ip($this->in->get('ip_resolve'));
 			if ($return){
-				$unserialized = @unserialize($return);
-				if ($unserialized){
-					$out = ($unserialized['geoplugin_city'] != "") ? $unserialized['geoplugin_city'].'<br />' : '';
-					$out .= ($unserialized['geoplugin_regionName'] != "") ? $unserialized['geoplugin_regionName'].'<br />' : '';
-					$out .= ($unserialized['geoplugin_countryName'] != "") ? $unserialized['geoplugin_countryName'] : '';
-						
-					if (!strlen($out)) $out = "Could not resolve IP"; 
-				}
+				$out = ($return['city'] != "") ? $return['city'].'<br />' : '';
+				$out .= ($return['regionName'] != "") ? $return['regionName'].'<br />' : '';
+				$out .= ($return['countryName'] != "") ? $return['countryName'] : '';
+					
+				if (!strlen($out)) $out = "Could not resolve IP"; 
 			}
 		}
 		echo $out;
 		exit;
-	}
+	}	
 	
 	private function updatecheck(){
 		// Check for required Plugin Database Updates
@@ -64,158 +72,19 @@ class admin_index extends gen_class {
 
 		//new plugin-update-check (only minor, without db-updates)
 		$this->pm->plugin_update_check();
-		
-		/* DISABLED - It doesnt make sense to reinstall the game if an update occured, since it is impossible for the system to know wether it overwrites data changed by the user
-						Use maintenance Updates for adding new things to the database (placed in e.g. games/wow/updates)
-		//game-update-check
-		if(compareVersion($this->game->gameVersion(), $this->config->get('game_version')) == 1) {
-			//check for game-task
-			$found = false;
-			if(!isset($tasks)) $tasks = registry::register('mmtaskmanager')->get_task_list(true);
-			foreach($tasks as $task => $file) {
-				if(strpos($task, 'update_'.$this->config->get('default_game')) === 0) {
-					include_once($file);
-					if(compareVersion(registry::register($task)->version, $this->config->get('game_version')) == 1) {
-						$found = true;
-					}
-				}
-			}
-			//no update: reinstall the game
-			if(!$found) {
-				$this->game->ChangeGame($this->config->get('default_game'), $this->config->get('game_language'));
-			}
-		}
-		*/
-	}
 
-	public function adminmenu($blnShowBadges = true){
-		$admin_menu = array(
-			'members' => array(
-				'icon'	=> 'manage_members.png',
-				'name'	=> $this->user->lang('chars'),
-				1		=> array('link' => 'admin/manage_members.php'.$this->SID,			'text' => $this->user->lang('manage_members'),	'check' => 'a_members_man',	'icon'	=> 'manage_members.png'),
-				2		=> array('link' => 'admin/manage_items.php'.$this->SID,			'text' => $this->user->lang('manitems_title'),	'check' => 'a_item_',		'icon' => 'manage_items.png'),
-				3		=> array('link' => 'admin/manage_adjustments.php'.$this->SID,		'text' => $this->user->lang('manadjs_title'),		'check' => 'a_indivadj_',	'icon' => 'manage_adjustments.png'),
-				4		=> array('link' => 'admin/manage_ranks.php'.$this->SID,			'text' => $this->user->lang('manrank_title'),		'check' => 'a_members_man',	'icon' => 'manage_ranks.png'),
-				5		=> array('link' => 'admin/manage_profilefields.php'.$this->SID,	'text' => $this->user->lang('manage_pf_menue'),	'check' => 'a_config_man',	'icon' => 'manage_profilefields.png'),
-				6		=> array('link' => 'admin/manage_roles.php'.$this->SID,			'text' => $this->user->lang('rolemanager'),		'check' => 'a_config_man',	'icon' => 'manage_roles.png'),
-				7		=> array('link' => 'admin/manage_auto_points.php'.$this->SID,		'text' => $this->user->lang('manage_auto_points'),'check' => 'a_config_man',	'icon' => 'manage_auto_points.png'),
-			),
-			'users' => array(
-				'icon'	=> 'manage_users.png',
-				'name'	=> $this->user->lang('users'),
-				1		=> array('link' => 'admin/manage_users.php'.$this->SID,			'text' => $this->user->lang('manage_users'),		'check' => 'a_users_man',	'icon' => 'manage_users.png'),
-				2		=> array('link' => 'admin/manage_user_groups.php'.$this->SID,		'text' => $this->user->lang('manage_user_groups'),'check' => 'a_users_man',	'icon' => 'manage_user_groups.png'),
-				3		=> array('link' => 'admin/manage_maintenance_user.php'.$this->SID,'text' => $this->user->lang('maintenanceuser_user'),'check' => 'a_maintenance','icon' => 'manage_maintenance_user.png'),
-				4		=> array('link' => 'admin/manage_massmail.php'.$this->SID,'text' => $this->user->lang('massmail'),'check' => 'a_users_massmail','icon' => 'manage_massmail.png'),
-			),
-			'extensions' => array(
-				'name'	=> $this->user->lang('extensions').(($blnShowBadges) ? $this->extension_updates : ''),
-				1		=> array('link' => 'admin/manage_extensions.php'.$this->SID,		'text' => $this->user->lang('extension_repo'),'check' => 'a_config_man',	'icon' => 'manage_extension.png'),
-			),
-			'portal'	=> array(
-				'icon'	=> 'manage_portal.png',
-				'name'	=> $this->user->lang('portal'),
-				1		=> array('link' => 'admin/manage_portal.php'.$this->SID,			'text' => $this->user->lang('portalmanager'),		'check' => 'a_config_man',	'icon' => 'manage_portal.png'),
-				2		=> array('link' => 'admin/manage_news.php'.$this->SID,			'text' => $this->user->lang('manage_news'),		'check' => 'a_news_',		'icon' => 'manage_news.png'),
-				3		=> array('link' => 'admin/manage_pages.php'.$this->SID,		'text' => $this->user->lang('info_manage_pages'),	'check' => 'a_pages_man','icon' => 'manage_pages.png'),
-				4		=> array('link' => 'admin/manage_pagelayouts.php'.$this->SID,		'text' => $this->user->lang('page_manager'),		'check' => 'a_config_man',	'icon' => 'manage_pagelayouts.png'),
-				5		=> array('link' => 'admin/manage_menus.php'.$this->SID,			'text' => $this->user->lang('manage_menus'),		'check' => 'a_config_man',	'icon' => 'manage_menus.png'),
-			),
-			'raids'	=> array(
-				'icon'	=> 'manage_raids.png',
-				'name'	=> $this->user->lang('raids'),
-				1		=> array('link' => 'admin/manage_raids.php'.$this->SID,			'text' => $this->user->lang('manage_raids'),		'check' => 'a_raid_add',	'icon' => 'manage_raids.png'),
-				2		=> array('link' => 'admin/manage_events.php'.$this->SID,			'text' => $this->user->lang('manevents_title'),	'check' => 'a_event_upd',	'icon' => 'manage_events.png'),
-				3		=> array('link' => 'admin/manage_multidkp.php'.$this->SID,		'text' => $this->user->lang('manmdkp_title'),		'check' => 'a_event_upd',	'icon' => 'manage_multidkp.png'),
-				4		=> array('link' => 'admin/manage_itempools.php'.$this->SID,		'text' => $this->user->lang('manitempools_title'),'check' => 'a_event_upd',	'icon' => 'manage_itempools.png'),
-				5		=> array('link' => 'admin/manage_export.php'.$this->SID,		'text' => $this->user->lang('manexport_title'),'check' => 'a_',	'icon' => 'manage_export.png'),
-			),
-			'calendar'	=> array(
-				'icon'	=> 'manage_calendars.png',
-				'name'	=> $this->user->lang('calendars'),
-				1		=> array('link' => 'admin/manage_calendars.php'.$this->SID,		'text' => $this->user->lang('manage_calendars'),	'check' => 'a_calendars_man',	'icon' => 'manage_calendars2.png'),
-				2		=> array('link' => 'admin/manage_calevents.php'.$this->SID,		'text' => $this->user->lang('manage_calevents'),	'check' => 'a_cal_event_man',	'icon' => 'manage_calevents.png'),
-			),
-			'general' => array(
-				'icon'	=> 'manage_settings.png',
-				'name'	=> $this->user->lang('general_admin'),
-				1		=> array('link' => 'admin/manage_settings.php'.$this->SID,		'text' => $this->user->lang('configuration'),		'check' => 'a_config_man',	'icon' => 'manage_settings.png'),
-				2		=> array('link' => 'admin/manage_logs.php'.$this->SID,			'text' => $this->user->lang('view_logs'),			'check' => 'a_logs_view',	'icon' => 'manage_logs.png'),
-				3		=> array('link' => 'admin/manage_tasks.php'.$this->SID,			'text' => $this->user->lang('mantasks_title'),		'check' => array('OR', array('a_users_man', 'a_members_man')),	'icon' => 'manage_tasks.png'),
-				4		=> array('link' => 'admin/manage_bridge.php'.$this->SID,			'text' => $this->user->lang('manage_bridge'),	'check' => 'a_config_man',	'icon' => 'manage_bridge.png'),
-				5		=> array('link' => 'admin/manage_crons.php'.$this->SID,			'text' => $this->user->lang('manage_cronjobs'),		'check' => 'a_config_man',	'icon' => 'manage_crons.png')
-			),
-			'maintenance' => array(
-				'icon'	=> 'task_manager.png',
-				'name'	=> $this->user->lang('menu_maintenance').(($blnShowBadges) ? $this->core_updates : ''),
-				1		=> array('link' => 'maintenance/task_manager.php'.$this->SID,		'text' => $this->user->lang('maintenance'),		'check' => 'a_maintenance',	'icon' => 'task_manager.png'),
-				2		=> array('link' => 'admin/manage_live_update.php'.$this->SID,		'text' => $this->user->lang('liveupdate'),		'check' => 'a_maintenance',	'icon' => 'manage_live_update.png'),
-				3		=> array('link' => 'admin/manage_backup.php'.$this->SID,			'text' => $this->user->lang('backup'),			'check' => 'a_backup',		'icon' => 'manage_backup.png'),
-				4		=> array('link' => 'admin/manage_reset.php'.$this->SID,			'text' => $this->user->lang('reset'),				'check' => 'a_config_man',	'icon' => 'manage_reset.png'),
-				5		=> array('link' => 'admin/manage_cache.php'.$this->SID,			'text' => $this->user->lang('pdc_manager'),		'check' => 'a_config_man',	'icon' => 'manage_cache.png'),
-				6		=> array('link' => 'admin/info_database.php'.$this->SID,			'text' => $this->user->lang('mysql_info'),		'check' => 'a_config_man',	'icon' => 'info_database.png'),				
-			),
-		);
-
-		// Now get plugin hooks for the menu
-		$admin_menu = (is_array($this->pm->get_menus('admin_menu'))) ? array_merge_recursive($admin_menu, array('extensions'=>$this->pm->get_menus('admin_menu'))) : $admin_menu;
-
-		//Now get the admin-favorits
-		$favs_array = array();
-		if($this->config->get('admin_favs')) {
-			$favs_array = @unserialize(stripslashes($this->config->get('admin_favs')));
-		}
-		$admin_menu['favorits']['icon'] = 'favorites.png';
-		$admin_menu['favorits']['name'] = $this->user->lang('favorits');
-		//Style Management
-		$admin_menu['favorits'][1] = array(
-			'link' => 'admin/manage_extensions.php'.$this->SID.'&tab=1',
-			'text'	=> $this->user->lang('styles_title'),
-			'check'	=> 'a_extensions_man',
-			'icon'	=> 'manage_styles.png',
-		);
-			
-		$i = 2;
-		if (is_array($favs_array) && count($favs_array) > 0){
-			foreach ($favs_array as $fav){
-				$items = explode('|', $fav);
-				$adm = $admin_menu;
-				foreach ($items as $item){
-					$latest = $adm;
-					$adm = (isset($adm[$item])) ? $adm[$item] : false;
-				}
-				if (isset($adm['link'])){
-					$admin_menu['favorits'][$i] = array(
-						'link' => $adm['link'],
-						'text'	=> $adm['text'].((count($items) == 3) ? ' ('.$latest['name'].')': ''),
-						'check'	=> $adm['check'],
-						'icon'	=> $adm['icon'],
-					);
-				}
-				$i++;
-			}
-		} else { //If there are no links, point to the favorits-management
-			$admin_menu['favorits'][2] = array(
-				'link' => 'admin/manage_menus.php'.$this->SID.'&tab=4',
-				'text'	=> $this->user->lang('manage_menus'),
-				'check'	=> 'a_config_man',
-				'icon'	=> 'manage_menus.png',
-			);
-		}
-		
-		return $admin_menu;
 	}
 	
 	public function adminmenu_output(){
-		$this->admin_menu = $this->adminmenu();
+		$this->admin_menu = $this->admin_functions->adminmenu(true, $this->core_updates, $this->extension_updates);
 		
 		// menu output
 		$this->tpl->assign_vars(array(
 			'L_ADMINISTRATION'	=> $this->user->lang('administration'),
 			'L_ADMIN_INDEX'		=> $this->user->lang('admin_index'),
 			'L_EQDKP_INDEX'		=> $this->user->lang('eqdkp_index'),
-			'ADMIN_MENU'		=> $this->jquery->SuckerFishMenu($this->admin_menu,'sf-menu',$this->root_path.'images/admin/')
+			'ADMIN_MENU'		=> $this->jquery->SuckerFishMenu($this->admin_menu,'sf-admin',$this->root_path.'images/admin/', false, 'sf-menu'),
+			'ADMIN_MENU_MOBILE' => $this->jquery->MenuConstruct_html($this->admin_functions->adminmenu(false, "", "", 'adminmenu-mobile'), 'adminmenu-mobile', $this->root_path.'images/admin/', false, ""),
 		));
 	}
 
@@ -232,7 +101,7 @@ class admin_index extends gen_class {
 			$cb = Codebird::getInstance();
 			$cb->setToken(TWITTER_OAUTH_TOKEN, TWITTER_OAUTH_SECRET);
 			$params = array(
-				'screen_name' => "EQdkpPlus",
+				'screen_name' => EQDKP_TWITTER_SCREENNAME,
 			);
 			$objJSON = $cb->statuses_userTimeline($params);
 			
@@ -305,7 +174,7 @@ class admin_index extends gen_class {
 				$rss_out = ($expiredData != null) ? $this->xmltools->prepareLoad($expiredData) : "";
 			}
 		}
-
+		header('content-type: text/html; charset=UTF-8');
 		print $rss_out;
 		exit;
 	}
@@ -320,13 +189,15 @@ class admin_index extends gen_class {
 		$total_members_active	= count($this->pdh->get('member', 'id_list', array(true)));
 		$total_members_inactive	= $total_members_ - $total_members_active;
 		$total_members			= $total_members_active . ' / ' . $total_members_inactive;
-
-		$total_raids			= $this->db->query_first('SELECT count(*) FROM __raids');
+		
+		$objTotalRaids			= $this->db->query('SELECT count(*) as count FROM __raids', true);
+		$total_raids			= $objTotalRaids['count'];
 		$raids_per_day			= sprintf("%.2f", ($total_raids / $days));
-
-		$total_items			= $this->db->query_first('SELECT count(*) FROM __items');
+		$objTotalItems			= $this->db->query('SELECT count(*) as count FROM __items', true);
+		$total_items			= $objTotalItems['count'];
 		$items_per_day			= sprintf("%.2f", ($total_items / $days));
-		$total_logs				= $this->db->query_first('SELECT count(*) FROM __logs');
+		$objTotalLogs			= $this->db->query('SELECT count(*) as count FROM __logs', true);
+		$total_logs				= $objTotalLogs['count'];
 
 		if ( (float)$raids_per_day > (float)$total_raids ){
 			$raids_per_day = $total_raids;
@@ -335,10 +206,10 @@ class admin_index extends gen_class {
 			$items_per_day = $total_items;
 		}
 
-		$arrTables = $this->db->get_table_information();
+		$arrTables = $this->db->listTables();
 		$dbsize = 0;
-		foreach ($arrTables as $key => $value){
-			$dbsize += $value['data_length'] + $value['index_length'];
+		foreach ($arrTables as $key => $strTablename){			
+			$dbsize += $this->db->getSizeOf($strTablename);;
 		}
 
 		if(is_int($dbsize)){
@@ -349,11 +220,18 @@ class admin_index extends gen_class {
 			$(".ip_resolver").each(function() {
 				$(this).qtip({
 					content: {
-						text: \'<img class="throbber" src="images/global/loading.gif" alt="Loading..." />\',
-						ajax: {
-							url: \'index.php'.$this->SID.'\',
-							data: { ip_resolve: $(this).html() }
-						},
+						text: function(event, api) {
+							$.ajax({
+								url: \'index.php'.$this->SID.'\',
+								data: { ip_resolve: $(this).html() }
+							})
+							.then(function(content) {
+								api.set(\'content.text\', content);
+							}, function(xhr, status, error) {
+								api.set(\'content.text\', status + \': \' + error);
+							});
+							return \'<i class="fa fa-refresh fa-spin fa-lg"></i>\';
+						}
 					},
 					position: {
 						at: "bottom right",
@@ -363,7 +241,7 @@ class admin_index extends gen_class {
 						width: 150,
 						tip: {
 							corner: true,
-							width: 20
+							height: 20
 						},
 						widget: true
 					}
@@ -375,23 +253,35 @@ class admin_index extends gen_class {
 							FROM ( __sessions s
 							LEFT JOIN __users u
 							ON u.user_id = s.session_user_id )
+							WHERE s.session_current > ?
 							GROUP BY u.username, s.session_ip
 							ORDER BY u.username, s.session_current DESC';
-		$result = $this->db->query($sql);
-		while ($row = $this->db->fetch_record($result)){
-			$this->tpl->assign_block_vars('online_row', array(
-				'USERNAME'		=> ( !empty($row['username']) ) ? $row['username'] : $this->user->lang('anonymous'),
-				'LOGIN'			=> $this->time->user_date($row['session_start'], true),
-				'LAST_UPDATE'	=> $this->time->user_date($row['session_current'], true),
-				'LOCATION'		=> resolve_eqdkp_page($row['session_page']),
-				'BROWSER'		=> resolve_browser($row['session_browser']),
-				'IP_ADDRESS'	=> $row['session_ip'])
-			);
+		$result = $this->db->prepare($sql)->execute($this->time->time-600);
+		$arrOnlineUsers = $arrBots = array();
+		if ($result){
+			while ($row = $result->fetchAssoc()){
+				$isBot = $this->env->is_bot($row['session_browser']) ? true : false;
+				if(!$isBot || ($isBot && !in_array($this->env->is_bot($row['session_browser']), $arrBots))){
+					$arrOnlineUsers[] = $row;
+					if($isBot) $arrBots[] = $this->env->is_bot($row['session_browser']);
+				}				
+			}
+			$online_count = count($arrOnlineUsers);
+		} else $online_count = 0;
+		
+		if($online_count){
+			foreach($arrOnlineUsers as $row){
+				$username = ( !empty($row['username']) ) ? $row['username'] : (($this->env->is_bot($row['session_browser'])) ? $this->env->is_bot($row['session_browser']) : $this->user->lang('anonymous'));
+				$this->tpl->assign_block_vars('online_row', array(
+						'USERNAME'		=> sanitize($username),
+						'LOGIN'			=> $this->time->user_date($row['session_start'], true),
+						'LAST_UPDATE'	=> $this->time->createTimeTag($row['session_current'], $this->time->user_date($row['session_current'], true)),
+						'LOCATION'		=> $this->admin_functions->resolve_eqdkp_page($row['session_page']),
+						'BROWSER'		=> $this->admin_functions->resolve_browser($row['session_browser']),
+						'IP_ADDRESS'	=> sanitize($row['session_ip']))
+				);
+			}
 		}
-		$online_count = $this->db->num_rows($result);
-		
-		//$this->jquery->qtip('.ip_resolver', 'Loading', array('ajax' => "url: '".$this->root_path."admin/index.php".$this->SID."', type:'GET', data:{ip_resolve: $(this).html()}"));
-		
 
 		// Log Actions
 		$s_logs = false;
@@ -422,7 +312,7 @@ class admin_index extends gen_class {
 			'SERVERINFO_REGGLOBAL'	=> $this->get_php_setting('register_globals',1,0),
 			'SERVERINFO_CURL'		=> $this->get_curl_setting(1),
 			'SERVERINFO_FOPEN'		=> $this->check_PHP_Function('fopen',1),
-			'SERVERINFO_MYSQL'		=> 'Client ('.$this->db->client_version().')<br/>Server ('.$this->db->server_version().')',
+			'SERVERINFO_MYSQL'		=> 'Client ('.$this->db->client_version.')<br/>Server ('.$this->db->server_version.')',
 			'SERVERINFO_PHP'		=> (((phpversion() >= VERSION_PHP_RQ) ? '<span class="positive">' : '<span class="negative">').phpversion().'</span>'),
 
 			'NUMBER_OF_MEMBERS'		=> $total_members,
@@ -434,7 +324,7 @@ class admin_index extends gen_class {
 			'ITEMS_PER_DAY'			=> $items_per_day,
 			'EQDKP_STARTED'			=> $this->time->user_date($this->config->get('eqdkp_start'), true),
 			'SHOW_BETA_WARNING'		=> VERSION_WIP,
-			'SHOW_PHP_WARNING'		=> (version_compare(PHP_VERSION, VERSION_PHP_REC, '<=')) ? true : false,
+			'SHOW_PHP_WARNING'		=> (version_compare(PHP_VERSION, VERSION_PHP_RQ, '<=') && !defined('EQDKP_DISABLE_PHP_CHECK')) ? true : false,
 			'ONLINE_FOOTCOUNT'		=> sprintf($this->user->lang('online_footcount'), $online_count),
 			'SHOW_LIMITED_FUNCS'	=> false,
 			'DATABASE_NAME'			=> $this->dbname,
@@ -511,5 +401,4 @@ class admin_index extends gen_class {
 	}
 }
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_admin_index', admin_index::$shortcuts);
 ?>

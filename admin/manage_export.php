@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2009
-* Date:			$Date: 2013-05-23 22:19:25 +0200 (Do, 23 Mai 2013) $
-* -----------------------------------------------------------------------
-* @author		$Author: godmod $
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev: 13378 $
-*
-* $Id: manage_menus.php 13378 2013-05-23 20:19:25Z godmod $
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 //tbody not allowed withoud thead, 
 
@@ -25,12 +28,12 @@ include_once($eqdkp_root_path . 'common.php');
 
 class Manage_Export extends page_generic {
 	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'pdh', 'jquery', 'core', 'config', 'html', 'admin_index'=>'admin_index', 'xmltools' => 'xmltools');
+		$shortcuts = array('admin_index'=>'admin_index', 'xmltools' => 'xmltools');
 		return array_merge(parent::$shortcuts, $shortcuts);
 	}
 
 	public function __construct(){
-		$this->user->check_auth('a_');
+		$this->user->check_auth('a_export_data');
 		$handler = array(
 			'ajax_export' => array('process' => 'ajax_export'),
 		);
@@ -43,7 +46,7 @@ class Manage_Export extends page_generic {
 		$myexp = new content_export();
 		$withMemberItems = $this->in->get('memberitems', 0);
 		$withMemberAdjustments = $this->in->get('memberadjs', 0);
-		$arrData = $myexp->export($withMemberItems, $withMemberAdjustments, true);
+		$arrData = $myexp->export($withMemberItems, $withMemberAdjustments, false, false, true);
 		header('content-type: text/html; charset=UTF-8');
 		if ($this->in->get('format') == 'json'){
 			echo $this->returnJSON($arrData);
@@ -58,7 +61,7 @@ class Manage_Export extends page_generic {
 	public function display() {
 		include_once($this->root_path . 'core/data_export.class.php');
 		$myexp = new content_export();
-		$arrData = $myexp->export(true, true, true);
+		$arrData = $myexp->export(true, true, false,false, true);
 		
 		$this->tpl->assign_vars(array(
 			'EXPORT_DATA' => $this->returnLua($arrData),
@@ -105,6 +108,6 @@ class Manage_Export extends page_generic {
 		return $luaParser->array2lua($arrData);
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_Manage_Export', Manage_Export::__shortcuts());
+
 registry::register('Manage_Export');
 ?>

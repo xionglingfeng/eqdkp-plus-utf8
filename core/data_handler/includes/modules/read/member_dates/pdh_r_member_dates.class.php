@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') )
@@ -23,10 +26,6 @@ die('Do not access this file directly.');
 
 if ( !class_exists( "pdh_r_member_dates" ) ) {
 	class pdh_r_member_dates extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'pdh', 'time'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 		public $default_lang = 'english';
 
@@ -82,6 +81,7 @@ if ( !class_exists( "pdh_r_member_dates" ) ) {
 			$this->fl_raid_dates = array();
 			$raid_ids = $this->pdh->get('raid', 'id_list');
 			$main_ids = $this->pdh->aget('member', 'mainid', 0, array($this->pdh->get('member', 'id_list', array(false, false, false, false))));
+			$member_list = $this->pdh->get('member', 'id_list', array(false, false, false));
 			foreach($raid_ids as $raid_id){
 				$date = $this->pdh->get('raid', 'date', array($raid_id));
 				$attendees = $this->pdh->get('raid', 'raid_attendees', array($raid_id));
@@ -89,6 +89,8 @@ if ( !class_exists( "pdh_r_member_dates" ) ) {
 				$mdkpids = $this->pdh->get('multidkp', 'mdkpids4eventid', array($event_id));
 				if(is_array($attendees)) {
 					foreach($attendees as $attendee_id){
+						if(!in_array($attendee_id, $member_list)) continue;
+						
 						if(!isset($this->fl_raid_dates['single'][$attendee_id]['total']['first_date']) || $date < $this->fl_raid_dates['single'][$attendee_id]['total']['first_date']) {
 							$this->fl_raid_dates['single'][$attendee_id]['total']['first_date'] = $date;
 						}
@@ -147,6 +149,9 @@ if ( !class_exists( "pdh_r_member_dates" ) ) {
 			$itempools = $this->pdh->aget('multidkp', 'mdkpids4itempoolid', 0, array($this->pdh->get('itempool', 'id_list')));
 			foreach($item_ids as $item_id){
 				$member_id = $this->pdh->get('item', 'buyer', array($item_id));
+				$member_list = $this->pdh->get('member', 'id_list', array(false, false, false));
+				if(!in_array($member_id, $member_list)) continue;	
+				
 				$itempool_id = $this->pdh->get('item', 'itempool_id', array($item_id));
 				$item_date = $this->pdh->get('item', 'date', array($item_id));
 				if(!isset($this->fl_item_dates['single'][$member_id]['total']['last']['date']) || $item_date > $this->fl_item_dates['single'][$member_id]['total']['last']['date']){
@@ -181,7 +186,7 @@ if ( !class_exists( "pdh_r_member_dates" ) ) {
 					$this->fl_item_dates['multi'][$main_ids[$member_id]]['itempool'][$itempool_id]['first']['date'] = $item_date;
 					$this->fl_item_dates['multi'][$main_ids[$member_id]]['itempool'][$itempool_id]['first']['item_id'] = $item_id;
 				}
-				if(is_array($itempools[$itempool_id])) {
+				if(isset($itempools[$itempool_id]) && is_array($itempools[$itempool_id])) {
 					foreach($itempools[$itempool_id] as $mdkp_id){
 						if(!isset($this->fl_item_dates['single'][$member_id]['mdkp'][$mdkp_id]['last']['date']) || $item_date > $this->fl_item_dates['single'][$member_id]['mdkp'][$mdkp_id]['last']['date']){
 							$this->fl_item_dates['single'][$member_id]['mdkp'][$mdkp_id]['last']['date'] = $item_date;
@@ -208,9 +213,9 @@ if ( !class_exists( "pdh_r_member_dates" ) ) {
 		public function get_first_raid($member_id, $mdkp_id=null, $with_twink=true){
 			$with_twink = ($with_twink) ? 'multi' : 'single';
 			if($mdkp_id == null){
-				return (!isset($this->fl_raid_dates[$with_twink][$member_id]['total']['first_date'])) ? 2147483647 : $this->fl_raid_dates[$with_twink][$member_id]['total']['first_date'];
+				return (!isset($this->fl_raid_dates[$with_twink][$member_id]['total']['first_date'])) ? 0 : $this->fl_raid_dates[$with_twink][$member_id]['total']['first_date'];
 			} else {
-				return (!isset($this->fl_raid_dates[$with_twink][$member_id]['mdkp'][$mdkp_id]['first_date'])) ? 2147483647 : $this->fl_raid_dates[$with_twink][$member_id]['mdkp'][$mdkp_id]['first_date'];
+				return (!isset($this->fl_raid_dates[$with_twink][$member_id]['mdkp'][$mdkp_id]['first_date'])) ? 0 : $this->fl_raid_dates[$with_twink][$member_id]['mdkp'][$mdkp_id]['first_date'];
 			}
 		}
 
@@ -313,5 +318,4 @@ if ( !class_exists( "pdh_r_member_dates" ) ) {
 		}
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_member_dates', pdh_r_member_dates::__shortcuts());
 ?>

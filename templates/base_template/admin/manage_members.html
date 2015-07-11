@@ -1,21 +1,32 @@
-<form action='manage_members.php{SID}' method='post' class="colorswitch">
-<table width="100%" cellpadding="2" cellspacing="1" border="0">
-	<tr>
-		<th colspan="{HPTT_COLUMN_COUNT}"><span style="float:left;">{L_group_members}</span><span style="float:right;"><input type="button" name="madd" value="{L_add_member}" class="mainoption bi_new" onclick="AddChar()"/></span></th>
-	</tr>
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li class="current"><a>{L_manage_members}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+<form action='manage_members.php{SID}' method='post' >
+<div class="contentHeader">
+	<h1 class="contentTitle">{L_manage_members}</h1>
+</div>
+<div class="tableHeader floatRight">
+	<button class="mainoption" type="button" name="addadj" onclick="AddChar()"><i class="fa fa-plus"></i>{L_add_member}</button>
+</div>
+<div class="clear"></div>	
+<table  class="table fullwidth colorswitch">
 	{MEMBER_LIST}
-	<tr>
-		<th colspan="{HPTT_COLUMN_COUNT}">
-			<input type="button" name="mdel" value="{L_delete_selected_members}" class="mainoption bi_delete" onclick="delete_warning();" />
-			<input type="hidden" name="mdel" value="1" disabled="disabled" id="mass_del_submit" />
-			<input type="submit" name="mstatus" value="{L_mass_stat_change}" class="mainoption" />
-			<input type="submit" name="rankc" value="{L_mass_rank_change}" class="mainoption" />
-			{RANK_SEL}
-		</th>
-	</tr>
-	<tr class="pagination_row">
-		<td colspan="{HPTT_COLUMN_COUNT}" align="center">{PAGINATION}</td>
-	</tr>
 </table>
+<div class="center pagination_wrapper">
+	{PAGINATION}
+</div>
+<div class="contentFooter">
+	{BUTTON_MENU}
+	<input type="button" name="mdel" value="{L_delete_selected_members}" class="mainoption bi_delete" onclick="delete_warning();" id="del_members" style="display:none;"/>
+	<input type="submit" name="mstatus" value="{L_mass_stat_change}" class="mainoption" id="member_statchange" style="display:none;"/>
+	<input type="submit" name="rankc" value="{L_mass_rank_change}" class="mainoption" style="display:none;" id="member_rankchange"/>
+	<input type="hidden" name="del" value="1" disabled="disabled" id="mass_del_submit" />
+	<div class="clear"></div>
+</div>
 {CSRF_TOKEN}
 </form>

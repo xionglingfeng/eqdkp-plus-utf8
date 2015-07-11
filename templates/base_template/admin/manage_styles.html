@@ -1,4 +1,14 @@
 <!-- IF S_LOCAL_UPDATE -->
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li><a href="{EQDKP_ROOT_PATH}admin/manage_extensions.php{SID}">{L_extension_repo}</a>
+		<li class="current"><a>{L_style_localupdate}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
 <form method="post" action="{ACTION}&amp;cat=2&amp;code={TEMPLATE_ID}&amp;mode=process_update" name="post">
 	<fieldset class="settings">
 		<legend>{L_style_localupdate}</legend>
@@ -29,24 +39,51 @@
 	</fieldset>
 	<!-- ENDIF -->
 	
-	<input type="submit" name="process_update" value="{L_bridge_continue}" class="mainoption bi_ok" /> <!-- IF S_CHANGED_FILES --><input type="button" value="{L_style_localupdate_dlchangedfiles}" class="mainoption bi_save" onclick="window.location='manage_styles.php{SID}&export_changed_files=true&styleid={TEMPLATE_ID}'"/><!-- ENDIF -->
+	<button type="submit" name="process_update" class="mainoption"><i class="fa fa-check"></i>{L_bridge_continue}</button> <!-- IF S_CHANGED_FILES --><button type="button" class="mainoption" onclick="window.location='manage_styles.php{SID}&export_changed_files=true&styleid={TEMPLATE_ID}'"><i class="fa fa-download"></i>{L_style_localupdate_dlchangedfiles}</button><!-- ENDIF -->
 {CSRF_TOKEN}
 	</form>
 <!-- ELSE -->
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li><a href="{EQDKP_ROOT_PATH}admin/manage_extensions.php{SID}">{L_extension_repo}</a>
+		<li><a href="{EQDKP_ROOT_PATH}admin/manage_extensions.php{SID}&amp;tab=1">{L_styles_title}</a>
+		<li class="current"><a>{STYLE_NAME}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
+<script>
+
+$(document).ready(function(){
+	$('input[name="background_type"]').on('change', function(){
+		if($(this).val() == "2"){
+			$("#background_image").attr("disabled", false);
+		} else {
+			$("#background_image").attr("disabled", true);
+		}
+	})
+	var recent = $('input[name="background_type"]:checked').val();
+	if(recent == "2"){
+		$("#background_image").attr("disabled", false);
+	} else {
+		$("#background_image").attr("disabled", true);
+	}
+})
+</script>
 
 <form method="post" action="{F_ADD_STYLE}" name="post">
 <div id="style_tabs">
 <ul>
 <li><a href="#settings">{L_style_settings}</a></li>
-<!-- IF S_USE_DBVARS --><li><a href="#colors">{L_color_settings}</a></li><!-- ENDIF -->
-<li><a href="#class_colors">{L_class_colors}</a></li>
+<li><a href="#colors">{L_color_settings}</a></li>
+<li><a href="#class_colors">{L_core_sett_f_class_colors}</a></li>
 <li><a href="#templates">{L_edit_templates}</a></li>
 </ul>
 
 <input type="hidden" name="styleid" value="{STYLE_ID}" />
-<!-- IF S_USE_DBVARS -->
-<input type="hidden" name="use_db_vars" value="1" />
-<!-- ENDIF -->
+
 <div id="settings">
 	<fieldset class="settings">
 		<legend>{L_style_settings}</legend>
@@ -66,9 +103,25 @@
 			<dt><label>{L_logo_position}</label></dt>
 			<dd>{DD_LOGO_POSITION}</dd>
 		</dl>
+	</fieldset>
+	<fieldset class="settings">
+		<legend>{L_background_image}</legend>	
+		<dl>
+			<dt><label>{L_background_image_type}</label><br /><span>{L_background_image_type_help}</span></dt>
+			<dd>{RADIO_BACKGROUND_IMAGE_TYPE}</dd>
+		</dl>
 		<dl>
 			<dt><label>{L_background_image}</label><br /><span>{L_background_image_note}</span></dt>
-			<dd><input type="text" name="background_img" size="25" maxlength="255" value="{BACKGROUND_IMG}" class="input" /></dd>
+			<dd>
+			<div class="input-icon-append">
+			<input id="background_image" type="text" name="background_img" size="25" maxlength="255" value="{BACKGROUND_IMG}" class="input" {BACKGROUND_IMG_DISABLED}/>
+			<i class="fa fa-lg fa-folder-open hand" onclick="elfinder_all('background_image');"></i>
+			</div>
+			</dd>
+		</dl>
+		<dl>
+			<dt><label>{L_background_position}</label></dt>
+			<dd>{RADIO_BACKGROUND_POSITION}</dd>
 		</dl>
 	</fieldset>
 
@@ -76,22 +129,28 @@
 		<legend>{L_pk_set_portal_head}</legend>
 		<dl>
 			<dt><label>{L_style_portal_width}</label></dt>
-			<dd><input type="text" name="portal_width" size="5" maxlength="5" value="{STYLE_PORTAL_WIDTH}" class="input" /> {DD_PORTAL_WIDTH}</dd>
+			<dd><input type="text" name="portal_width" size="5" maxlength="5" value="{STYLE_PORTAL_WIDTH}" class="input" {STYLE_PORTAL_WIDTH_DISABLED}/> {DD_PORTAL_WIDTH}</dd>
 		</dl>
 		<dl>
 			<dt><label>{L_style_column_left_width}</label></dt>
-			<dd><input type="text" name="column_left_width" size="5" maxlength="5" value="{STYLE_COLUMN_LEFT_WIDTH}" class="input" /> {DD_COLUMN_LEFT_WIDTH}</dd>
+			<dd><input type="text" name="column_left_width" size="5" maxlength="5" value="{STYLE_COLUMN_LEFT_WIDTH}" class="input" {STYLE_COLUMN_LEFT_DISABLED}/> {DD_COLUMN_LEFT_WIDTH}</dd>
 		</dl>
 		<dl>
 			<dt><label>{L_style_column_right_width}</label></dt>
-			<dd><input type="text" name="column_right_width" size="5" maxlength="5" value="{STYLE_COLUMN_RIGHT_WIDTH}" class="input" /> {DD_COLUMN_RIGHT_WIDTH}</dd>
+			<dd><input type="text" name="column_right_width" size="5" maxlength="5" value="{STYLE_COLUMN_RIGHT_WIDTH}" class="input" {STYLE_COLUMN_RIGHT_DISABLED}/> {DD_COLUMN_RIGHT_WIDTH}</dd>
 		</dl>
 	</fieldset>
 
 
 </div>
-<!-- IF S_USE_DBVARS -->
+
 <div id="colors">
+<div class="infobox infobox-large infobox-blue clearfix">
+	<i class="fa fa-info-circle fa-4x pull-left"></i> {L_style_settings_info}
+</div>
+
+
+
 	<fieldset class="settings">
 		<legend>{L_color_settings}</legend>
 		<dl>
@@ -103,27 +162,27 @@
 		<legend>{L_fonts}</legend>
 		<dl>
 			<dt><label>{L_fontface1}</label><br /><span>{L_fontface1_note}</span></dt>
-			<dd><input type="text" name="fontface1" size="35" maxlength="60" value="{FONTFACE1}" class="input" /></dd>
+			<dd><input type="text" name="fontface1" size="35" maxlength="60" value="{FONTFACE1}" class="input" {FONTFACE1_DISABLED} /></dd>
 		</dl>
 		<dl>
 			<dt><label>{L_fontface2}</label><br /><span>{L_fontface2_note}</span></dt>
-			<dd><input type="text" name="fontface2" size="35" maxlength="60" value="{FONTFACE2}" class="input" /></dd>
+			<dd><input type="text" name="fontface2" size="35" maxlength="60" value="{FONTFACE2}" class="input" {FONTFACE2_DISABLED} /></dd>
 		</dl>
 		<dl>
 			<dt><label>{L_fontface3}</label><br /><span>{L_fontface3_note}</span></dt>
-			<dd><input type="text" name="fontface3" size="35" maxlength="60" value="{FONTFACE3}" class="input" /></dd>
+			<dd><input type="text" name="fontface3" size="35" maxlength="60" value="{FONTFACE3}" class="input" {FONTFACE3_DISABLED} /></dd>
 		</dl>
 		<dl>
 			<dt><label>{L_fontsize1}</label><br /><span>{L_fontsize1_note}</span></dt>
-			<dd><input type="text" name="fontsize1" size="3" maxlength="4" value="{FONTSIZE1}" class="input" /> px</dd>
+			<dd><input type="text" name="fontsize1" size="3" maxlength="4" value="{FONTSIZE1}" class="input" {FONTSIZE1_DISABLED} /> px</dd>
 		</dl>
 		<dl>
 			<dt><label>{L_fontsize2}</label><br /><span>{L_fontsize2_note}</span></dt>
-			<dd><input type="text" name="fontsize2" size="3" maxlength="4" value="{FONTSIZE2}" class="input" /> px</dd>
+			<dd><input type="text" name="fontsize2" size="3" maxlength="4" value="{FONTSIZE2}" class="input" {FONTSIZE2_DISABLED} /> px</dd>
 		</dl>
 		<dl>
 			<dt><label>{L_fontsize3}</label><br /><span>{L_fontsize3_note}</span></dt>
-			<dd><input type="text" name="fontsize3" size="3" maxlength="4" value="{FONTSIZE3}" class="input" /> px</dd>
+			<dd><input type="text" name="fontsize3" size="3" maxlength="4" value="{FONTSIZE3}" class="input" {FONTSIZE3_DISABLED} /> px</dd>
 		</dl>
 		<dl>
 			<dt><label>{L_fontcolor1}</label><br /><span>{L_fontcolor1_note}</span></dt>
@@ -197,7 +256,7 @@
 		</dl>
 		<dl>
 			<dt><label>{L_table_border_width}</label></dt>
-			<dd><input type="text" name="table_border_width" size="2" maxlength="3" value="{TABLE_BORDER_WIDTH}" class="input" /> px</dd>
+			<dd><input type="text" name="table_border_width" size="2" maxlength="3" value="{TABLE_BORDER_WIDTH}" class="input" {TABLE_BORDER_WIDTH_DISABLED} /> px</dd>
 		</dl>
 		<dl>
 			<dt><label>{L_table_border_color}</label></dt>
@@ -216,7 +275,7 @@
 		</dl>
 		<dl>
 			<dt><label>{L_input_border_width}</label></dt>
-			<dd><input type="text" name="input_border_width" size="2" maxlength="3" value="{INPUT_BORDER_WIDTH}" class="input" /> px</dd>
+			<dd><input type="text" name="input_border_width" size="2" maxlength="3" value="{INPUT_BORDER_WIDTH}" class="input" {INPUT_BORDER_WIDTH_DISABLED} /> px</dd>
 		</dl>
 		<dl>
 			<dt><label>{L_input_border_color}</label></dt>
@@ -228,12 +287,11 @@
 		</dl>
 	</fieldset>
 </div>
-<!-- ENDIF -->
 
 
 <div id="class_colors">
 	<fieldset class="settings">
-		<legend>{L_class_colors}</legend>
+		<legend>{L_core_sett_f_class_colors}</legend>
 		<!-- BEGIN classes -->
 		<dl>
 			<dt><label>{classes.NAME}</label></dt>
@@ -243,14 +301,13 @@
 	</fieldset>
 </div>
 
-<div id="templates">
-		
-	<div class="errorbox roundbox">
-		<div class="icon_false">{L_TEMPLATE_WARNING}</div>
-	</div>
-	
+<div id="templates">			
 	<fieldset class="settings smallsettings">
 		<legend>{L_edit_templates}</legend>
+		<div class="infobox infobox-large infobox-red clearfix">
+			<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_TEMPLATE_WARNING}
+		</div>
+
 		<dl>
 			<dt><label>{L_select_template}:</label></dt>
 			<dd>{DD_EDIT_TEMPLTES}</dd>
@@ -258,20 +315,17 @@
 
 		<input type="hidden" name="template" />{TEMPLATE_CONTENT}
 	</fieldset>
-	<input name="template_edit_button" type="submit" class="mainoption bi_ok" id="template_edit_button" value="{L_save}" /> <input name="template_reset_button" type="submit" class="mainoption bi_delete" id="template_reset_button" value="{L_reset}" />
-
+	<button name="template_edit_button" type="submit" class="mainoption" id="template_edit_button"><i class="fa fa-check"></i>{L_save}</button>
+	<button name="template_reset_button" type="submit" class="mainoption" id="template_reset_buttonn"><i class="fa fa-trash-o"></i>{L_reset}</button>
 </div>
 
 </div>
-<table width="100%" border="0" cellpadding="2" cellspacing="1">
-  <tr>
-    <th align="center" colspan="2"> 
-      <input type="submit" name="update" value="{L_update_style}" class="mainoption bi_ok" />
-      <input type="submit" name="" value="{L_cancel}" class="liteoption bi_back" />
-      <!-- IF not S_DEFAULT_STYLE --><input type="button"  name="del" value="{L_delete_style}" class="liteoption bi_delete" onclick="delete_warning();" /><!-- ENDIF -->
-    </th>
-  </tr>
-</table>
+
+<div class="contentFooter">
+	<button type="submit" name="update" class="mainoption"><i class="fa fa-check"></i>{L_update_style}</button>
+	<button type="submit" name="" class="liteoption"><i class="fa fa-chevron-left"></i>{L_cancel}</button>
+	<button type="button" name="del" class="liteoption" onclick="delete_warning();"><i class="fa fa-times"></i>{L_delete_style}</button>
+</div>
 {CSRF_TOKEN}
 </form>
 <!-- ENDIF -->

@@ -1,44 +1,43 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
+
 if ( !defined('EQDKP_INC') ){
 	header('HTTP/1.0 404 Not Found');exit;
 }
 
 class login_openid extends gen_class {
-	public static $shortcuts = array('user', 'jquery', 'db', 'in', 'config', 'env' => 'environment', 'pdh');
-
 	public $oid = false;
+	public static $options = array(
+		'connect_accounts'	=> true,
+	);
 	
-	public function __construct(){
-		
-		$this->options = array(
-			'connect_accounts'	=> true,	
-		);
-		
-		$this->functions = array(
-			'login_button'		=> 'login_button',
-			'register_button' 	=> 'register_button',
-			'account_button'	=> 'account_button',
-			'get_account'		=> 'get_account',
-			'pre_register'		=> 'pre_register',
-		);
-		
+	public static $functions = array(
+		'login_button'		=> 'login_button',
+		'register_button' 	=> 'register_button',
+		'account_button'	=> 'account_button',
+		'get_account'		=> 'get_account',
+		'pre_register'		=> 'pre_register',
+	);
+	
+	public function __construct(){		
 	}
 	
 	public function init_openid(){
@@ -51,21 +50,21 @@ class login_openid extends gen_class {
 	}
 	
 	public function login_button(){
-		$this->jquery->dialog('openid_login_selector', 'OpenID', array('url' => $this->root_path.'libraries/openid/selector/selector.html', 'height'	=> 350));
+		$this->jquery->dialog('openid_login_selector', 'OpenID', array('url' => $this->server_path.'libraries/openid/selector/selector.html', 'height'	=> 400));
 		
-		return '<input type="button" class="mainoption bi_openid" onclick="openid_login_selector()" value="OpenID Login" />';
+		return '<button type="button" class="mainoption thirdpartylogin openid loginbtn" onclick="openid_login_selector()"><i class="bi_openid"></i>OpenID</button>';
 	}
 	
 	public function register_button(){
-		$this->jquery->dialog('openid_reg_selector', 'OpenID', array('url' => $this->root_path.'libraries/openid/selector/reg_selector.html', 'height'	=> 350));
+		$this->jquery->dialog('openid_reg_selector', 'OpenID', array('url' => $this->server_path.'libraries/openid/selector/reg_selector.html', 'height'	=> 400));
 		
-		return '<input type="button" class="mainoption bi_openid" onclick="openid_reg_selector()" value="OpenID '.$this->user->lang('register_title').'" />';		
+		return '<button type="button" class="mainoption thirdpartylogin openid registerbtn" onclick="openid_reg_selector()"><i class="bi_openid"></i>OpenID</button>';		
 	}
 	
 	public function account_button(){
-		$this->jquery->dialog('openid_acc_selector', 'OpenID', array('url' => $this->root_path.'libraries/openid/selector/acc_selector.html', 'height'	=> 350));
+		$this->jquery->dialog('openid_acc_selector', 'OpenID', array('url' => $this->server_path.'libraries/openid/selector/acc_selector.html', 'height'	=> 400));
 		
-		return '<input type="button" class="mainoption bi_openid" onclick="openid_acc_selector()" value="OpenID '.$this->user->lang('auth_connect_account').'" />';
+		return '<button type="button" class="mainoption thirdpartylogin openid accountbtn" onclick="openid_acc_selector()"><i class="bi_openid"></i>OpenID</button>';
 	}
 	
 	public function get_account(){
@@ -155,7 +154,7 @@ class login_openid extends gen_class {
 			} else {
 			
 				if ($this->oid->validate() ){
-					$userid = $this->pdh->get('user', 'userid_for_authaccount', array($this->oid->identity));
+					$userid = $this->pdh->get('user', 'userid_for_authaccount', array($this->oid->identity, 'openid'));
 					if ($userid){
 						$userdata = $this->pdh->get('user', 'data', array($userid));
 						if ($userdata){
@@ -195,6 +194,4 @@ class login_openid extends gen_class {
 		return false;
 	}
 }
-
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_login_openid', login_openid::$shortcuts);
 ?>

@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if (!defined('EQDKP_INC')){
@@ -22,10 +25,6 @@ if (!defined('EQDKP_INC')){
 
 if (!class_exists('pdh_r_roles')){
 	class pdh_r_roles extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'db', 'user', 'game'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 		private $roles;
 		private $roles_id;
@@ -73,18 +72,21 @@ if (!class_exists('pdh_r_roles')){
 
 			// empty array as default
 			$this->roles	= $this->roles_id = array();
-			$roleresult		= $this->db->query('SELECT * FROM __roles');
-			while ($row = $this->db->fetch_record($roleresult)){
-				$this->roles[$row['role_id']]['id']			= $row['role_id'];
-				$this->roles[$row['role_id']]['name']		= $row['role_name'];
-				$this->roles[$row['role_id']]['classes']	= (substr_count($row['role_classes'], "|") > 0) ? explode("|", $row['role_classes']) : ((count($row['role_classes']) > 0) ? array($row['role_classes']) : array());
-				$this->roles[$row['role_id']]['classes_r']	= $row['role_classes'];
-				$this->roles_id[$row['role_id']]			= $row['role_name'];
-			}
-			if($roleresult){
+			
+			$objQuery = $this->db->query('SELECT * FROM __roles');
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$this->roles[$row['role_id']]['id']			= $row['role_id'];
+					$this->roles[$row['role_id']]['name']		= $row['role_name'];
+					$this->roles[$row['role_id']]['classes']	= (substr_count($row['role_classes'], "|") > 0) ? explode("|", $row['role_classes']) : ((count($row['role_classes']) > 0) ? array($row['role_classes']) : array());
+					$this->roles[$row['role_id']]['classes_r']	= $row['role_classes'];
+					$this->roles_id[$row['role_id']]			= $row['role_name'];
+				}
+				
 				$this->pdc->put('pdh_roles_table.roles', $this->roles, NULL);
 				$this->pdc->put('pdh_roles_table.roles_id', $this->roles_id, NULL);
 			}
+
 			return true;
 		}
 
@@ -126,7 +128,7 @@ if (!class_exists('pdh_r_roles')){
 		}
 
 		public function get_edit($id){
-			return '<img src="'.$this->root_path.'images/glyphs/edit.png" alt="'.$this->user->lang('edit_role').'" title="'.$this->user->lang('edit_role').'" onclick="editRole(\''.$id.'\')"/>';
+			return '<i class="fa fa-pencil fa-lg hand" title="'.$this->user->lang('edit_role').'" onclick="editRole(\''.$id.'\')"></i>';
 		}
 
 		public function get_memberroles($classid, $addfirstrow=false){
@@ -141,13 +143,11 @@ if (!class_exists('pdh_r_roles')){
 
 		public function get_roleid2classid($list){
 			foreach(explode("|", $list) as $class_id){
-				$output[$class_id] = $this->game->get_name('classes', $class_id);
+				$output[$class_id] = $this->game->get_name('primary', $class_id);
 			}
 			$classnames = implode(", ", $output);
 			return ($classnames) ? $classnames : $list;
 		}
 	} //end class
 } //end if class not exists
-
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_roles', pdh_r_roles::__shortcuts());
 ?>

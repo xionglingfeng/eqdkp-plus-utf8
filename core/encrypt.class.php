@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
 if ( !defined('EQDKP_INC') ){
@@ -21,8 +24,6 @@ if ( !defined('EQDKP_INC') ){
 }
 
 class encrypt extends gen_class {
-	public static $shortcuts = array('config', 'user', 'core');
-	
 	private $resMycrypt;
 	private $strKeyLength;
 	private $strEncryptionKey;
@@ -30,11 +31,11 @@ class encrypt extends gen_class {
 	public function __construct($strEncryptionKey = ''){
 		include_once($this->root_path.'libraries/aes/AES.class.php');
 		
-		if ($strEncryptionKey == '' && $this->encryptionKey == ''){
+		if ($strEncryptionKey == '' && registry::get_const('encryptionKey') == ''){
 			$this->core->message('Encryption Key is missing. Please take a look at our Wiki.', $this->user->lang('error'), 'red');
 			$this->strEncryptionKey = '';
 		} else {		
-			$this->strEncryptionKey = ($strEncryptionKey != '') ? $strEncryptionKey : $this->encryptionKey;
+			$this->strEncryptionKey = ($strEncryptionKey != '') ? $strEncryptionKey : registry::get_const('encryptionKey');
 			$this->strEncryptionKey = md5($this->strEncryptionKey);		
 		}
 	}
@@ -56,6 +57,4 @@ class encrypt extends gen_class {
 	}
 
 } //END mmocms_encrypt-class
-
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_encrypt', encrypt::$shortcuts);
 ?>

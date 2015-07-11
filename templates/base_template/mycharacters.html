@@ -1,0 +1,36 @@
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li class="current"><a>{L_manage_members_titl}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
+<form method="post" action="{ACTION}" name="data" id="charactersform">
+<input type='hidden' name='delete_id' id='delete_id' value='' />
+{CSRF_TOKEN}
+</form>
+<div class="contentHeader">
+	<h1 class="contentTitle">{L_manage_members_titl}</h1>
+</div>
+<!-- IF S_SHOW_NO_CONN_INFO -->
+<div class="infobox infobox-large infobox-blue clearfix">
+	<i class="fa fa-info-circle fa-4x pull-left"></i> {L_no_connected_char_info}
+</div>
+<br >
+<!-- ENDIF -->
+<!-- IF CONNECT_CHARS -->
+<form method="post" action="{ACTION}">
+	{L_associated_members}: {JS_CONNECTIONS} <input type="submit" name="connection_submit" id="connection_submit" value="{L_uc_connectme}" class="mainoption bi_ok" />
+	{CSRF_TOKEN}
+</form>
+
+{ADD_MENU}
+<!-- ENDIF --> 
+<table class="table fullwidth hptt colorswitch scrollable-x">
+	{CHAR_LIST}
+</table>
+
+<div class="center pagination_wrapper">
+	{CHAR_PAGINATION}
+</div>

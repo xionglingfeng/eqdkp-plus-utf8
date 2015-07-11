@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2006
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 define('EQDKP_INC', true);
@@ -22,14 +25,11 @@ $eqdkp_root_path = './../';
 include_once($eqdkp_root_path.'common.php');
 
 class Manage_Multidkp extends page_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'pdh', 'jquery', 'core', 'config');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 	public function __construct(){
 		$handler = array(
 			'save' => array('process' => 'save', 'check' => 'a_event_add', 'csrf'=>true),
+			'save_sort' => array('process' => 'save_sort', 'check' => 'a_event_add', 'csrf'=>true),
 			'upd'	=> array('process' => 'update', 'csrf'=>false),
 		);
 		parent::__construct('a_event_', $handler);
@@ -51,6 +51,16 @@ class Manage_Multidkp extends page_generic {
 				$message = array('title' => $this->user->lang('save_suc'), 'text' => $mdkp['name'], 'color' => 'green');
 			}
 		}
+		$this->display($message);
+	}
+	
+	public function save_sort(){
+		$arrSort = $this->in->getArray("sort", "int");
+		
+		$this->pdh->put('multidkp', 'save_sort', array($arrSort));
+		
+		
+		$message = array('title' => $this->user->lang('success'),'text' => $this->user->lang('save_suc'), 'color' => 'green');
 		$this->display($message);
 	}
 
@@ -77,14 +87,15 @@ class Manage_Multidkp extends page_generic {
 		} else {
 			$mdkp['name'] = $this->pdh->get('multidkp', 'name', array($mdkp_id));
 			$mdkp['desc'] = $this->pdh->get('multidkp', 'desc', array($mdkp_id));
-			$mdkp['events'] = $this->pdh->get('multidkp', 'event_ids', array($mdkp_id, true));
+			$mdkp['events'] = array_merge($this->pdh->get('multidkp', 'event_ids', array($mdkp_id, true)), $this->pdh->get('multidkp', 'event_ids', array($mdkp_id)));	
 			$mdkp['itempools'] = $this->pdh->get('multidkp', 'itempool_ids', array($mdkp_id));
-			$mdkp['no_attendance'] = $this->pdh->get('multidkp', 'no_attendance', array($mdkp_id));
+			$mdkp['no_attendance'] = array_diff($this->pdh->get('multidkp', 'event_ids', array($mdkp_id)), $this->pdh->get('multidkp', 'event_ids', array($mdkp_id, true)));
 		}
 
 		//events
-		$events = $this->pdh->aget('event', 'name', 0, array($this->pdh->sort($this->pdh->get('event', 'id_list'), 'event', 'name')));
-
+		$events = $this->pdh->aget('event', 'name', 0, array($this->pdh->sort($this->pdh->get('event', 'id_list'), 'event', 'name')));		
+		$sel_events = $this->pdh->aget('event', 'name', 0, array($this->pdh->sort($mdkp['events'], 'event', 'name')));
+		
 		//itempools
 		$itempools = $this->pdh->aget('itempool', 'name', 0, array($this->pdh->sort($this->pdh->get('itempool', 'id_list'), 'itempool', 'name')));
 
@@ -94,7 +105,7 @@ class Manage_Multidkp extends page_generic {
 			'DESC'					=> $mdkp['desc'],
 			'EVENT_SEL'				=> $this->jquery->MultiSelect('events', $events, $mdkp['events'], array('width' => 300, 'filter' => true)),
 			'ITEMPOOL_SEL'			=> $this->jquery->MultiSelect('itempools', $itempools, $mdkp['itempools'], array('width' => 300)),
-			'NO_ATT_SEL'			=> $this->jquery->MultiSelect('no_atts', $events, $mdkp['no_attendance'], array('width' => 300, 'filter' => true)),
+			'NO_ATT_SEL'			=> $this->jquery->MultiSelect('no_atts', $sel_events, $mdkp['no_attendance'], array('width' => 300, 'filter' => true)),
 			'MDKP_ID'				=> $mdkp_id,
 		));
 
@@ -117,6 +128,7 @@ class Manage_Multidkp extends page_generic {
 		$mdkp = array();
 		foreach($mdkp_ids as $id)
 		{
+			$mdkp[$id]['sortid'] = $this->pdh->get('multidkp', 'sortid', $id);
 			$mdkp[$id]['name'] = $this->pdh->get('multidkp', 'name', $id);
 			$mdkp[$id]['desc'] = $this->pdh->get('multidkp', 'desc', $id);
 			$mdkp[$id]['events'] = $this->pdh->aget('event', 'name', 0, array($this->pdh->get('multidkp', 'event_ids', $id)));
@@ -125,7 +137,7 @@ class Manage_Multidkp extends page_generic {
 			$mdkp[$id]['itempools'] = $this->pdh->aget('itempool', 'name', 0, array(((is_array($ip_ids)) ? $ip_ids : array())));
 		}
 
-		$sort_ids = get_sortedids($mdkp, explode('.', $order), array('name', 'desc'));
+		$sort_ids = get_sortedids($mdkp, explode('.', $order), array('sortid', 'name', 'desc'));
 		foreach($sort_ids as $id) {
 			$event_string = array();
 			foreach($mdkp[$id]['events'] as $eid => $event) {
@@ -144,6 +156,13 @@ class Manage_Multidkp extends page_generic {
 			$red 	=> '_red',
 			'LISTMULTI_FOOTCOUNT'	=> sprintf($this->user->lang('multi_footcount'), count($sort_ids)),
 		));
+		
+		$this->tpl->add_js("
+			$(\"#multidkpsort tbody\").sortable({
+				cancel: '.not-sortable, input, tr th.footer, th',
+				cursor: 'pointer',
+			});
+		", "docready");
 
 		$this->core->set_vars(array(
 			'page_title'		=> $this->user->lang('manmdkp_title'),
@@ -173,6 +192,5 @@ class Manage_Multidkp extends page_generic {
 		return $mdkp;
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_Manage_Multidkp', Manage_Multidkp::__shortcuts());
 registry::register('Manage_Multidkp');
 ?>

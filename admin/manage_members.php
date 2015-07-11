@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2006
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 define('EQDKP_INC', true);
@@ -22,15 +25,11 @@ $eqdkp_root_path = './../';
 include_once($eqdkp_root_path.'common.php');
 
 class Manage_Members extends page_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'pdh', 'jquery', 'game', 'core', 'config', 'html');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 	public function __construct(){
 		$this->user->check_auth('a_members_man');
 		$handler = array(
-			'mdel' => array('process' => 'member_del', 'csrf'=>true),
+			'del' => array('process' => 'member_del', 'csrf'=>true),
 			'mstatus' => array('process' => 'member_status', 'csrf'=>true),
 			'rankc' => array('process' => 'member_ranks', 'csrf'=>true),
 			'defrolechange'	=> array('process' => 'ajax_defaultrole', 'csrf'=>true),
@@ -136,28 +135,52 @@ class Manage_Members extends page_generic {
 		$character_count	= count($view_list);
 		$footer_text		= sprintf($this->user->lang('listmembers_footcount'), $character_count);
 
-		$onclose_url = "if(event.originalEvent == undefined) { window.location.href = 'admin/manage_members.php".$this->SID."'; } else { window.location.href = 'manage_members.php".$this->SID."'; }";
-		$this->jquery->Dialog('EditChar', $this->user->lang('uc_edit_char'), array('withid'=>'editid', 'url'=>"../addcharacter.php".$this->SID."&adminmode=1&editid='+editid+'", 'width'=>'640', 'height'=>'520', 'onclosejs'=>$onclose_url));
-		$this->jquery->Dialog('AddChar', $this->user->lang('uc_add_char'), array('url'=>'../addcharacter.php'.$this->SID.'&adminmode=1', 'width'=>'640', 'height'=>'520', 'onclosejs'=>$onclose_url));
+		$onclose_url = "window.location.href = '".$this->server_path."admin/manage_members.php".$this->SID."';";
+		$this->jquery->Dialog('EditChar', $this->user->lang('uc_edit_char'), array('withid'=>'editid', 'url'=> $this->controller_path.'AddCharacter/'.$this->SID."&adminmode=1&editid='+editid+'", 'width'=>'650', 'height'=>'520', 'onclosejs'=>$onclose_url));
+		$this->jquery->Dialog('AddChar', $this->user->lang('uc_add_char'), array('url'=> $this->controller_path.'AddCharacter/'.$this->SID.'&adminmode=1', 'width'=>'650', 'height'=>'520', 'onclosejs'=>$onclose_url));
 		$this->confirm_delete($this->user->lang('confirm_delete_members'));
 
 		$this->tpl->add_js("
 			$('.cdefroledd').change( function(){
 				$.post('manage_members.php".$this->SID."&link_hash=".$this->CSRFGetToken('defrolechange')."', { defrolechange: $(this).val(), defrolechange_memberid: $(this).attr('name').replace('defaultrole_', '') },
 					function(data){
-						$('#notify_container').notify('create', 'success', {text: data,title: '',custom: true,},{expires: true, speed: 1000});
+						$('#notify_container').notify('create', 'success', {text: data,title: '',custom: true,},{expires: 3000, speed: 1000});
 					});
 			});
 		", 'docready');
 		
+		$arrMenuItems = array(
+			0 => array(
+				'name'	=> $this->user->lang('delete'),
+				'type'	=> 'button', //link, button, javascript
+				'icon'	=> 'fa-trash-o',
+				'perm'	=> true,
+				'link'	=> '#del_members',
+			),
+			1 => array(
+				'name'	=> $this->user->lang('mass_stat_change'),
+				'type'	=> 'button', //link, button, javascript
+				'icon'	=> 'fa-level-down',
+				'perm'	=> true,
+				'link'	=> '#member_statchange',
+			),
+			2 => array(
+				'name'	=> $this->user->lang('mass_rank_change'),
+				'type'	=> 'button', //link, button, javascript
+				'icon'	=> 'fa-level-down',
+				'perm'	=> true,
+				'link'	=> '#member_rankchange',
+				'append' => new hdropdown('rank', array('options' => $ranks)),
+			),
+		
+		);
 		
 		$this->tpl->assign_vars(array(
 			'SID'				=> $this->SID,
-			'S_RACE'			=> $this->game->type_exists('races'),
 			'MEMBER_LIST'		=> $hptt->get_html_table($this->in->get('sort'), $page_suffix, $this->in->get('start', 0), $this->user->data['user_climit'], $footer_text),
-			'RANK_SEL'			=> $this->html->DropDown('rank', $ranks, ''),
 			'PAGINATION'		=> generate_pagination('manage_members.php'.$sort_suffix, $character_count, $this->user->data['user_climit'], $this->in->get('start', 0)),
 			'HPTT_COLUMN_COUNT'	=> $hptt->get_column_count(),
+			'BUTTON_MENU'		=> $this->jquery->ButtonDropDownMenu('manage_members_menu', $arrMenuItems, array("input[name=\"selected_ids[]\"]"), '', $this->user->lang('selected_chars').'...', ''),
 		));
 
 		$this->core->set_vars(array(
@@ -168,6 +191,5 @@ class Manage_Members extends page_generic {
 		));
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_Manage_Members', Manage_Members::__shortcuts());
 registry::register('Manage_Members');
 ?>

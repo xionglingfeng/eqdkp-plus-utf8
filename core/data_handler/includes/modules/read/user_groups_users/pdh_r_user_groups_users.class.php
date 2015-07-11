@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2009
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if ( !defined('EQDKP_INC') ){
 	die('Do not access this file directly.');
@@ -22,10 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "pdh_r_user_groups_users" ) ){
 	class pdh_r_user_groups_users extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('db'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 		public $default_lang = 'english';
 		public $user_groups_users;
@@ -42,14 +41,15 @@ if ( !class_exists( "pdh_r_user_groups_users" ) ){
 
 		public function init(){
 			$this->user_groups_users = array();
-			$sql = "SELECT gu.* FROM __groups_users gu, __users u WHERE u.user_id = gu.user_id ORDER BY u.username ASC";
-			$r_result = $this->db->query($sql);
-
-			while( $row = $this->db->fetch_record($r_result) ){
-				$this->user_groups_users[$row['group_id']][$row['user_id']] = $row['user_id'];
-				$this->user_memberships[$row['user_id']][$row['group_id']] = 1;
+			
+			$objQuery = $this->db->query("SELECT gu.* FROM __groups_users gu, __users u WHERE u.user_id = gu.user_id ORDER BY u.username ASC");
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$this->user_groups_users[$row['group_id']][$row['user_id']] = $row['user_id'];
+					//0 = regular member, 1 = group leader
+					$this->user_memberships[$row['user_id']][$row['group_id']] = (intval($row['grpleader'])) ? 1 : 0;
+				}
 			}
-			$this->db->free_result($r_result);
 		}
 
 		public function get_user_list($group_id){
@@ -65,12 +65,17 @@ if ( !class_exists( "pdh_r_user_groups_users" ) ){
 				return (isset($this->user_groups_users[$group_id]) && is_array($this->user_groups_users[$group_id])) ? array_keys($this->user_groups_users[$group_id]) : array();
 			}
 		}
+		
+		public function get_is_grpleader($user_id, $group_id){
+			if (isset($this->user_memberships[$user_id][$group_id]) && $this->user_memberships[$user_id][$group_id] == 1) return true;
+			return false;
+		}
 
 		public function get_memberships($user_id){
 			if (isset($this->user_memberships[$user_id]) && is_array($this->user_memberships[$user_id])){
 				return array_keys($this->user_memberships[$user_id]);
 			} elseif ($user_id == ANONYMOUS) {
-				return array(0 => 1);
+				return array(0 => 0);
 			} else {
 				return array();
 			}
@@ -89,5 +94,4 @@ if ( !class_exists( "pdh_r_user_groups_users" ) ){
 		}
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_user_groups_users', pdh_r_user_groups_users::__shortcuts());
 ?>

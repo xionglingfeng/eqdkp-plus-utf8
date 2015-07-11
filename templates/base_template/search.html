@@ -1,13 +1,21 @@
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li class="current"><a>{L_search}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
 <!-- IF S_VALUE_TOO_SHORT -->
-	<div class="bluebox roundbox">
-		<div class="icon_info">{L_search_value_too_short}</div>
-	</div>
+<div class="infobox infobox-large infobox-blue clearfix">
+	<i class="fa fa-info-circle fa-4x pull-left"></i> {L_search_value_too_short}
+</div>
 <!-- ENDIF -->
 
 <!-- IF S_SEARCHED and not S_RESULTS -->
-	<div class="bluebox roundbox">
-		<div class="icon_info">{L_NO_RESULTS}</div>
-	</div>
+<div class="infobox infobox-large infobox-blue clearfix">
+	<i class="fa fa-info-circle fa-4x pull-left"></i> {L_NO_RESULTS}
+</div>
 <!-- ENDIF -->
 
 <form method="post" action="{ACTION}">
@@ -18,12 +26,12 @@
 			<dd><input type="text" class="input" size="30" name="svalue" value="{SEARCH_VALUE}" /></dd>
 		</dl>
 	</fieldset>
-	<input type="submit" value="{L_search_do}" name="search" class="mainoption bi_search" />
+	<button type="submit" name="search" class="mainoption"><i class="fa fa-search"></i>{L_search_do}</button>
 	{CSRF_TOKEN}
 </form>
 
 <!-- IF S_RESULTS -->
-<h1>{L_SEARCH_RESULTS}</h1>
+<h2>{L_SEARCH_RESULTS}</h2>
 <div id="search_result_tabs">
 		<ul>
 			<!-- BEGIN tabs --> <li><a href='#fragment-{tabs.ID}'><span>{tabs.NAME} ({tabs.COUNT})</span></a></li><!-- END tabs -->
@@ -31,8 +39,8 @@
 		
 		<!-- BEGIN tabs -->
 		<div id="fragment-{tabs.ID}">
-			<table width="100%" border="0" cellspacing="1" cellpadding="4" class="colorswitch hoverrows">
-			<tr><th colspan="2">{L_search_results_category} {tabs.NAME} ({tabs.COUNT}) </th></tr>
+			<table class="table fullwidth colorswitch hoverrows scrollable-x">
+			<tr><th colspan="2">{L_search_results_category} "{tabs.NAME}" ({tabs.COUNT}) </th></tr>
 			<!-- BEGIN results -->
 				<tr><td width="20" class="nowrap"><a href="{tabs.results.LINK}">{tabs.results.ID}</a></td><td><a href="{tabs.results.LINK}">{tabs.results.NAME}</a></td></tr>
 			<!-- END results -->

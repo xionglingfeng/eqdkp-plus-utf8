@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2011
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
  
 if ( !defined('EQDKP_INC') ){
@@ -33,39 +36,50 @@ final class registry extends super_registry{
 		if(isset(self::$loaded[$classname])) return true;
 		self::$loaded[$classname] = true;
 		if(!isset(self::$locs[$classname]) && !class_exists($classname) && !(self::get_const('lite_mode') && in_array($classname, self::$lite_igno))) {
-			$data = debug_backtrace();
-			foreach($data as $call) echo 'file: '.$call['file'].", line: ".$call['line']."<br />";
-			die('call to not listed class: '.$classname); //use pdl here later
+			if($classname == 'plus_debug_logger') die('Files not uploaded correctly. Please ensure you have all files uploaded.');
+			self::register('plus_debug_logger')->class_doesnt_exist($classname);
 		}
 		if(!class_exists($classname)) {
 			$lite = registry::get_const('lite_mode') ? 'lite/' : '';
 			$path = self::$const['root_path'].self::$locs[$classname];
 			if(!file_exists($path.$lite.$classname.'.class.php')) $lite = '';
+			if(!file_exists($path.$lite.$classname.'.class.php')) {
+				self::register('plus_debug_logger')->file_not_found($path.$lite.$classname.'.class.php');
+			}
 			include_once($path.$lite.$classname.'.class.php');
 		}
 	}
 	
 	public static function register($classname, $params=array(), $diff_inst=false) {
-		$hash = 0;
+		$hash = 'default';
 		if($diff_inst) {
 			$hash = $diff_inst;
 		} elseif(!empty($params)) {
-			$hash = serialize($params);
+			try {
+				$hash = md5(serialize($params));
+			} catch(Exception $e){
+				$hash = md5(rand());
+			}
 		}
-		$hash = md5($hash);
 		if(isset(self::$inst[$classname][$hash])) {
 			return self::$inst[$classname][$hash];
 		}
 		self::load($classname);
 		if(empty($params)) {
+			#if($classname::$singleton) return new $classname();
 			self::$inst[$classname][$hash] = new $classname();
 		} else {
 			$ref = new ReflectionClass($classname);
+			#if($classname::$singleton) return $ref->newInstanceArgs($params);
 			self::$inst[$classname][$hash] = $ref->newInstanceArgs($params);
-			unset($ref);
 		}
 		self::$inst[$classname][$hash]->class_hash = $hash;
 		return self::$inst[$classname][$hash];
+	}
+	
+	public static function grab($classname, $hash) {
+		if(isset(self::$inst[$classname][$hash])) return self::$inst[$classname][$hash];
+		return null;
 	}
 
 	public static function fetch($name, $params=array()) {
@@ -76,6 +90,30 @@ final class registry extends super_registry{
 				return self::register(registry::$aliases[$name]);
 			}
 		} elseif(registry::class_exists($name)) return self::register($name, $params);
+		return false;
+	}
+	
+	/**
+	 * Add a class to the registry, so it's accessable with register();
+	 * 
+	 * @param string $strClassname - your classname, e.g. plus_datahandler
+	 * @param string $strLocation - the location of the class, without a rootpath, e.h. plugins/blupp/classes/
+	 * @param string $strAlias - an alias for your classname, for shorter accessability, e.g. pdh
+	 * @return false if classname has been already registered. Otherwise Classname or Alias, if Alias has been set successfully
+	 */
+	public static function add_class($strClassname, $strLocation, $strAlias=false){
+		if(!isset(registry::$locs[$strClassname])){
+			registry::$locs[$strClassname] = str_replace(registry::get_const('root_path'), "", $strLocation);
+			
+			if($strAlias !== false){
+				if(!isset(registry::$aliases[$strAlias])){
+					registry::$aliases[$strAlias] = $strClassname;
+					return $strAlias;
+				}
+			}
+			return $strClassname;
+		} 
+		
 		return false;
 	}
 
@@ -99,7 +137,7 @@ final class registry extends super_registry{
 			}
 		}
 		self::_destruct($class, $class_hash);
-		self::$destruct_started = false;
+		#self::$destruct_started = false;
 	}
 	
 	private static function _destruct($class, $class_hash='') {

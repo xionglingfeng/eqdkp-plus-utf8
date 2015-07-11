@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if(!defined('EQDKP_INC'))
@@ -23,10 +26,6 @@ if(!defined('EQDKP_INC'))
 
 if(!class_exists('pdh_r_event')){
 	class pdh_r_event extends pdh_r_generic{
-		public static function __shortcuts() {
-			$shortcuts = array('pdc', 'db', 'user', 'pdh', 'config', 'game');
-			return array_merge(parent::$shortcuts, $shortcuts);
-		}
 
 		public $default_lang = 'english';
 		public $events = array();
@@ -40,7 +39,7 @@ if(!class_exists('pdh_r_event')){
 		public $presets = array(
 			'ename'		=> array('name', array('%event_id%', '%no_root%'), array()),
 			'eicon'		=> array('icon', array('%event_id%'), array()),
-			'elink'		=> array('eventlink', array('%event_id%', '%link_url%', '%link_url_suffix%'),	array()),
+			'elink'		=> array('eventlink', array('%event_id%', '%link_url%', '%link_url_suffix%', '%use_controller%'),	array()),
 			'emdkps'	=> array('multidkppools', array('%event_id%'),	array()),
 			'eipools'	=> array('itempools',	array('%event_id%'), array()),
 			'evalue'	=> array('value', array('%event_id%'), array()),
@@ -60,16 +59,16 @@ if(!class_exists('pdh_r_event')){
 			}
 
 			$this->events = array();
-			$sql = "SELECT event_id, event_name, event_value, event_icon FROM __events;";
-			$result = $this->db->query($sql);
-			while( $row = $this->db->fetch_record($result)){
-				$this->events[$row['event_id']]['name'] = $row['event_name'];
-				$this->events[$row['event_id']]['value'] = $row['event_value'];
-				$this->events[$row['event_id']]['icon'] = $row['event_icon'];
+			
+			$objQuery = $this->db->query("SELECT event_id, event_name, event_value, event_icon FROM __events;");
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$this->events[$row['event_id']]['name'] = $row['event_name'];
+					$this->events[$row['event_id']]['value'] = $row['event_value'];
+					$this->events[$row['event_id']]['icon'] = $row['event_icon'];
+				}
+				$this->pdc->put('pdh_events_table', $this->events, null);
 			}
-
-			$this->db->free_result($result);
-			if($result) $this->pdc->put('pdh_events_table', $this->events, null);
 		}
 
 		public function get_events(){
@@ -95,32 +94,27 @@ if(!class_exists('pdh_r_event')){
 		public function get_value($event_id){
 			return $this->events[$event_id]['value'];
 		}
-
-		public function get_icon($event_id, $withpath=false, $fallback=false, $no_root=false){
-			if(!isset($this->events[$event_id])) return '';
-			$root_path = ($no_root) ? '{ROOT_PATH}' : $this->root_path;
-			$filepath = "games/".$this->config->get('default_game')."/events/".$this->events[$event_id]['icon'];
-			if(is_file($this->root_path.$filepath)){
-				return ($withpath) ? $root_path.$filepath : $this->events[$event_id]['icon'];
-			}else{
-				if($fallback){
-					return ($withpath) ? $root_path."games/".$this->config->get('default_game')."/events/".'unknown.png' : 'unknown.png';
-				}
-			}
-			return '';
+		
+		public function get_html_value($event_id){
+			return runden($this->events[$event_id]['value']);
 		}
 
-		public function get_html_icon($event_id, $width=16, $alt=true){
-			$alt = ($alt) ? $this->get_name($event_id) : '';
-			return $this->game->decorate('events', array($event_id, $width, false, $alt));
+		public function get_icon($event_id, $withpath=false){
+			if($withpath) return $this->game->decorate('events', $event_id, array(), 0, true);
+			return $this->events[$event_id]['icon'];
 		}
 
-		public function get_eventlink($event_id, $baseurl, $url_suffix=''){
+		public function get_html_icon($event_id, $width=16){
+			return $this->game->decorate('events', $event_id, array(), $width);
+		}
+
+		public function get_eventlink($event_id, $baseurl, $url_suffix='', $blnUseController=false){
+			if($blnUseController && $blnUseController !== "%use_controller%") return $baseurl.register('routing')->clean($this->get_name($event_id)).'-e'.$event_id.register('routing')->getSeoExtension().$this->SID.$url_suffix;
 			return $baseurl.$this->SID.'&amp;event_id='.$event_id.$url_suffix;
 		}
 
-		public function get_html_eventlink($event_id, $baseurl, $url_suffix=''){
-			return "<a href='".$this->get_eventlink($event_id, $baseurl, $url_suffix)."'>".$this->get_name($event_id)."</a>";
+		public function get_html_eventlink($event_id, $baseurl, $url_suffix='', $blnUseController=false){
+			return "<a href='".$this->get_eventlink($event_id, $baseurl, $url_suffix, $blnUseController)."'>".$this->get_name($event_id)."</a>";
 		}
 		
 		public function comp_eventlink($params1, $params2){
@@ -128,9 +122,7 @@ if(!class_exists('pdh_r_event')){
 		}
 
 		public function get_editicon($event_id, $baseurl, $url_suffix=''){
-			return "<a href='".$this->get_eventlink($event_id, $baseurl, $url_suffix)."'>
-				<img src='".$this->root_path."images/glyphs/edit.png' alt='".$this->user->lang('edit')."' title='".$this->user->lang('edit')."' />
-				</a>";
+			return "<a href='".$this->get_eventlink($event_id, $baseurl, $url_suffix)."'><i class='fa fa-pencil fa-lg' title='".$this->user->lang('edit')."'></i></a>";
 		}
 
 		public function get_itempools($event_id){
@@ -177,7 +169,7 @@ if(!class_exists('pdh_r_event')){
 						$arrSearchResults[] = array(
 							'id'	=> $this->get_html_icon($id),
 							'name'	=> $this->get_name($id),
-							'link'	=> $this->root_path.'viewevent.php'.$this->SID.'&amp;event_id='.$id,
+							'link'	=> $this->routing->build('events', $value['name'], $id),
 						);
 					}
 				}
@@ -186,5 +178,4 @@ if(!class_exists('pdh_r_event')){
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_event', pdh_r_event::__shortcuts());
 ?>
