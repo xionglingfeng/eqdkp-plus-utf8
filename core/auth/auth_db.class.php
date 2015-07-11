@@ -1,21 +1,24 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
+
 if ( !defined('EQDKP_INC') ){
 	header('HTTP/1.0 404 Not Found');exit;
 }
@@ -23,15 +26,6 @@ if ( !defined('EQDKP_INC') ){
 if(!class_exists('auth')) include_once(registry::get_const('root_path').'core/auth.class.php');
 
 class auth_db extends auth {
-	public static function __shortcuts() {
-		$shortcuts = array();
-		return array_merge(parent::__shortcuts(), $shortcuts);
-	}
-	
-	public static function __dependencies() {
-		$dependencies = array();
-		return array_merge(parent::__dependencies(), $dependencies);
-	}
 	
 	public $error = false;
 	
@@ -60,7 +54,7 @@ class auth_db extends auth {
 			$arrStatus = $this->bridge->login($strUsername, $strPassword, $boolSetAutoLogin, false);
 		}
 		
-		//Bridge Login failed, Auth-Method Login
+		//Bridge Login failed, Specific Auth-Method Login
 		if (!$arrStatus){
 			$this->pdl->log('login', 'Bridge Login failed or Bridge not activated');
 			//Login-Method Login like OpenID, Facebook, ...
@@ -74,35 +68,32 @@ class auth_db extends auth {
 			//Auth Login, because all other failed
 			if (!$arrStatus){
 				$this->pdl->log('login', 'Try EQdkp Plus Login');
-				$result	= $this->db->query("SELECT user_id, username, user_password, user_email, user_active, api_key, failed_login_attempts, user_login_key
-								FROM __users 
-								WHERE LOWER(username) = '".$this->db->escape(clean_username($strUsername))."'");
-				$row	= $this->db->fetch_record($result);
+				$objQuery = $this->db->prepare("SELECT user_id, username, user_password, user_email, user_active, failed_login_attempts, user_login_key
+								FROM __users
+								WHERE LOWER(username) =?")->execute(clean_username($strUsername));
 				
-				if($row){		
-					$this->db->free_result($result);
+				if($objQuery && $objQuery->numRows){		
+					$row = $objQuery->fetchAssoc();
 					list($strUserPassword, $strUserSalt) = explode(':', $row['user_password']);
 					//If it's an old password without salt or there is a better algorythm
-					$blnNeedsUpdate = $this->checkIfHashNeedsUpdate($strUserPassword) || !$strUserSalt;
-					if($blnNeedsUpdate || $row['api_key'] == ''){
+					$blnNeedsUpdate = ($this->checkIfHashNeedsUpdate($strUserPassword) || !$strUserSalt);
+					if($blnNeedsUpdate){
 					if (((int)$row['user_active'])){
 						$this->pdl->log('login', 'EQDKP User needs update');
 						if($this->checkPassword($strPassword, $row['user_password'], $boolUseHash)){
 							
 								$strNewSalt		= $this->generate_salt();
 								$strNewPassword	= $this->encrypt_password($strPassword, $strNewSalt);
-								$strApiKey		= $this->generate_apikey($strPassword, $strNewSalt);
 								
-								$this->db->query("UPDATE __users 
-														SET user_password='".$this->db->escape($strNewPassword.':'.$strNewSalt)."',
-														api_key='".$this->db->escape($strApiKey)."'
-														WHERE user_id='".$this->db->escape($row['user_id'])."'");
+								$this->db->prepare("UPDATE  __users :p WHERE user_id=?")->set(array(
+										'user_password' => $strNewPassword.':'.$strNewSalt,
+								))->execute($row['user_id']);
 																		
 								$arrStatus = array(
-									'status'	=> 1,
-									'user_id'	=> (int)$row['user_id'],
-									'password_hash'	=> $strNewPassword,
-									'user_login_key' => $row['user_login_key'],
+									'status'			=> 1,
+									'user_id'			=> (int)$row['user_id'],
+									'password_hash'		=> $strNewPassword,
+									'user_login_key'	=> $row['user_login_key'],
 								);
 							} else {
 								$this->pdl->log('login', 'EQDKP Login failed: wrong password');
@@ -176,10 +167,15 @@ class auth_db extends auth {
 			}
 		}
 		
+		//Auth Method After-Login - reading only
+		$this->pdl->log('login', 'Possible Intercept by Auth Methods');
+		$this->handle_login_functions("after_login", false, array($arrStatus, $strUsername, $strPassword, $boolUseHash, ((isset($arrStatus['autologin'])) ? $arrStatus['autologin'] : $boolSetAutoLogin)));
+		
 		if (!$arrStatus){
 			$this->pdl->log('login', 'User login failed');
 			
-			$this->db->query("UPDATE __sessions SET session_failed_logins = session_failed_logins + 1 WHERE session_id=?", false, $this->sid);
+			$this->db->prepare("UPDATE __sessions SET session_failed_logins = session_failed_logins + 1 WHERE session_id=?")->execute($this->sid);
+
 			$this->data['session_failed_logins']++;
 			
 			//Failed Login
@@ -195,7 +191,7 @@ class auth_db extends auth {
 						$this->pdh->put('user', 'activate', array($userid, 0));
 						
 						//Write to admin-Log
-						$this->logs->add('action_user_failed_logins', '', false, '', 1, $userid);
+						$this->logs->add('action_user_failed_logins', '', $userid, $strUsername, false, '', 1, $userid);
 						
 						//Send the User an Email with activation link
 						$user_key = $this->pdh->put('user', 'create_new_activationkey', array($userid));
@@ -204,7 +200,7 @@ class auth_db extends auth {
 						$email = registry::register('MyMailer');
 						$bodyvars = array(
 							'USERNAME'		=> $strUsername,
-							'U_ACTIVATE'	=> $this->env->link.'register.php?mode=activate&key=' . $user_key,
+							'U_ACTIVATE'	=> $this->env->link.$this->controller_path_plain.'Register/Activate/?key=' . $user_key,
 						);
 						$email->SendMailFromAdmin($this->pdh->get('user', 'email', array($userid)), $this->lang('email_subject_activation_self'), 'user_activation_failed_logins.html', $bodyvars);
 					}
@@ -214,11 +210,13 @@ class auth_db extends auth {
 			
 		} else {
 			$this->pdl->log('login', 'User successfull authenticated');
+			$this->hooks->process('user_login_successful', array('auth_method' => 'db', 'user_id' => $arrStatus['user_id'], 'autologin' => ((isset($arrStatus['autologin'])) ? $arrStatus['autologin'] : $boolSetAutoLogin)));
 			//User successfull authenticated - destroy old session and create a new one
-			$this->db->query("UPDATE __users SET :params WHERE user_id=?", array('failed_login_attempts' => 0), $arrStatus['user_id']);
+			$this->db->prepare("UPDATE __users :p WHERE user_id=?")->set(array('failed_login_attempts' => 0))->execute($arrStatus['user_id']);
+
 			$this->destroy();
 			$this->create($arrStatus['user_id'], (isset($arrStatus['user_login_key']) ? $arrStatus['user_login_key'] : ''), ((isset($arrStatus['autologin'])) ? $arrStatus['autologin'] : $boolSetAutoLogin));
-			return true;	
+			return true;
 		}
 		return false;
 	}
@@ -236,23 +234,23 @@ class auth_db extends auth {
 		
 		if (isset($intCookieUserID) && intval($intCookieUserID) > 0){
 			
-			$query = $this->db->query("SELECT *
+			$objQuery = $this->db->prepare("SELECT *
 								FROM __users
-								WHERE user_id = ?", false, $intCookieUserID);
-			$arrUserResult = $this->db->fetch_record($query);
-			$this->db->free_result($query);
+								WHERE user_id = ?")->execute($intCookieUserID);
 			
-			if ($arrUserResult){
-				if ($strCookieAutologinKey != "" && $arrUserResult['user_login_key'] != "" && $strCookieAutologinKey===$arrUserResult['user_login_key'] && (int)$arrUserResult['user_active']){
-					return $arrUserResult;
-				}
-			}	
+			if ($objQuery && $objQuery->numRows){
+				$arrUserResult = $objQuery->fetchAssoc();
+				if ($arrUserResult){
+					if ($strCookieAutologinKey != "" && strlen($arrUserResult['user_login_key']) && $strCookieAutologinKey===$arrUserResult['user_login_key'] && (int)$arrUserResult['user_active']){
+						$this->hooks->process('user_autologin_successful', array('auth_method' => 'db', 'user_data' => $arrUserResult));
+						return $arrUserResult;
+					}
+				}	
+			}			
+			
 		}
 		
 		return false;
 	}
 }
-
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_auth_db',auth_db::__shortcuts());
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('dep_auth_db',auth_db::__dependencies());
 ?>

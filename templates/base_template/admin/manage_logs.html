@@ -1,67 +1,157 @@
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li class="current"><a href="{EQDKP_ROOT_PATH}admin/manage_logs.php{SID}">{L_viewlogs_title}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
+<div class="contentHeader">
+	<h1 class="contentTitle">{L_viewlogs_title}</h1>
+</div>
 <div id="log_tabs">
 	<ul>
 		<li><a href='#logs'>{L_actions}</a></li>
 		<li><a href='#errors'>{L_error}</a></li>
 	</ul>
 	<div id="logs">
-		<form method="post" action="{ACTION}" name="post">    
-		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch">
-			<tr>
-				<th colspan="7">
-					<span style="float:left;">{L_viewlogs_title}</span>
-					<span style="float:right;">{L_filter_plugins}: {FILTER_SELECT}</span>
-				</th>
-			</tr>
+		<form method="post" action="{ACTION}" name="post">   
+		
+		<fieldset id="toggleFilter" class="settings mediumsettings">
+			<legend>{L_filter}<span class="toggle_button"></span></legend>
+			<div class="toggle_container">
+				<dl>
+					<dt><label>{L_plugins}</label></dt>
+					<dd>{FILTER_PLUGINS}</dd>
+				</dl>
+				<dl>
+					<dt><label>{L_user}</label></dt>
+					<dd>{FILTER_USER}</dd>
+				</dl>
+				<dl>
+					<dt><label>{L_ip_address}</label></dt>
+					<dd><input type="text" name="filter_ip" size="40" value="{FILTER_IP}"/></dd>
+				</dl>
+				<dl>
+					<dt><label>{L_session_id}</label></dt>
+					<dd><input type="text" name="filter_sid" size="40" value="{FILTER_SID}"/></dd>
+				</dl>
+				<dl>
+					<dt><label>{L_type}</label></dt>
+					<dd>{FILTER_TYPE}</dd>
+				</dl>
+				<dl>
+					<dt><label>{L_recordid}</label></dt>
+					<dd><input type="text" name="filter_recordid" size="40" value="{FILTER_RECORDID}"/></dd>
+				</dl>
+				<dl>
+					<dt><label>{L_record}</label></dt>
+					<dd><input type="text" name="filter_record" size="40" value="{FILTER_RECORD}"/></dd>
+				</dl>
+				<dl>
+					<dt><label>{L_templates_error_more}</label></dt>
+					<dd><input type="text" name="filter_value" size="40" value="{FILTER_VALUE}"/></dd>
+				</dl>
+				<dl>
+					<dt><label>{L_calendar_startdate}</label></dt>
+					<dd>{FILTER_DATE_FROM}</dd>
+				</dl>
+				<dl>
+					<dt><label>{L_calendar_enddate}</label></dt>
+					<dd>{FILTER_DATE_TO}</dd>
+				</dl>
+				<dl>
+					<dt><label>{L_result}</label></dt>
+					<dd>{FILTER_RESULT}</dd>
+				</dl>
+				
+				<button class="mainoption" type="submit" name="filter"><i class="fa fa-check"></i>{L_portalplugin_filter}</button>
+				<button class="mainoption" type="submit" name="resetfilter"><i class="fa fa-trash-o"></i>{L_filter_reset}</button>
+			</div>
+		</fieldset>
+		
+		</form>
+		<br />
+		<form method="post" action="{ACTION}" name="post3">
+		<table  class="table fullwidth colorswitch">
 			{LOGS_LIST}
-			<tr class="pagination_row">
-				<td colspan="{HPTT_LOGS_COUNT}">
-					<center>{LOGS_PAGINATION}</center>
-				</td>
-			</tr>
-			<tr>
-				<th colspan="{HPTT_LOGS_COUNT}">
-					<span style="float:left;">
-						<input type="button" class="mainoption bi_delete" value="{L_clear_all_logs}" name="delall" onclick="delete_warning();" />
-						{L_clear_last_logs} <input type="text" name="dellogdays" size="5" value="{RPDELLOGDAYS}" class="input" />
-						{L_days} <input type="submit" name="deletedays" value="{L_delete}" class="mainoption bi_delete" />
-					</span>
-				</th>
-			</tr>
 		</table>
+		<div class="center pagination_wrapper">
+			{LOGS_PAGINATION}
+		</div>
+
+		<div class="contentFooter">
+			<button type="button" name="deleteselected" class="mainoption" onclick="delete_warning();"><i class="fa fa-times"></i>{L_delete_selected}</button>
+			<input type="hidden" name="del" value="1" disabled="disabled" id="mass_del_submit" />
+			{L_clear_last_logs} <input type="text" name="dellogdays" size="5" value="{RPDELLOGDAYS}" class="input" />
+			{L_days} <button type="submit" name="deletedays" class="mainoption"><i class="fa fa-times"></i>{L_delete}</button>
+			<button type="button" class="mainoption" name="delall" onclick="delete_all_warning();" ><i class="fa fa-times"></i>{L_clear_all_logs}</button>
+		</div>
 		{CSRF_TOKEN}
 		</form>
 	</div>
 	<div id="errors">
-		<form method="post" action="{F_DELLOG}" name="post2">    
-		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch">
-			<tr>
-				<th colspan="3">
-					<span style="float:left;">{L_error}</span>
-					<span style="float:right;">{L_filter_type}: {ERROR_FILTER_SELECT} {ERROR_TYPE_SELECT}</span>
-				</th>
-			</tr>
-			<tr>
-				<th align="left" width="150" class="nowrap">{L_date}</th>
-				<th align="left" width="10">{L_type}</th>
-				<th align="left" width="100%">{L_description}</th>
-			</tr>
-			<!-- BEGIN error_row -->
-			<tr>
-				<td width="150" class="nowrap">{error_row.DATE}</td>
-				<td width="10" class="nowrap">{error_row.TYPE}</td>
-				<td width="100%">{error_row.MESSAGE}</td>
-			</tr>
-			<!-- END error_row -->
-			<tr>
-				<th colspan="4" class="footer">
-					<span style="float:left;"><input name="del_errors" type="submit" class="mainoption bi_delete" id="del_errors" value="{L_clear_all_logs}" /></span>
-					<span style="float:right">{EL_FOOTCOUNT}</span>
-				</th>
-			</tr>
-			<tr class="pagination_row">
-				<td align="center" colspan="3">{EL_PAGINATION}</td>
-			</tr>
-		</table>
+		<form method="post" action="{F_DELLOG}" name="post2">  
+		<div class="tableHeader">
+			<h2>{L_error}</h2>
+		</div>
+		<fieldset class="settings mediumsettings">
+			<dl>
+				<dt><label>{L_fatal_error_id}</label></dt>
+				<dd><input type="text" name="fatal_error_id" size="40" /> <button type="submit" name="search_fatal_id">{L_search}</button></dd>
+			</dl>
+			<!-- IF S_FATAL_ERROR -->
+			<h2>{L_fatal_error_id}: {FATAL_ERROR_ID}</h2>
+			<dl>
+				<dt><label>{L_type}</label></dt>
+				<dd>{FATAL_ERROR_TYPE}</dd>
+			</dl>
+			<dl>
+				<dt><label>{L_error}</label></dt>
+				<dd>{FATAL_ERROR_MSG}</dd>
+			</dl>
+			
+			<!-- ENDIF -->
+		</fieldset>
+		
+		
+		<div id="errorlog_tabs">
+			<ul>
+				<!-- BEGIN errorlogs -->
+				<li><a href='#el_{errorlogs.TYPE}'>{errorlogs.TYPE}</a></li>
+				<!-- END errorlogs -->
+			</ul>
+			<!-- BEGIN errorlogs -->
+			<div id="el_{errorlogs.TYPE}">
+				<h2>{errorlogs.TYPE}</h2>
+				<table  class="table fullwidth colorswitch">
+					<tr>
+						<th align="left" width="150">{L_date}</th>
+						<th align="left">{L_description}</th>
+					</tr>
+					<!-- BEGIN error_row -->
+					<tr>
+						<td width="150">{errorlogs.error_row.DATE}</td>
+						<td>{errorlogs.error_row.MESSAGE}</td>
+					</tr>
+					<!-- END error_row -->
+					<tr>
+						<th colspan="2" class="footer">
+							{errorlogs.FOOTCOUNT}
+						</th>
+					</tr>
+				</table>
+				<div class="center pagination_wrapper">
+					{errorlogs.PAGINATION}
+				</div>
+			</div>
+			<!-- END errorlogs -->
+		</div>
+
+		<div class="contentFooter">
+			<button name="del_errors" type="submit" class="mainoption" id="del_errors"><i class="fa fa-times"></i>{L_clear_all_logs}</button>
+		</div>
 		{CSRF_TOKEN}
 		</form>
 	</div>

@@ -1,38 +1,57 @@
 <div class="profile_header">
 	{IMG_CLASSICON}
-	<div class="charname">{DATA_NAME} {IMG_MAINCHAR}</div>
-	<div class="charlevel">{L_level} {DATA_LEVEL}, {DATA_CLASSNAME} ({DATA_RACENAME})</div>
+	<div class="charname">{CHARDATA_NAME}</div>
+	<div class="charlevel">{L_level} {DATA_LEVEL}, {DATA_CLASSNAME}</div>
 	<div class="charguild">{DATA_GUILDTAG}</div>
 </div>
-<!-- IF S_PFIELDS -->
-<div class="profile_information" id="profile_field_data">
-	<ul>
-		<!-- BEGIN cat_data -->
-		<li><a href='#{cat_data.ID}'><span>{cat_data.NAME}</span></a></li>
-		<!-- END cat_data -->
-	</ul>
-	
-	<!-- BEGIN cat_data -->
-	<div id="{cat_data.ID}">
-		<fieldset class="settings mediumsettings">
-			<!-- BEGIN pfield_data -->
-			<dl>
-				<dt><label>{cat_data.pfield_data.NAME}</label></dt>
-				<dd>{cat_data.pfield_data.VALUE}</dd>
-			</dl>
-			<!-- END pfield_data -->
-		</fieldset>
-	</div>
-	<!-- END cat_data -->
-	
-</div>
-<!-- ENDIF -->
+
+<table class="table fullwidth borderless">
+	<tr>
+		<!-- IF S_CHARDATA_PICTURE -->
+		<td width="1">
+			<div class="profile_picture">
+			{CHARDATA_PICTURE}
+			</div>
+		</td>
+		<!-- ENDIF -->
+
+		<!-- IF S_PFIELDS -->
+		<td>
+			<div class="profile_information" id="profile_field_data">
+				<ul>
+					<!-- BEGIN cat_data -->
+					<li><a href='#{cat_data.ID}'><span>{cat_data.NAME}</span></a></li>
+					<!-- END cat_data -->
+				</ul>
+				
+				<!-- BEGIN cat_data -->
+				<div id="{cat_data.ID}">
+					<fieldset class="settings mediumsettings">
+						<!-- BEGIN pfield_data -->
+						<dl>
+							<dt><label>{cat_data.pfield_data.NAME}</label></dt>
+							<dd>{cat_data.pfield_data.VALUE}</dd>
+						</dl>
+						<!-- END pfield_data -->
+					</fieldset>
+				</div>
+				<!-- END cat_data -->
+				
+			</div>
+		</td>
+		<!-- ENDIF -->
+	</tr>
+</table>
+
+
 
 <!-- IF MEMBER_POINTS -->
-<table width="100%" border="0" cellspacing="1" cellpadding="2" class="borderless colorswitch">
-	<tr>
-		<th align="center" colspan="99">{L_DKP_NAME}</th>
-	</tr>
+<div class="tableHeader">
+	<h2>{L_DKP_NAME}</h2>
+</div>
+<input type="checkbox" onchange="window.location='{SID}&with_twinks='+ ((this.checked) ? 0 : 1)" name="with_twinks" value="1" <!-- IF not S_WITH_TWINK_DKP -->checked="checked"<!-- ENDIF -->/> {L_points_for_this_char}
+<br /><br />
+<table class="table fullwidth borderless colorswitch">
 	{MEMBER_POINTS}
 </table>
 <br />
@@ -42,83 +61,57 @@
 	<ul>
 		<li><a href='#fragment-2'><span>{L_tab_raids}</span></a></li>
 		<li><a href='#fragment-3'><span>{L_tab_items}</span></a></li>
+		<!-- IF not S_POINTS_DISABLED -->
 		<li><a href='#fragment-4'><span>{L_tab_adjustments}</span></a></li>
+		<!-- ENDIF -->
 		<li><a href='#fragment-5'><span>{L_tab_attendance}</span></a></li>
-		<li><a href='#fragment-6'><span><img src="images/global/admin_flag.png" /> {L_tab_notes}</span></a></li>
+		<li><a href='#fragment-6'><span class="adminicon">{L_tab_notes}</span></a></li>
 	</ul>
-
-	<!-- ALL PROFILE FIELDS TABLE -->
-	<!-- IF CUSTOM_FIELDS -->
-	<div id="fragment-2-0">
-		<fieldset class="settings mediumsettings">
-			<!-- BEGIN pfield_custom -->
-			<dl>
-				<dt><label>{pfield_custom.NAME}</label></dt>
-				<dd>{pfield_custom.VALUE}</dd>
-			</dl>
-			<!-- END pfield_custom -->
-		</fieldset>
-	</div>
-	<!-- ENDIF -->
 
 	<!-- RAIDS TABLE -->
 	<div id="fragment-2">
-		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="borderless">
-		<tr>
-			<th align="center" colspan="5">{L_raid_attendance_history}</th>
-		</tr>
-		<tr>
-			<td align="center" class="menu">{RAID_PAGINATION}</td>
-		</tr>
+		<div class="tableHeader">
+			<h2>{L_raid_attendance_history}</h2>
+		</div>
+		<table class="table fullwidth hptt colorswitch scrollable-x">
+		{RAID_OUT}
 		</table>
-		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch">
-			{RAID_OUT}
-		</table>
-		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="borderless">
-			<tr>
-				<td align="center" class="menu">{RAID_PAGINATION}</td>
-			</tr>
-		</table>
+		<div class="center pagination_wrapper">
+			{RAID_PAGINATION}
+		</div>
 	</div>
 
 	<!-- ITEMS TABLE -->
 	<div id="fragment-3">
-		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="borderless">
-			<tr>
-				<th align="center" colspan="5">{L_item_purchase_history}</th>
-			</tr>
-			<tr>
-				<td align="center" class="menu">{ITEM_PAGINATION}</td>
-			</tr>
+		<div class="tableHeader">
+			<h2>{L_item_purchase_history}</h2>
+		</div>
+		<table class="table fullwidth hptt colorswitch scrollable-x">
+		{ITEM_OUT}
 		</table>
-		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch">
-			{ITEM_OUT}
-		</table>
-		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="borderless">
-			<tr>
-				<td align="center" class="menu">{ITEM_PAGINATION}</td>
-			</tr>
-		</table>
+		<div class="center pagination_wrapper">
+			{ITEM_PAGINATION}
+		</div>
 	</div>
-
+	
+	<!-- IF not S_POINTS_DISABLED -->
 	<!-- ADJUSTMENTS TABLE-->
 	<div id="fragment-4">
-		<table width="100%" border="0" cellspacing="1" cellpadding="2">
-			<tr>
-				<th align="center" colspan="4">{L_individual_adjustment_history}</th>
-			</tr>
-			<tr>
-				<td align="center" class="menu">{ADJUSTMENT_PAGINATION}</td>
-			</tr>
+		<div class="tableHeader">
+			<h2>{L_individual_adjustment_history}</h2>
+		</div>
+		<table class="table fullwidth hptt colorswitch scrollable-x">
+		{ADJUSTMENT_OUT}
 		</table>
-		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch">
-			{ADJUSTMENT_OUT}
-		</table>
+		<div class="center pagination_wrapper">
+			{ADJUSTMENT_PAGINATION}
+		</div>
 	</div>
+	<!-- ENDIF -->
 
 	<!-- ATTENDANCE -->
 	<div id="fragment-5">
-		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch">
+		<table class="table fullwidth hptt colorswitch scrollable-x">
 		{EVENT_ATT_OUT}
 		</table>
 	</div>
@@ -128,6 +121,4 @@
 		{NOTES}
 	</div>
 </div>
-<br />
-{COMMENT}
 <br />

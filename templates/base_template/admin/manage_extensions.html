@@ -1,6 +1,15 @@
 <script type="text/javascript">
 //<![CDATA[
 var totalSteps = 4;
+var locked = false;
+var updateWarning = <!-- IF S_HIDE_UPDATEWARNING -->false<!-- ELSE -->true<!-- ENDIF -->;
+
+$(function() {
+	$("#nl_progressbar").progressbar({
+		value: 0
+	});
+});
+
 function set_progress_bar_value(recentNumber, labeltext){
 	percent = Math.round((recentNumber / totalSteps) * 100);
 	$("#nl_progressbar").progressbar("destroy");
@@ -13,201 +22,440 @@ function set_progress_bar_value(recentNumber, labeltext){
 }
 
 function update_error(data){
+	locked = false;
+	
 	$("#lu_error").show();
-	$("#lu_error_label").html("<b>{L_liveupdate_step_error}</b>" + data);
+	$("#lu_error_label").html("<b>"+{L_liveupdate_step_error|jsencode}+"</b>" + data);
 	$("#lu_loading_img").hide();
 }
 
-function repo_update(cat, extensioncode){
-	<!-- IF S_HIDE_UPDATEWARNING -->
-	repo_update_start(cat, extensioncode);
-	<!-- ELSE -->
-	if (cat != 2) {
-		update_confirm(cat, extensioncode);
-	} else {
-		repo_update_start(cat, extensioncode);
+function repo_update(extid, cat, extensioncode){
+	if (locked){
+		alert({L_extension_install_locked|jsencode});
+		return false;
 	}
-	<!-- ENDIF -->
+	
+	locked = true;
+	
+	if(updateWarning){
+		if (cat != 2) {
+			update_confirm(extid, cat, extensioncode);
+		} else {
+			repo_update_start(extid, cat, extensioncode);
+		}
+	} else {
+		repo_update_start(extid, cat, extensioncode);
+	}
 }
 
-function repo_update_start(cat, extensioncode){
-	$("#lu_error").hide();
-	$("#nl_progressbar").show();
-	$("#lu_loading_img").show();
-
-	repo_step1(cat, extensioncode, 'update');
-}
-
-function repo_install(cat, extensioncode){
+function repo_update_start(extid, cat, extensioncode){	
+	locked = true;
 	
 	$("#lu_error").hide();
 	$("#nl_progressbar").show();
 	$("#lu_loading_img").show();
 
-	repo_step1(cat, extensioncode, 'install');
+	repo_step1(extid, cat, extensioncode, 'update');
 }
 
-function repo_step1(cat, extensioncode, mode){
-	set_progress_bar_value(0, '{L_repo_step1}...');
-	$.get('manage_extensions.php{SID}&step=1&cat='+cat+'&code='+extensioncode, function(data) {
+function repo_install(extid, cat, extensioncode){
+	if (locked){
+		alert({L_extension_install_locked|jsencode});
+		return false;
+	}
+	locked = true;
+	
+	$("#lu_error").hide();
+	$("#nl_progressbar").show();
+	$("#lu_loading_img").show();
+
+	repo_step1(extid, cat, extensioncode, 'install');
+}
+
+function repo_step1(extid, cat, extensioncode, mode){
+	set_progress_bar_value(0, {L_repo_step1|jsencode}+'...');
+	$.get('manage_extensions.php{SID}&step=1&cat='+cat+'&code='+extensioncode+'&extid='+extid, function(data) {
 		  if ($.trim(data) == 'true'){
-			repo_step2(cat, extensioncode, mode);
+			repo_step2(extid, cat, extensioncode, mode);
 		  } else {
 			update_error(data);
 		  }
+	}).fail(function(){
+		update_error('Error 500');
 	});
 }
 
-function repo_step2(cat, extensioncode, mode){
-	set_progress_bar_value(1, '{L_repo_step2}...');
-	$.get('manage_extensions.php{SID}&step=2&cat='+cat+'&code='+extensioncode, function(data) {
+function repo_step2(extid, cat, extensioncode, mode){
+	set_progress_bar_value(1, {L_repo_step2|jsencode}+'...');
+	$.get('manage_extensions.php{SID}&step=2&cat='+cat+'&code='+extensioncode+'&extid='+extid, function(data) {
 		  if ($.trim(data) == 'true'){
-			repo_step3(cat, extensioncode, mode);
+			repo_step3(extid, cat, extensioncode, mode);
 		  } else {
 			update_error(data);
 		  }
+	}).fail(function(){
+		update_error('Error 500');
 	});
 }
 
-function repo_step3(cat, extensioncode, mode){
-	set_progress_bar_value(2, '{L_repo_step3}...');
-	$.get('manage_extensions.php{SID}&step=3&cat='+cat+'&code='+extensioncode, function(data) {
+function repo_step3(extid, cat, extensioncode, mode){
+	set_progress_bar_value(2, {L_repo_step3|jsencode}+'...');
+	$.get('manage_extensions.php{SID}&step=3&cat='+cat+'&code='+extensioncode+'&extid='+extid, function(data) {
 		  if ($.trim(data) == 'true'){
-			repo_step4(cat, extensioncode, mode);
+			repo_step4(extid, cat, extensioncode, mode);
 		  } else {
 			update_error(data);
 		  }
+	}).fail(function(){
+		update_error('Error 500');
 	});
 }
 
-function repo_step4(cat, extensioncode, mode){
-	set_progress_bar_value(3, '{L_repo_step4}...');
-	$.get('manage_extensions.php{SID}&step=4&cat='+cat+'&code='+extensioncode, function(data) {
+function repo_step4(extid, cat, extensioncode, mode){
+	set_progress_bar_value(3, {L_repo_step4|jsencode}+'...');
+	$.get('manage_extensions.php{SID}&step=4&cat='+cat+'&code='+extensioncode+'&extid='+extid, function(data) {
 		  if ($.trim(data) == 'true'){
-			repo_step5(cat, extensioncode, mode);
+			repo_step5(extid, cat, extensioncode, mode);
 		  } else {
 			update_error(data);
 		  }
+	}).fail(function(){
+		update_error('Error 500');
 	});
 }
 
-function repo_step5(cat, extensioncode, mode){
-	window.location='manage_extensions.php{SID}&mode='+mode+'&cat='+cat+'&code='+extensioncode+'&link_hash={CSRF_MODE_TOKEN}';
+function repo_step5(extid, cat, extensioncode, mode){
+	var url = 'manage_extensions.php{SID}&mode='+mode+'&cat='+cat+'&code='+extensioncode+'&extid='+extid+'&link_hash={CSRF_MODE_TOKEN}';
+	if(auto_update){
+		url = url + "&autoupd=1&current="+auto_current+"&try="+auto_try;
+	}
+	window.location=url;
 	return;	
 }
 
 function hide_update_warning(status){
 	var hide = (status) ? 1 : 0;
+	if (hide) updateWarning = false;
 	$.get('manage_extensions.php{SID}&hide_update_warning=true&hide='+hide+'&link_hash={CSRF_UPDATEWARNING_TOKEN}');
 }
+
+var auto_update = <!-- IF AUTOUPD_ON --> true<!-- ELSE --> false<!-- ENDIF -->;
+var auto_current = {AUTOUPD_CURRENT};
+var auto_try = {AUTOUPD_TRY};
+var updates = new Array();
+
+function init_auto_update(){	
+	$('.needs_update').each(function(){
+		var cat = $(this).data('category');
+		var id = $(this).data('id');
+		if(cat != "2"){
+			updates.push(id);
+		}
+	})
+	updates.sort();
+	if(updates.length){
+		$('.update-all-btn').show();
+	} else {
+		$('.update-all-btn').hide();
+	}
+}
+
+function start_auto_update(){
+	$('.update-all-btn').hide();
+	
+	//get first to update
+	if(updates.length > 0){
+		var myid = updates[0];
+		var myobj = $("a[data-id='"+myid+"']");
+		var mycat = $(myobj).data('category');
+		var mycode = $(myobj).data('code');
+
+		if (locked){
+			alert({L_extension_install_locked|jsencode});
+			return false;
+		}
+		
+		auto_update = 1;
+		auto_current = myid;
+		auto_try = 0;
+		repo_update_start(myid, mycat, mycode);
+	}
+}
+
+function continue_auto_update(){
+	$('.update-all-btn').hide();
+	
+	if(updates.length > 0){
+		var myid = false;
+		
+		$.each(updates, function( index, value ) {
+		 	if(value >= auto_current){
+		 		myid = updates[index];
+		 		return false;
+		 	}
+		});
+		
+		if(!myid){
+			console.log("finished");
+			return;
+		}
+
+		var myobj = $("a[data-id='"+myid+"']");
+		var mycat = $(myobj).data('category');
+		var mycode = $(myobj).data('code');
+		
+		console.log(myid);
+		
+		if(auto_current == myid){
+			console.log(auto_try);
+			if(auto_try > 2){
+				//Too much tries, find next one;
+				myid = false;
+				$.each(updates, function( index, value ) {
+				 	if(value > auto_current){
+				 		myid = updates[index];
+				 		return false;
+				 	}
+				});
+				console.log(myid);
+				if(myid){
+					myobj = $("a[data-id='"+myid+"']");
+					mycat = $(myobj).data('category');
+					mycode = $(myobj).data('code');
+					
+					auto_try = 0;
+					auto_current = myid;
+					repo_update_start(myid, mycat, mycode);
+					
+				} else {
+					console.log("finished");
+					return;
+				}
+				
+			} else {
+				auto_try = auto_try + 1;
+				repo_update_start(myid, mycat, mycode);
+			}
+			
+		} else {
+			auto_try = 0;
+			auto_current = myid;
+			
+			repo_update_start(myid, mycat, mycode);
+		}
+		
+	} else {
+		console.log("finished");
+	}
+}
+
+$(document).ready(function(){
+	init_auto_update();
+	
+	<!-- IF AUTOUPD_ON -->
+	continue_auto_update();
+	<!-- ENDIF -->
+});
 //]]>
 </script>
 
-<div class="errorbox roundbox" id="lu_error" style="display:none;">
-		<div class="icon_false"><span id="lu_error_label"></span></div>
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li class="current"><a href="{EQDKP_ROOT_PATH}admin/manage_extensions.php{SID}">{L_extension_repo}</a></li>
+	</ul>
+	<div class="clear"></div>
 </div>
 
-<div id="nl_progressbar" style="display:none;">
-	<span class="nl_progressbar_label"><img src="{EQDKP_IMAGE_PATH}global/loading.gif" id="lu_loading_img" alt="Loading..." /> &nbsp;<span id="nl_progressbar_label">{L_liveupdate}...</span></span>
+<div class="infobox infobox-large infobox-red clearfix" id="lu_error" style="display:none;">
+	<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> <span id="lu_error_label"></span>
 </div>
 
+<div id="nl_progressbar" style="display:none; margin-bottom: 20px; height: 30px;">
+	<span class="nl_progressbar_label"><i class="fa fa-spinner fa-spin fa-lg" id="lu_loading_img"></i> &nbsp;<span id="nl_progressbar_label">{L_liveupdate}...</span></span>
+</div>
+
+<div class="floatRight">
+	<button type="button" class="update-all-btn mainoption" onclick="start_auto_update();" ><i class="fa fa-refresh"></i> {L_update_all_extensions}</button>
+</div>
+<div class="clear"></div>
 <div id='plus_plugins_tab'>
 
 	<ul>
-		<li><a href='#fragment-1'><span>{L_CATEGORY_1}</span></a>{BADGE_1}</li>
-		<li><a href='#fragment-2'><span>{L_CATEGORY_2}</span></a>{BADGE_2}</li>
-		<li><a href='#fragment-3'><span>{L_CATEGORY_3}</span></a>{BADGE_3}</li>
-		<li><a href='#fragment-7'><span>{L_CATEGORY_7}</span></a>{BADGE_7}</li>
-		<li><a href='#fragment-11'><span>{L_CATEGORY_11}</span></a>{BADGE_11}</li>
-		<li><a href='#fragment-upload'><span>{L_pi_manualupload}</span></a></li>
+		<li><a href='#fragment-1'><span><i class="fa fa-cogs"></i> {L_CATEGORY_1}</span>{BADGE_1}</a></li>
+		<li><a href='#fragment-2'><span><i class="fa fa-paint-brush"></i> {L_CATEGORY_2}</span>{BADGE_2}</a></li>
+		<li><a href='#fragment-3'><span><i class="fa fa-columns"></i> {L_CATEGORY_3}</span>{BADGE_3}</a></li>
+		<li><a href='#fragment-7'><span><i class="fa fa-gamepad"></i> {L_CATEGORY_7}</span>{BADGE_7}</a></li>
+		<li><a href='#fragment-11'><span><i class="fa fa-globe"></i> {L_CATEGORY_11}</span>{BADGE_11}</a></li>
+		<li><a href='#fragment-upload'><span><i class="fa fa-upload"></i> {L_pi_manualupload}</span></a></li>
 	</ul>
 
 	<div id="fragment-1">
-		<table width="100%" border="0" cellspacing="1" cellpadding="4" class="colorswitch">
+		<div class="contentHeader">
+			<h1 class="contentTitle">{L_CATEGORY_1}</h1>
+		</div>
+	
+		<table class="table fullwidth colorswitch">
 		<tr>
-			<th align="left" width="16">&nbsp;</th>
-			<th align="left" class="nowrap" width="16">{L_action}</th>
-			<th align="left" class="nowrap">{L_name}</th>
-			<th align="left" class="nowrap" colspan="{DEP_COUNT}">{L_plug_dep_title}</th>
-			<th align="left" class="nowrap">{L_version}</th>
-			<th align="left" class="nowrap">{L_portalplugin_author}</th>
-			<th align="left" class="nowrap">{L_description}</th>
-			<th align="left" class="nowrap">{L_infos}</th>
+			<th align="left" width="20">&nbsp;</th>
+			<th align="left" width="16">{L_action}</th>
+			<th align="left">{L_name}</th>
+			<th align="left" colspan="{DEP_COUNT}" class="hiddenSmartphone">{L_plug_dep_title}</th>
+			<th align="left">{L_version}</th>
+			<th align="left" class="hiddenSmartphone">{L_portalplugin_author}</th>
+			<th align="left" class="hiddenSmartphone">{L_description}</th>
+			<th align="left" class="hiddenSmartphone">{L_infos}</th>
 		</tr>
 		<!-- BEGIN plugins_row_red -->
 		<tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_red.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{plugins_row_red.ACTION_LINK}</td>
-			<td class="nowrap">{plugins_row_red.NAME}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-red"></i></td>
+			<td class="nowrap desktopOnly">{plugins_row_red.ACTION_LINK}</td>
+			<td>{plugins_row_red.NAME}</td>
 			<!-- BEGIN dep_row -->
-			<td class="nowrap">{plugins_row_red.dep_row.DEPENDENCY_STATUS}</td>
+			<td class="hiddenSmartphone">
+				<span class="coretip" data-coretip="{plugins_row_red.dep_row.DEPENDENCY_TT}">
+					<i class="{plugins_row_red.dep_row.ICON}"></i> {plugins_row_red.dep_row.DEPENDENCY_NAME}
+				</span>
+			</td>
 			<!-- END dep_row -->
-			<td class="nowrap">{plugins_row_red.VERSION}</td>
-			<td class="nowrap">{plugins_row_red.CONTACT}</td>
-			<td>{plugins_row_red.DESCRIPTION}</td>
-			<td class="nowrap">{plugins_row_red.LONG_DESCRIPTION}  {plugins_row_red.HOMEPAGE} {plugins_row_red.MANUAL}</td>
+			<td>{plugins_row_red.VERSION}</td>
+			<td class="hiddenSmartphone">{plugins_row_red.CONTACT}</td>
+			<td class="hiddenSmartphone">{plugins_row_red.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">
+				<i class="coretip fa fa-info-circle fa-lg" data-coretip="{plugins_row_red.DESCRIPTION}"></i>
+				<!-- IF plugins_row_red.HOMEPAGE_LINK -->
+				<span class="coretip" data-coretip="{plugins_row_red.HOMEPAGE}"><a href="{plugins_row_red.HOMEPAGE_LINK}" target="_blank" rel="nofollow"><i class="fa fa-globe fa-lg"></i></a></span>
+				<!-- ENDIF -->
+				<!-- IF plugins_row_red.MANUAL_LINK -->
+				<span class="coretip" data-coretip="{plugins_row_red.MANUAL}"><a href="{plugins_row_red.MANUAL_LINK}" target="_blank" rel="nofollow"><i class="fa fa-question-circle fa-lg"></i></a></span>
+				<!-- ENDIF -->
+				<!-- IF plugins_row_red.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{plugins_row_red.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		</tr>
 		<!-- END plugins_row_red -->
 		<!-- BEGIN plugins_row_yellow -->
 		<tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_yellow.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{plugins_row_yellow.ACTION_LINK}</td>
-			<td class="nowrap">{plugins_row_yellow.NAME}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-yellow"></i></td>
+			<td class="nowrap desktopOnly">{plugins_row_yellow.ACTION_LINK}</td>
+			<td>{plugins_row_yellow.NAME}</td>
 			<!-- BEGIN dep_row -->
-			<td class="nowrap">{plugins_row_yellow.dep_row.DEPENDENCY_STATUS}</td>
+			<td class="hiddenSmartphone">
+				<span class="coretip" data-coretip="{plugins_row_yellow.dep_row.DEPENDENCY_TT}">
+					<i class="{plugins_row_yellow.dep_row.ICON}"></i> {plugins_row_yellow.dep_row.DEPENDENCY_NAME}
+				</span>
+			</td>
 			<!-- END dep_row -->
-			<td class="nowrap">{plugins_row_yellow.VERSION}</td>
-			<td class="nowrap">{plugins_row_yellow.CONTACT}</td>
-			<td>{plugins_row_yellow.DESCRIPTION}</td>
-			<td class="nowrap">{plugins_row_yellow.LONG_DESCRIPTION}  {plugins_row_yellow.HOMEPAGE} {plugins_row_yellow.MANUAL}</td>
+			<td>{plugins_row_yellow.VERSION}</td>
+			<td class="hiddenSmartphone">{plugins_row_yellow.CONTACT}</td>
+			<td class="hiddenSmartphone">{plugins_row_yellow.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">
+				<i class="coretip fa fa-info-circle fa-lg" data-coretip="{plugins_row_yellow.DESCRIPTION}"></i>
+				<!-- IF plugins_row_yellow.HOMEPAGE_LINK -->
+				<span class="coretip" data-coretip="{plugins_row_yellow.HOMEPAGE}"><a href="{plugins_row_yellow.HOMEPAGE_LINK}" target="_blank" rel="nofollow"><i class="fa fa-globe fa-lg"></i></a></span>
+				<!-- ENDIF -->
+				<!-- IF plugins_row_yellow.MANUAL_LINK -->
+				<span class="coretip" data-coretip="{plugins_row_yellow.MANUAL}"><a href="{plugins_row_yellow.MANUAL_LINK}" target="_blank" rel="nofollow"><i class="fa fa-question-circle fa-lg"></i></a></span>
+				<!-- ENDIF -->
+				<!-- IF plugins_row_yellow.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{plugins_row_yellow.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		</tr>
 		<!-- END plugins_row_yellow -->
 		<!-- BEGIN plugins_row_green -->
 		<tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{plugins_row_green.ACTION_LINK}</td>
-			<td class="nowrap">{plugins_row_green.NAME}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-green"></i></td>
+			<td class="nowrap desktopOnly">{plugins_row_green.ACTION_LINK}</td>
+			<td>{plugins_row_green.NAME}</td>
 			<!-- BEGIN dep_row -->
-			<td class="nowrap">{plugins_row_green.dep_row.DEPENDENCY_STATUS}</td>
+			<td class="hiddenSmartphone">
+				<span class="coretip" data-coretip="{plugins_row_green.dep_row.DEPENDENCY_TT}">
+					<i class="{plugins_row_green.dep_row.ICON}"></i> {plugins_row_green.dep_row.DEPENDENCY_NAME}
+				</span>
+			</td>
 			<!-- END dep_row -->
-			<td class="nowrap">{plugins_row_green.VERSION}</td>
-			<td class="nowrap">{plugins_row_green.CONTACT}</td>
-			<td>{plugins_row_green.DESCRIPTION}</td>
-			<td class="nowrap">{plugins_row_green.LONG_DESCRIPTION}  {plugins_row_green.HOMEPAGE} {plugins_row_green.MANUAL}</td>
+			<td>{plugins_row_green.VERSION}</td>
+			<td class="hiddenSmartphone">{plugins_row_green.CONTACT}</td>
+			<td class="hiddenSmartphone">{plugins_row_green.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">
+				<i class="coretip fa fa-info-circle fa-lg" data-coretip="{plugins_row_green.DESCRIPTION}"></i>
+				<!-- IF plugins_row_green.HOMEPAGE_LINK -->
+				<span class="coretip" data-coretip="{plugins_row_green.HOMEPAGE}"><a href="{plugins_row_green.HOMEPAGE_LINK}" target="_blank" rel="nofollow"><i class="fa fa-globe fa-lg"></i></a></span>
+				<!-- ENDIF -->
+				<!-- IF plugins_row_green.MANUAL_LINK -->
+				<span class="coretip" data-coretip="{plugins_row_green.MANUAL}"><a href="{plugins_row_green.MANUAL_LINK}" target="_blank" rel="nofollow"><i class="fa fa-question-circle fa-lg"></i></a></span>
+				<!-- ENDIF -->
+				<!-- IF plugins_row_green.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{plugins_row_green.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		</tr>
 		<!-- END plugins_row_green -->
 		<!-- BEGIN plugins_row_grey -->
 		<tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_off.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{plugins_row_grey.ACTION_LINK}</td>
-			<td class="nowrap">{plugins_row_grey.NAME}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-gray"></i></td>
+			<td class="nowrap desktopOnly">{plugins_row_grey.ACTION_LINK}</td>
+			<td>{plugins_row_grey.NAME}</td>
 			<!-- BEGIN dep_row -->
-			<td class="nowrap">{plugins_row_grey.dep_row.DEPENDENCY_STATUS}</td>
+			<td class="hiddenSmartphone">
+				<span class="coretip" data-coretip="{plugins_row_grey.dep_row.DEPENDENCY_TT}">
+					<i class="{plugins_row_grey.dep_row.ICON}"></i> {plugins_row_grey.dep_row.DEPENDENCY_NAME}
+				</span>
+			</td>
 			<!-- END dep_row -->
-			<td class="nowrap">{plugins_row_grey.VERSION}</td>
-			<td class="nowrap">{plugins_row_grey.CONTACT}</td>
-			<td>{plugins_row_grey.DESCRIPTION}</td>
-			<td class="nowrap">{plugins_row_grey.LONG_DESCRIPTION}  {plugins_row_grey.HOMEPAGE} {plugins_row_grey.MANUAL}</td>
+			<td>{plugins_row_grey.VERSION}</td>
+			<td class="hiddenSmartphone">{plugins_row_grey.CONTACT}</td>
+			<td class="hiddenSmartphone">{plugins_row_grey.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">
+				<i class="coretip fa fa-info-circle fa-lg" data-coretip="{plugins_row_grey.DESCRIPTION}"></i>
+				<!-- IF plugins_row_grey.HOMEPAGE_LINK -->
+				<span class="coretip" data-coretip="{plugins_row_grey.HOMEPAGE}"><a href="{plugins_row_grey.HOMEPAGE_LINK}" target="_blank" rel="nofollow"><i class="fa fa-globe fa-lg"></i></a></span>
+				<!-- ENDIF -->
+				<!-- IF plugins_row_grey.MANUAL_LINK -->
+				<span class="coretip" data-coretip="{plugins_row_grey.MANUAL}"><a href="{plugins_row_grey.MANUAL_LINK}" target="_blank" rel="nofollow"><i class="fa fa-question-circle fa-lg"></i></a></span>
+				<!-- ENDIF -->
+				<!-- IF plugins_row_grey.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{plugins_row_grey.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		</tr>
 		<!-- END plugins_row_grey -->
 		<!-- BEGIN plugins_row_grey_repo -->
 		<tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_off.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{plugins_row_grey_repo.ACTION_LINK}</td>
-			<td class="nowrap">{plugins_row_grey_repo.NAME}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-gray"></i></td>
+			<td class="nowrap desktopOnly">{plugins_row_grey_repo.ACTION_LINK}</td>
+			<td>{plugins_row_grey_repo.NAME}</td>
 			<!-- BEGIN dep_row -->
-			<td class="nowrap">{plugins_row_grey_repo.dep_row.DEPENDENCY_STATUS}</td>
+			<td class="hiddenSmartphone">
+				<span class="coretip" data-coretip="{plugins_row_grey_repo.dep_row.DEPENDENCY_TT}">
+					<i class="{plugins_row_grey_repo.dep_row.ICON}"></i> {plugins_row_grey_repo.dep_row.DEPENDENCY_NAME}
+				</span>
+			</td>
 			<!-- END dep_row -->
-			<td class="nowrap">{plugins_row_grey_repo.VERSION}</td>
-			<td class="nowrap">{plugins_row_grey_repo.CONTACT}</td>
-			<td>{plugins_row_grey_repo.DESCRIPTION}</td>
-			<td class="nowrap">{plugins_row_grey_repo.LONG_DESCRIPTION}  {plugins_row_grey_repo.HOMEPAGE} {plugins_row_grey_repo.MANUAL}</td>
+			<td>{plugins_row_grey_repo.VERSION}</td>
+			<td class="hiddenSmartphone">{plugins_row_grey_repo.CONTACT}</td>
+			<td class="hiddenSmartphone">{plugins_row_grey_repo.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">
+				<i class="coretip fa fa-info-circle fa-lg" data-coretip="{plugins_row_grey_repo.DESCRIPTION}"></i>
+				<!-- IF plugins_row_grey_repo.HOMEPAGE_LINK -->
+				<span class="coretip" data-coretip="{plugins_row_grey_repo.HOMEPAGE}"><a href="{plugins_row_grey_repo.HOMEPAGE_LINK}" target="_blank" rel="nofollow"><i class="fa fa-globe fa-lg"></i></a></span>
+				<!-- ENDIF -->
+				<!-- IF plugins_row_grey_repo.MANUAL_LINK -->
+				<span class="coretip" data-coretip="{plugins_row_grey_repo.MANUAL}"><a href="{plugins_row_grey_repo.MANUAL_LINK}" target="_blank" rel="nofollow"><i class="fa fa-question-circle fa-lg"></i></a></span>
+				<!-- ENDIF -->
+				<!-- IF plugins_row_grey_repo.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{plugins_row_grey_repo.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		</tr>
 		<!-- END plugins_row_grey_repo -->
 		<!-- BEGIN plugins_row_broken -->
 		<tr>
-			 <td width="16" align="center" class="nowrap"></td>
-			<td><!-- IF plugins_row_broken.DELETE --><a href="{plugins_row_broken.DEL_LINK}" title="{L_delete_plugin}"><img src="{EQDKP_IMAGE_PATH}false.png" width="20" height="20" alt="!" />&nbsp;{L_delete}</a><!-- ENDIF -->&nbsp;</td>
+			 <td width="20" align="center"></td>
+			<td><!-- IF plugins_row_broken.DELETE --><a href="{plugins_row_broken.DEL_LINK}" title="{L_delete_plugin}"><i class="fa fa-exclamation-triangle fa-fw"></i>&nbsp;{L_delete}</a><!-- ENDIF -->&nbsp;</td>
 			<td colspan="20">{plugins_row_broken.NAME}: {L_broken_plugin}</td>
 		</tr>
 		<!-- END plugins_row_broken -->
@@ -215,6 +463,9 @@ function hide_update_warning(status){
 	</div>
 
 	<div id="fragment-2">
+		<div class="contentHeader">
+			<h1 class="contentTitle">{L_CATEGORY_2}</h1>
+		</div>
 		<script type="text/javascript" language="javascript">
 
 		var override = 0;
@@ -229,328 +480,415 @@ function hide_update_warning(status){
 		</script>
 		<form method="post" action="{ACTION}&amp;cat=2&amp;mode=default_style" name="post">
 		<input type="hidden" name="override" value="0" />
-		<table width="100%" border="0" cellspacing="1" cellpadding="4" class="colorswitch hoverrows">
+		<table class="table fullwidth colorswitch hoverrows">
 		  <tr>
-			<th width="16" class="nowrap">&nbsp;</th>
-			<th colspan="6" align="left" class="nowrap">{L_action}</th>
-			<th width="16" align="left" class="nowrap">&nbsp;</th>
-			<th align="left" class="nowrap">{L_name}</th>
-			<th align="left" class="nowrap">{L_template_files}</th>
-			<th align="left" class="nowrap">{L_users}</th>
-			<th align="left" class="nowrap">{L_version}</th>
-			<th align="left" class="nowrap">{L_portalplugin_author}</th>
-			<th align="left" class="nowrap">{L_preview}</th>
+			<th width="20">&nbsp;</th>
+			<th colspan="5" align="left">{L_action}</th>
+			<th width="16" align="left">&nbsp;</th>
+			<th align="left">{L_name}</th>
+			<th align="left" class="hiddenSmartphone">{L_template_files}</th>
+			<th align="left" class="hiddenSmartphone">{L_users}</th>
+			<th align="left">{L_version}</th>
+			<th align="left" class="hiddenSmartphone">{L_portalplugin_author}</th>
+			<th align="left" class="hiddenSmartphone">{L_preview}</th>
+			<th align="left" class="hiddenSmartphone">{L_infos}</th>
 			</tr>
 		  <!-- BEGIN styles_row_red_local -->
 		  <tr>
-		   <td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_red.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td width="10" class="nowrap">{styles_row_red_local.ACTION_LINK}</td>
-			<td width="10" class="nowrap"><!-- IF not styles_row_red_local.S_DEFAULT -->
-			  <a href="{styles_row_red_local.U_ENABLE}"><img src="{EQDKP_IMAGE_PATH}glyphs/{styles_row_red_local.ENABLE}.png" width="16" height="16" title="{styles_row_red_local.L_ENABLE}" alt="{styles_row_red_local.L_ENABLE}" /></a>  
+		   <td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-red"></i></td>
+			<td width="10" class="nowrap desktopOnly">{styles_row_red_local.ACTION_LINK}</td>
+			<td width="10"><!-- IF not styles_row_red_local.S_DEFAULT -->
+			  <a href="{styles_row_red_local.U_ENABLE}" title="{styles_row_red_local.L_ENABLE}"><i class="{styles_row_red_local.ENABLE} fa-lg"></i></a>
 			  <!-- ENDIF --></td>
-			<td width="10" class="nowrap"><a href="{styles_row_red_local.U_EDIT_STYLE}" title="{L_edit_style}"><img src="{EQDKP_ROOT_PATH}images/glyphs/edit.png" width="16" height="16" alt="{L_edit_style}" /></a></td>
-			<td width="10" class="nowrap"><a href="{styles_row_red_local.U_DOWNLOAD_STYLE}" title="{L_download_style}"><img src="{EQDKP_ROOT_PATH}images/admin/manage_backup.png" width="16" height="16" alt="{L_download_style}" /></a></td>
-			<td width="10" class="nowrap"><!-- IF not styles_row_red_local.S_DEFAULT -->
-				<a href="javascript:style_delete_warning({styles_row_red_local.ID})" title="{L_delete_style}"><img src="{EQDKP_ROOT_PATH}images/global/delete.png" width="16" height="16" alt="{L_delete_style}" /></a>
-				<!-- ENDIF --></td>
-			<td width="10" class="nowrap">
-				<a href="javascript:style_reset_warning({styles_row_red_local.ID})" title="{L_reset_style}"><img src="{EQDKP_ROOT_PATH}images/global/update.png" width="16" height="16" alt="{L_reset_style}" /></a>
+			<td width="10"><a href="{styles_row_red_local.U_EDIT_STYLE}" title="{L_edit_style}"><i class="fa fa-pencil fa-lg" title="{L_edit_style}"></i></a></td>
+			<td width="10"><a href="{styles_row_red_local.U_DOWNLOAD_STYLE}" title="{L_download_style}"><i class="fa fa-floppy-o fa-lg" title="{L_download_style}"></i></a></td>
+			<td width="10">
+				<a href="javascript:style_reset_warning({styles_row_red_local.ID})" title="{L_reset_style}"><i class="fa fa-retweet fa-lg"></i></a>
 			</td>
 			
-			<td width="25" class="nowrap" align="center"><!-- IF not styles_row_red_local.S_DEACTIVATED --><input type="radio" name="standard_style" {styles_row_red_local.STANDARD} value="{styles_row_red_local.ID}" /><!-- ENDIF --></td>
-			<!-- name --><td class="nowrap"><!-- IF styles_row_red_local.S_DEFAULT --><b><!-- ENDIF -->{styles_row_red_local.NAME} <!-- IF styles_row_red_local.S_DEFAULT --> * </b><!-- ENDIF --></td>
+			<td width="25" align="center"><!-- IF not styles_row_red_local.S_DEACTIVATED --><input type="radio" name="standard_style" {styles_row_red_local.STANDARD} value="{styles_row_red_local.ID}" /><!-- ENDIF --></td>
+			<!-- name --><td><!-- IF styles_row_red_local.S_DEFAULT --><b><!-- ENDIF --><span class="coretip" data-coretip='{styles_row_red_local.TT_CONTENT}'>{styles_row_red_local.TT_NAME}</span> <!-- IF styles_row_red_local.S_DEFAULT --> * </b><!-- ENDIF --></td>
 
-			<td class="nowrap">{styles_row_red_local.TEMPLATE}</td>
-			<td class="nowrap">{styles_row_red_local.USERS}</td>
-			<td class="nowrap">{styles_row_red_local.VERSION}</td>
-			<td class="nowrap">{styles_row_red_local.AUTHOR}</td>
-			<td class="nowrap"><a href="javascript:style_preview({styles_row_red_local.ID});">{L_preview}</a></td>
+			<td class="hiddenSmartphone">{styles_row_red_local.TEMPLATE}</td>
+			<td class="hiddenSmartphone">{styles_row_red_local.USERS}</td>
+			<td>{styles_row_red_local.VERSION}</td>
+			<td class="hiddenSmartphone">{styles_row_red_local.AUTHOR}</td>
+			<td class="hiddenSmartphone"><a href="javascript:style_preview({styles_row_red_local.ID});">{L_preview}</a></td>
+			<td class="hiddenSmartphone">
+				<!-- IF styles_row_red_local.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{styles_row_red_local.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>		
 			</tr>
 		   <!-- END styles_row_red_local -->
 		  <!-- BEGIN styles_row_red -->
 		  <tr>
-		   <td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_red.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td width="10" class="nowrap">{styles_row_red.ACTION_LINK}</td>
-			<td width="10" class="nowrap"><!-- IF not styles_row_red.S_DEFAULT -->
-			  <a href="{styles_row_red.U_ENABLE}"><img src="{EQDKP_IMAGE_PATH}glyphs/{styles_row_red.ENABLE}.png" width="16" height="16" title="{styles_row_red.L_ENABLE}" alt="{styles_row_red.L_ENABLE}" /></a>  
+		  <td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-red"></i></td>
+			<td width="10" class="nowrap desktopOnly">{styles_row_red.ACTION_LINK}</td>
+			<td width="10"><!-- IF not styles_row_red.S_DEFAULT -->
+			<a href="{styles_row_red.U_ENABLE}" title="{styles_row_red.L_ENABLE}"><i class="{styles_row_red.ENABLE} fa-lg"></i></a>
 			  <!-- ENDIF --></td>
-			<td width="10" class="nowrap"><a href="{styles_row_red.U_EDIT_STYLE}" title="{L_edit_style}"><img src="{EQDKP_ROOT_PATH}images/glyphs/edit.png" width="16" height="16" alt="{L_edit_style}" /></a></td>
-			<td width="10" class="nowrap"><a href="{styles_row_red.U_DOWNLOAD_STYLE}" title="{L_download_style}"><img src="{EQDKP_ROOT_PATH}images/admin/manage_backup.png" width="16" height="16" alt="{L_download_style}" /></a></td>
-			<td width="10" class="nowrap"><!-- IF not styles_row_red.S_DEFAULT -->
-				<a href="javascript:style_delete_warning({styles_row_red.ID})" title="{L_delete_style}"><img src="{EQDKP_ROOT_PATH}images/global/delete.png" width="16" height="16" alt="{L_delete_style}" /></a>
-				<!-- ENDIF --></td>
-			<td width="10" class="nowrap">
-				<a href="javascript:style_reset_warning({styles_row_red.ID})" title="{L_reset_style}"><img src="{EQDKP_ROOT_PATH}images/global/update.png" width="16" height="16" alt="{L_reset_style}" /></a>
+			<td width="10"><a href="{styles_row_red.U_EDIT_STYLE}" title="{L_edit_style}"><i class="fa fa-pencil fa-lg" title="{L_edit_style}"></i></a></td>
+			<td width="10"><a href="{styles_row_red.U_DOWNLOAD_STYLE}" title="{L_download_style}"><i class="fa fa-floppy-o fa-lg" title="{L_download_style}"></i></a></td>
+			<td width="10">
+				<a href="javascript:style_reset_warning({styles_row_red.ID})" title="{L_reset_style}"><i class="fa fa-retweet fa-lg"></i></a>
 			</td>
 			
-			<td width="25" class="nowrap" align="center"><!-- IF not styles_row_red.S_DEACTIVATED --><input type="radio" name="standard_style" {styles_row_red.STANDARD} value="{styles_row_red.ID}" /><!-- ENDIF --></td>
-			<!-- name --><td class="nowrap"><!-- IF styles_row_red.S_DEFAULT --><b><!-- ENDIF --><a href="{styles_row_red.U_EDIT_STYLE}">{styles_row_red.NAME}</a> <!-- IF styles_row_red.S_DEFAULT --> * </b><!-- ENDIF --></td>
+			<td width="25" align="center"><!-- IF not styles_row_red.S_DEACTIVATED --><input type="radio" name="standard_style" {styles_row_red.STANDARD} value="{styles_row_red.ID}" /><!-- ENDIF --></td>
+			<!-- name --><td><!-- IF styles_row_red.S_DEFAULT --><b><!-- ENDIF --><a href="{styles_row_red.U_EDIT_STYLE}"><span class="coretip" data-coretip='{styles_row_red.TT_CONTENT}'>{styles_row_red.TT_NAME}</span></a> <!-- IF styles_row_red.S_DEFAULT --> * </b><!-- ENDIF --></td>
 
-			<td class="nowrap">{styles_row_red.TEMPLATE}</td>
-			<td class="nowrap">{styles_row_red.USERS}</td>
-			<td class="nowrap">{styles_row_red.VERSION}</td>
-			<td class="nowrap">{styles_row_red.AUTHOR}</td>
-			<td class="nowrap"><a href="javascript:style_preview({styles_row_red.ID});">{L_preview}</a></td>
+			<td class="hiddenSmartphone">{styles_row_red.TEMPLATE}</td>
+			<td class="hiddenSmartphone">{styles_row_red.USERS}</td>
+			<td>{styles_row_red.VERSION}</td>
+			<td class="hiddenSmartphone">{styles_row_red.AUTHOR}</td>
+			<td class="hiddenSmartphone"><a href="javascript:style_preview({styles_row_red.ID});">{L_preview}</a></td>
+			<td class="hiddenSmartphone">
+				<!-- IF styles_row_red.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{styles_row_red.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 			</tr>
 		   <!-- END styles_row_red -->
 			<!-- BEGIN styles_row_yellow -->
 		  <tr>
-		   <td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_yellow.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td width="10" class="nowrap">{styles_row_yellow.ACTION_LINK}</td>
-			<td width="10" class="nowrap"><!-- IF not styles_row_yellow.S_DEFAULT -->
-			  <a href="{styles_row_yellow.U_ENABLE}"><img src="{EQDKP_IMAGE_PATH}glyphs/{styles_row_yellow.ENABLE}.png" width="16" height="16" title="{styles_row_yellow.L_ENABLE}" alt="{styles_row_yellow.L_ENABLE}" /></a>  
-			  <!-- ENDIF --></td>
-			<td width="10" class="nowrap"><a href="{styles_row_yellow.U_EDIT_STYLE}" title="{L_edit_style}"><img src="{EQDKP_ROOT_PATH}images/glyphs/edit.png" width="16" height="16" alt="{L_edit_style}" /></a></td>
-			<td width="10" class="nowrap"><a href="{styles_row_yellow.U_DOWNLOAD_STYLE}" title="{L_download_style}"><img src="{EQDKP_ROOT_PATH}images/admin/manage_backup.png" width="16" height="16" alt="{L_download_style}" /></a></td>
-			<td width="10" class="nowrap"><!-- IF not styles_row_yellow.S_DEFAULT -->
-				<a href="javascript:style_delete_warning({styles_row_yellow.ID})" title="{L_delete_style}"><img src="{EQDKP_ROOT_PATH}images/global/delete.png" width="16" height="16" alt="{L_delete_style}" /></a>
-				<!-- ENDIF --></td>
-			<td width="10" class="nowrap">
-				<a href="javascript:style_reset_warning({styles_row_yellow.ID})" title="{L_reset_style}"><img src="{EQDKP_ROOT_PATH}images/global/update.png" width="16" height="16" alt="{L_reset_style}" /></a>
+		   <td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-yellow"></i></td>
+			<td width="10" class="nowrap desktopOnly">{styles_row_yellow.ACTION_LINK}</td>
+			<td width="10"><!-- IF not styles_row_yellow.S_DEFAULT -->
+			<a href="{styles_row_yellow.U_ENABLE}" title="{styles_row_yellow.L_ENABLE}"><i class="{styles_row_yellow.ENABLE} fa-lg"></i></a>
+			<!-- ENDIF --></td>
+			<td width="10"><a href="{styles_row_yellow.U_EDIT_STYLE}" title="{L_edit_style}"><i class="fa fa-pencil fa-lg" title="{L_edit_style}"></i></a></td>
+			<td width="10"><a href="{styles_row_yellow.U_DOWNLOAD_STYLE}" title="{L_download_style}"><i class="fa fa-floppy-o fa-lg" title="{L_download_style}"></i></a></td>
+			<td width="10">
+				<a href="javascript:style_reset_warning({styles_row_yellow.ID})" title="{L_reset_style}"><i class="fa fa-retweet fa-lg"></i></a>
 			</td>
 			
-			<td width="25" class="nowrap" align="center"><!-- IF not styles_row_yellow.S_DEACTIVATED --><input type="radio" name="standard_style" {styles_row_yellow.STANDARD} value="{styles_row_yellow.ID}" /><!-- ENDIF --></td>
-			<!-- name --><td class="nowrap"><!-- IF styles_row_yellow.S_DEFAULT --><b><!-- ENDIF --><a href="{styles_row_yellow.U_EDIT_STYLE}">{styles_row_yellow.NAME}</a> <!-- IF styles_row_yellow.S_DEFAULT --> * </b><!-- ENDIF --></td>
+			<td width="25" align="center"><!-- IF not styles_row_yellow.S_DEACTIVATED --><input type="radio" name="standard_style" {styles_row_yellow.STANDARD} value="{styles_row_yellow.ID}" /><!-- ENDIF --></td>
+			<!-- name --><td><!-- IF styles_row_yellow.S_DEFAULT --><b><!-- ENDIF --><a href="{styles_row_yellow.U_EDIT_STYLE}"><span class="coretip" data-coretip='{styles_row_yellow.TT_CONTENT}'>{styles_row_yellow.TT_NAME}</span></a> <!-- IF styles_row_yellow.S_DEFAULT --> * </b><!-- ENDIF --></td>
 
-			<td class="nowrap">{styles_row_yellow.TEMPLATE}</td>
-			<td class="nowrap">{styles_row_yellow.USERS}</td>
-			<td class="nowrap">{styles_row_yellow.VERSION}</td>
-			<td class="nowrap">{styles_row_yellow.AUTHOR}</td>
-			<td class="nowrap"><a href="javascript:style_preview({styles_row_yellow.ID});">{L_preview}</a></td>
+			<td class="hiddenSmartphone">{styles_row_yellow.TEMPLATE}</td>
+			<td class="hiddenSmartphone">{styles_row_yellow.USERS}</td>
+			<td>{styles_row_yellow.VERSION}</td>
+			<td class="hiddenSmartphone">{styles_row_yellow.AUTHOR}</td>
+			<td class="hiddenSmartphone"><a href="javascript:style_preview({styles_row_yellow.ID});">{L_preview}</a></td>
+			<td class="hiddenSmartphone">
+				<!-- IF styles_row_yellow.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{styles_row_yellow.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 			</tr>
 		   <!-- END styles_row_yellow -->
 		<!-- BEGIN styles_row_green -->
 		  <tr>
-		   <td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td width="10" class="nowrap">{styles_row_green.ACTION_LINK}</td>
-			<td width="10" class="nowrap"><!-- IF not styles_row_green.S_DEFAULT -->
-			  <a href="{styles_row_green.U_ENABLE}"><img src="{EQDKP_IMAGE_PATH}glyphs/{styles_row_green.ENABLE}.png" width="16" height="16" title="{styles_row_green.L_ENABLE}" alt="{styles_row_green.L_ENABLE}" /></a>  
+		   <td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-green"></i></td>
+			<td width="10" class="nowrap desktopOnly">{styles_row_green.ACTION_LINK}</td>
+			<td width="10"><!-- IF not styles_row_green.S_DEFAULT -->
+			  <a href="{styles_row_green.U_ENABLE}" title="{styles_row_green.L_ENABLE}"><i class="{styles_row_green.ENABLE} fa-lg"></i></a>  
 			  <!-- ENDIF --></td>
-			<td width="10" class="nowrap"><a href="{styles_row_green.U_EDIT_STYLE}" title="{L_edit_style}"><img src="{EQDKP_ROOT_PATH}images/glyphs/edit.png" width="16" height="16" alt="{L_edit_style}" /></a></td>
-			<td width="10" class="nowrap"><a href="{styles_row_green.U_DOWNLOAD_STYLE}" title="{L_download_style}"><img src="{EQDKP_ROOT_PATH}images/admin/manage_backup.png" width="16" height="16" alt="{L_download_style}" /></a></td>
-			<td width="10" class="nowrap"><!-- IF not styles_row_green.S_DEFAULT -->
-				<a href="javascript:style_delete_warning({styles_row_green.ID})" title="{L_delete_style}"><img src="{EQDKP_ROOT_PATH}images/global/delete.png" width="16" height="16" alt="{L_delete_style}" /></a>
-				<!-- ENDIF --></td>
-			<td width="10" class="nowrap">
-				<a href="javascript:style_reset_warning({styles_row_green.ID})" title="{L_reset_style}"><img src="{EQDKP_ROOT_PATH}images/global/update.png" width="16" height="16" alt="{L_reset_style}" /></a>
+			<td width="10"><a href="{styles_row_green.U_EDIT_STYLE}" title="{L_edit_style}"><i class="fa fa-pencil fa-lg"></i></a></td>
+			<td width="10"><a href="{styles_row_green.U_DOWNLOAD_STYLE}" title="{L_download_style}"><i class="fa fa-floppy-o fa-lg"></i></a></td>
+			<td width="10">
+				<a href="javascript:style_reset_warning({styles_row_green.ID})" title="{L_reset_style}"><i class="fa fa-retweet fa-lg"></i></a>
 			</td>
 			
-			<td width="25" class="nowrap" align="center"><!-- IF not styles_row_green.S_DEACTIVATED --><input type="radio" name="standard_style" {styles_row_green.STANDARD} value="{styles_row_green.ID}" /><!-- ENDIF --></td>
-			<!-- name --><td class="nowrap"><!-- IF styles_row_green.S_DEFAULT --><b><!-- ENDIF --><a href="{styles_row_green.U_EDIT_STYLE}">{styles_row_green.NAME}</a> <!-- IF styles_row_green.S_DEFAULT --> * </b><!-- ENDIF --></td>
+			<td width="25" align="center"><!-- IF not styles_row_green.S_DEACTIVATED --><input type="radio" name="standard_style" {styles_row_green.STANDARD} value="{styles_row_green.ID}" /><!-- ENDIF --></td>
+			<!-- name --><td><!-- IF styles_row_green.S_DEFAULT --><b><!-- ENDIF --><span class="coretip" data-coretip='{styles_row_green.TT_CONTENT}'>{styles_row_green.TT_NAME}</span> <!-- IF styles_row_green.S_DEFAULT --> * </b><!-- ENDIF --></td>
 
-			<td class="nowrap">{styles_row_green.TEMPLATE}</td>
-			<td class="nowrap">{styles_row_green.USERS}</td>
-			<td class="nowrap">{styles_row_green.VERSION}</td>
-			<td class="nowrap">{styles_row_green.AUTHOR}</td>
-			<td class="nowrap"><a href="javascript:style_preview({styles_row_green.ID});">{L_preview}</a></td>
+			<td class="hiddenSmartphone">{styles_row_green.TEMPLATE}</td>
+			<td class="hiddenSmartphone">{styles_row_green.USERS}</td>
+			<td>{styles_row_green.VERSION}</td>
+			<td class="hiddenSmartphone">{styles_row_green.AUTHOR}</td>
+			<td class="hiddenSmartphone"><a href="javascript:style_preview({styles_row_green.ID});">{L_preview}</a></td>
+			<td class="hiddenSmartphone">
+				<!-- IF styles_row_green.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{styles_row_green.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 			</tr>
 		   <!-- END styles_row_green -->
 		<!-- BEGIN styles_row_grey -->
 		  <tr>
-		   <td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_off.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td width="10" class="nowrap">{styles_row_grey.ACTION_LINK}</td>
-			<td width="10" class="nowrap"></td>
-			<td width="10" class="nowrap"></td>
-			<td width="10" class="nowrap"></td>
-			<td width="10" class="nowrap"></td>
-			<td width="10" class="nowrap"></td>			
-			<td width="25" class="nowrap" align="center"></td>
-			<td class="nowrap">{styles_row_grey.NAME}</td>
-			<td class="nowrap">{styles_row_grey.TEMPLATE}</td>
-			<td class="nowrap">0</td>
-			<td class="nowrap">{styles_row_grey.VERSION}</td>
-			<td class="nowrap">{styles_row_grey.AUTHOR}</td>
-			<td class="nowrap"></td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-gray"></i></td>
+			<td width="10" class="nowrap desktopOnly">{styles_row_grey.ACTION_LINK}</td>
+			<td width="10"></td>
+			<td width="10"></td>
+			<td width="10"></td>
+			<td width="10"></td>			
+			<td width="25" align="center"></td>
+			<td><span class="coretip" data-coretip='{styles_row_grey.TT_CONTENT}'>{styles_row_grey.TT_NAME}</span></td>
+			<td class="hiddenSmartphone">{styles_row_grey.TEMPLATE}</td>
+			<td class="hiddenSmartphone">0</td>
+			<td>{styles_row_grey.VERSION}</td>
+			<td class="hiddenSmartphone">{styles_row_grey.AUTHOR}</td>
+			<td class="hiddenSmartphone"></td>
+			<td class="hiddenSmartphone">
+				<!-- IF styles_row_grey.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{styles_row_grey.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 			</tr>
 		   <!-- END styles_row_grey -->
-		<!-- BEGIN styles_row_grey_repo -->
-		  <tr>
-		   <td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_off.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td width="10" class="nowrap">{styles_row_grey_repo.ACTION_LINK}</td>
-			<td width="10" class="nowrap"></td>
-			<td width="10" class="nowrap"></td>
-			<td width="10" class="nowrap"></td>
-			<td width="10" class="nowrap"></td>
-			<td width="10" class="nowrap"></td>		
-			<td width="25" class="nowrap">{styles_row_grey_repo.NAME}</td>
-			<td class="nowrap">{styles_row_grey_repo.TEMPLATE}</td>
-			<td class="nowrap">0</td>
-			<td class="nowrap">{styles_row_grey_repo.VERSION}</td>
-			<td class="nowrap">{styles_row_grey_repo.AUTHOR}</td>
-			<td class="nowrap"></td>
-			</tr>
-		   <!-- END styles_row_grey_repo -->
-		  <tr>
-			<th colspan="14" align="center"><input name="standard" type="button" id="standard" value="{L_make_default_style}" class="mainoption bi_ok" onclick="style_default_info();" /> <input name="cache_reset" type="button" value="{L_delete_template_cache}" class="liteoption bi_delete" onclick="window.location='manage_extensions.php{SID}&amp;cat=2&amp;mode=delete_cache&amp;link_hash={CSRF_MODE_TOKEN}'" /></th>
-		  </tr>
 		</table>
+		<div class="contentFooter">
+			<button name="standard" type="button" id="standard" class="mainoption" onclick="style_default_info();"><i class="fa fa-check"></i>{L_make_default_style}</button>
+			<button name="cache_reset" type="button" class="liteoption" onclick="window.location='manage_extensions.php{SID}&amp;cat=2&amp;mode=delete_cache&amp;link_hash={CSRF_MODE_TOKEN}'"><i class="fa fa-trash-o"></i>{L_delete_template_cache}</button>
+		</div>
 		{CSRF_TOKEN}
 		</form>
 	</div>
 
 	<div id="fragment-3">
-		<table width="100%" border="0" cellspacing="1" cellpadding="4" class="colorswitch">
+		<div class="tableHeader floatRight">
+			<button class="mainoption" type="button" name="addadj" onclick="window.location='manage_portal.php{SID}'"><i class="fa fa-columns"></i> {L_portalplugin_management}</button>
+		</div>
+		<div class="contentHeader">
+			<h1 class="contentTitle">{L_CATEGORY_3}</h1>
+		</div>
+		<table class="table fullwidth colorswitch">
 		  <tr>
-			<th align="left" width="16">&nbsp;</th>
-			<th align="left" class="nowrap" width="16">{L_action}</th>
-			<th align="left" class="nowrap">{L_name}</th>
-			<th align="left" class="nowrap">{L_version}</th>
-			<th align="left" class="nowrap">{L_contact}</th>
-			<th align="left" class="nowrap">{L_description}</th>
-			<th align="left" class="nowrap" style="width: 90px">{L_pi_rating}</th>
+			<th align="left" width="20">&nbsp;</th>
+			<th align="left" width="16" colspan="3">{L_action}</th>
+			<th align="left">{L_name}</th>
+			<th align="left">{L_version}</th>
+			<th align="left" class="hiddenSmartphone">{L_contact}</th>
+			<th align="left" class="hiddenSmartphone">{L_description}</th>
+			<th align="left" style="width: 90px" class="hiddenSmartphone">{L_pi_rating}</th>
+			<th align="left" class="hiddenSmartphone">{L_infos}</th>
 		  </tr>
 		  <!-- BEGIN pm_row_red -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_red.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{pm_row_red.ACTION_LINK}</td>
-			<td class="nowrap">{pm_row_red.NAME}</td>
-			<td class="nowrap">{pm_row_red.VERSION}</td>
-			<td class="nowrap">{pm_row_red.CONTACT}</td>
-			<td>{pm_row_red.DESCRIPTION}</td>
-			<td class="nowrap">{pm_row_red.RATING}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-red"></i></td>
+			<td class="nowrap desktopOnly">{pm_row_red.ACTION_LINK}</td>
+			<td class="nowrap desktopOnly">{pm_row_red.REINSTALL_LINK}</td>
+			<td class="nowrap desktopOnly">{pm_row_red.DELETE_LINK}</td>
+			<td>{pm_row_red.NAME}</td>
+			<td>{pm_row_red.VERSION}</td>
+			<td class="hiddenSmartphone">{pm_row_red.CONTACT}</td>
+			<td class="hiddenSmartphone">{pm_row_red.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">{pm_row_red.RATING}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF pm_row_red.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{pm_row_red.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END pm_row_red -->
 		  <!-- BEGIN pm_row_yellow -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_yellow.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{pm_row_yellow.ACTION_LINK}</td>
-			<td class="nowrap">{pm_row_yellow.NAME}</td>
-			<td class="nowrap">{pm_row_yellow.VERSION}</td>
-			<td class="nowrap">{pm_row_yellow.CONTACT}</td>
-			<td>{pm_row_yellow.DESCRIPTION}</td>
-			<td class="nowrap">{pm_row_yellow.RATING}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-yellow"></i></td>
+			<td class="nowrap desktopOnly">{pm_row_yellow.ACTION_LINK}</td>
+			<td class="nowrap desktopOnly">{pm_row_yellow.REINSTALL_LINK}</td>
+			<td class="nowrap desktopOnly">{pm_row_yellow.DELETE_LINK}</td>
+			<td>{pm_row_yellow.NAME}</td>
+			<td>{pm_row_yellow.VERSION}</td>
+			<td class="hiddenSmartphone">{pm_row_yellow.CONTACT}</td>
+			<td class="hiddenSmartphone">{pm_row_yellow.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">{pm_row_yellow.RATING}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF pm_row_yellow.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{pm_row_yellow.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END pm_row_yellow -->
 		  <!-- BEGIN pm_row_green -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{pm_row_green.ACTION_LINK}</td>
-			<td class="nowrap">{pm_row_green.NAME}</td>
-			<td class="nowrap">{pm_row_green.VERSION}</td>
-			<td class="nowrap">{pm_row_green.CONTACT}</td>
-			<td>{pm_row_green.DESCRIPTION}</td>
-			<td class="nowrap">{pm_row_green.RATING}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-green"></i></td>
+			<td class="nowrap desktopOnly">{pm_row_green.ACTION_LINK}</td>
+			<td class="nowrap desktopOnly">{pm_row_green.REINSTALL_LINK}</td>
+			<td class="nowrap desktopOnly">{pm_row_green.DELETE_LINK}</td>
+			<td>{pm_row_green.NAME}</td>
+			<td>{pm_row_green.VERSION}</td>
+			<td class="hiddenSmartphone">{pm_row_green.CONTACT}</td>
+			<td class="hiddenSmartphone">{pm_row_green.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">{pm_row_green.RATING}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF pm_row_green.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{pm_row_green.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END pm_row_green -->
 		  <!-- BEGIN pm_row_grey -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_off.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{pm_row_grey.ACTION_LINK}</td>
-			<td class="nowrap">{pm_row_grey.NAME}</td>
-			<td class="nowrap">{pm_row_grey.VERSION}</td>
-			<td class="nowrap">{pm_row_grey.CONTACT}</td>
-			<td>{pm_row_grey.DESCRIPTION}</td>
-			<td class="nowrap">{pm_row_grey.RATING}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-gray"></i></td>
+			<td class="nowrap desktopOnly">{pm_row_grey.ACTION_LINK}</td>
+			<td class="nowrap desktopOnly">{pm_row_grey.REINSTALL_LINK}</td>
+			<td class="nowrap desktopOnly">{pm_row_grey.DELETE_LINK}</td>
+			<td>{pm_row_grey.NAME}</td>
+			<td>{pm_row_grey.VERSION}</td>
+			<td class="hiddenSmartphone">{pm_row_grey.CONTACT}</td>
+			<td class="hiddenSmartphone">{pm_row_grey.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">{pm_row_grey.RATING}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF pm_row_grey.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{pm_row_grey.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END pm_row_grey -->
 		</table>
 	</div>
 
 	<div id="fragment-7">
-		<table width="100%" border="0" cellspacing="1" cellpadding="4" class="colorswitch">
+		<div class="tableHeader floatRight">
+			<button class="mainoption" type="button" name="addadj" onclick="window.location='manage_settings.php{SID}#fragment-game'"><i class="fa fa-wrench"></i> {L_core_sett_fs_game}</button>
+		</div>
+		<div class="contentHeader">
+			<h1 class="contentTitle">{L_CATEGORY_7}</h1>
+		</div>
+		<table class="table fullwidth colorswitch">
 		  <tr>
-			<th align="left" width="16">&nbsp;</th>
-			<th align="left" class="nowrap" width="16">{L_action}</th>
-			<th align="left" class="nowrap">{L_name}</th>
-			<th align="left" class="nowrap">{L_version}</th>
-			<th align="left" class="nowrap">{L_contact}</th>
-			<th align="left" class="nowrap">{L_description}</th>
-			<th align="left" class="nowrap" style="width: 90px">{L_pi_rating}</th>
+			<th align="left" width="20">&nbsp;</th>
+			<th align="left" width="16" colspan="2">{L_action}</th>
+			<th align="left">{L_name}</th>
+			<th align="left">{L_version}</th>
+			<th align="left" class="hiddenSmartphone">{L_contact}</th>
+			<th align="left" class="hiddenSmartphone">{L_description}</th>
+			<th align="left" style="width: 90px" class="hiddenSmartphone">{L_pi_rating}</th>
+			<th align="left" class="hiddenSmartphone">{L_infos}</th>
 		  </tr>
 		  <!-- BEGIN games_row_red -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_red.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{games_row_red.ACTION_LINK}</td>
-			<td class="nowrap">{games_row_red.NAME}</td>
-			<td class="nowrap">{games_row_red.VERSION}</td>
-			<td class="nowrap">{games_row_red.CONTACT}</td>
-			<td>{games_row_red.DESCRIPTION}</td>
-			<td class="nowrap">{games_row_red.RATING}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-red"></i></td>
+			<td class="nowrap desktopOnly">{games_row_red.ACTION_LINK}</td>
+			<td class="nowrap desktopOnly">{games_row_red.DELETE_LINK}</td>
+			<td>{games_row_red.NAME}</td>
+			<td>{games_row_red.VERSION}</td>
+			<td class="hiddenSmartphone">{games_row_red.CONTACT}</td>
+			<td class="hiddenSmartphone">{games_row_red.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">{games_row_red.RATING}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF games_row_red.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{games_row_red.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END games_row_red -->
 		  <!-- BEGIN games_row_yellow -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_yellow.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{games_row_yellow.ACTION_LINK}</td>
-			<td class="nowrap">{games_row_yellow.NAME}</td>
-			<td class="nowrap">{games_row_yellow.VERSION}</td>
-			<td class="nowrap">{games_row_yellow.CONTACT}</td>
-			<td>{games_row_yellow.DESCRIPTION}</td>
-			<td class="nowrap">{games_row_yellow.RATING}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-yellow"></i></td>
+			<td class="nowrap desktopOnly">{games_row_yellow.ACTION_LINK}</td>
+			<td class="nowrap desktopOnly">{games_row_yellow.DELETE_LINK}</td>
+			<td>{games_row_yellow.NAME}</td>
+			<td>{games_row_yellow.VERSION}</td>
+			<td class="hiddenSmartphone">{games_row_yellow.CONTACT}</td>
+			<td class="hiddenSmartphone">{games_row_yellow.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">{games_row_yellow.RATING}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF games_row_yellow.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{games_row_yellow.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END games_row_yellow -->
 		  <!-- BEGIN games_row_green -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{games_row_green.ACTION_LINK}</td>
-			<td class="nowrap">{games_row_green.NAME}</td>
-			<td class="nowrap">{games_row_green.VERSION}</td>
-			<td class="nowrap">{games_row_green.CONTACT}</td>
-			<td>{games_row_green.DESCRIPTION}</td>
-			<td class="nowrap">{games_row_green.RATING}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-green"></i></td>
+			<td class="nowrap desktopOnly">{games_row_green.ACTION_LINK}</td>
+			<td class="nowrap desktopOnly">{games_row_green.DELETE_LINK}</td>
+			<td>{games_row_green.NAME}</td>
+			<td>{games_row_green.VERSION}</td>
+			<td class="hiddenSmartphone">{games_row_green.CONTACT}</td>
+			<td class="hiddenSmartphone">{games_row_green.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">{games_row_green.RATING}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF games_row_green.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{games_row_green.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END games_row_green -->
 		  <!-- BEGIN games_row_grey -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_off.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{games_row_grey.ACTION_LINK}</td>
-			<td class="nowrap">{games_row_grey.NAME}</td>
-			<td class="nowrap">{games_row_grey.VERSION}</td>
-			<td class="nowrap">{games_row_grey.CONTACT}</td>
-			<td>{games_row_grey.DESCRIPTION}</td>
-			<td class="nowrap">{games_row_grey.RATING}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-gray"></i></td>
+			<td class="nowrap desktopOnly">{games_row_grey.ACTION_LINK}</td>
+			<td class="nowrap desktopOnly">{games_row_grey.DELETE_LINK}</td>
+			<td>{games_row_grey.NAME}</td>
+			<td>{games_row_grey.VERSION}</td>
+			<td class="hiddenSmartphone">{games_row_grey.CONTACT}</td>
+			<td class="hiddenSmartphone">{games_row_grey.DESCRIPTION}</td>
+			<td class="hiddenSmartphone">{games_row_grey.RATING}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF games_row_grey.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{games_row_grey.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END games_row_grey -->
 		  </table>
 	</div>
 
 	
-		<div id="fragment-11">
-		<table width="100%" border="0" cellspacing="1" cellpadding="4" class="colorswitch">
+	<div id="fragment-11">
+		<div class="contentHeader">
+			<h1 class="contentTitle">{L_CATEGORY_11}</h1>
+		</div>
+		<table class="table fullwidth colorswitch">
 		  <tr>
-			<th align="left" width="16">&nbsp;</th>
-			<th align="left" class="nowrap" width="16">{L_action}</th>
-			<th align="left" class="nowrap">{L_name}</th>
-			<th align="left" class="nowrap">{L_version}</th>
+			<th align="left" width="20">&nbsp;</th>
+			<th align="left" width="16">{L_action}</th>
+			<th align="left">{L_name}</th>
+			<th align="left">{L_version}</th>
+			<th align="left" class="hiddenSmartphone">{L_infos}</th>
 		  </tr>
 		  <!-- BEGIN language_row_red -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_red.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{language_row_red.ACTION_LINK}</td>
-			<td class="nowrap">{language_row_red.NAME}</td>
-			<td class="nowrap">{language_row_red.VERSION}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-red"></i></td>
+			<td class="nowrap desktopOnly">{language_row_red.ACTION_LINK}</td>
+			<td>{language_row_red.NAME}</td>
+			<td>{language_row_red.VERSION}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF language_row_red.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{language_row_red.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END language_row_red -->
 		  <!-- BEGIN language_row_yellow -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_yellow.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{language_row_yellow.ACTION_LINK}</td>
-			<td class="nowrap">{language_row_yellow.NAME}</td>
-			<td class="nowrap">{language_row_yellow.VERSION}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-yellow"></i></td>
+			<td class="nowrap desktopOnly">{language_row_yellow.ACTION_LINK}</td>
+			<td>{language_row_yellow.NAME}</td>
+			<td>{language_row_yellow.VERSION}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF language_row_yellow.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{language_row_yellow.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END language_row_yellow -->
 		  <!-- BEGIN language_row_green -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{language_row_green.ACTION_LINK}</td>
-			<td class="nowrap">{language_row_green.NAME}</td>
-			<td class="nowrap">{language_row_green.VERSION}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-green"></i></td>
+			<td class="nowrap desktopOnly">{language_row_green.ACTION_LINK}</td>
+			<td>{language_row_green.NAME}</td>
+			<td>{language_row_green.VERSION}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF language_row_green.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{language_row_green.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END language_row_green -->
 		  <!-- BEGIN language_row_grey -->
 		  <tr>
-			<td width="16" align="center" class="nowrap"><img src="{EQDKP_IMAGE_PATH}admin/plugin_off.png" width="16" height="16" alt="{L_plugin}" /></td>
-			<td class="nowrap">{language_row_grey.ACTION_LINK}</td>
-			<td class="nowrap">{language_row_grey.NAME}</td>
-			<td class="nowrap">{language_row_grey.VERSION}</td>
+			<td width="20" align="center"><i class="fa fa-puzzle-piece fa-lg icon-color-gray"></i></td>
+			<td class="nowrap desktopOnly">{language_row_grey.ACTION_LINK}</td>
+			<td>{language_row_grey.NAME}</td>
+			<td>{language_row_grey.VERSION}</td>
+			<td class="hiddenSmartphone">
+				<!-- IF language_row_grey.BUGTRACKER_URL != "" -->
+				<span class="coretip" data-coretip="{L_bugtracker}"><a href="{language_row_grey.BUGTRACKER_URL}" target="_blank" rel="nofollow"><i class="fa fa-bug fa-lg"></i></a></span>
+				<!-- ENDIF -->
+			</td>
 		  </tr>
 		  <!-- END language_row_grey -->
 		  </table>
 	</div>
 	
 	<div id="fragment-upload">
-		<div class="roundbox bluebox">
-			<div class="icon_info">{L_pi_manualupload_info}</div>
+		<div class="infobox infobox-large infobox-blue clearfix">
+			<i class="fa fa-info-circle fa-4x pull-left"></i> {L_pi_manualupload_info}
 		</div>
 		<br />
 		<form enctype="multipart/form-data" action="{ACTION}" method="post">
@@ -561,7 +899,7 @@ function hide_update_warning(status){
 					<dd><input type="file" name="extension" class="input" style="width:90%" /></dd>
 				</dl>
 			</fieldset>
-			<input type="submit" value="{L_pi_upload_button}" name="upload" class="mainoption bi_ok" />
+			<button type="submit" name="upload" class="mainoption bi_ok"><i class="fa fa-upload"></i> {L_pi_upload_button}</button>
 			{CSRF_TOKEN}
 		  </form>
 	</div>

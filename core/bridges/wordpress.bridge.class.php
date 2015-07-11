@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: myHTML
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		libraries:myHTML
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -23,7 +26,7 @@ if ( !defined('EQDKP_INC') ){
 class wordpress_bridge extends bridge_generic {
 	
 	
-	public $name = 'Wordpress';
+	public static $name = 'Wordpress';
 	
 	public $data = array(
 		//Data
@@ -44,20 +47,9 @@ class wordpress_bridge extends bridge_generic {
 			'QUERY'	=> '',
 		),
 	);
-	
-	public $functions = array(
-		'login'	=> array(
-			'callbefore'	=> '',
-			'function' 		=> '',
-			'callafter'		=> '',
-		),
-		'logout' 	=> '',
-		'autologin' => '',	
-		'sync'		=> '',
-	);
 		
 	//Needed function
-	public function check_password($password, $hash, $strSalt = '', $boolUseHash){
+	public function check_password($password, $hash, $strSalt = '', $boolUseHash = false, $strUsername = "", $arrUserdata=array()){
 		if ( strlen($hash) <= 32 ) {
 			if ($hash === md5($password)) return true;
 		} else {
@@ -71,29 +63,38 @@ class wordpress_bridge extends bridge_generic {
 	}
 	
 	public function wordpress_get_groups($blnWithID){
-		$query = $this->db->query("SELECT option_value FROM ".$this->prefix."options WHERE option_name='".$this->prefix."user_roles'");
-		$result = $this->db->fetch_row($query);
 		$arrGroups = array();
-		if ($arrDBGroups = unserialize($result['option_value'])){
-			foreach ($arrDBGroups as $id => $value){
-				$arrGroups[$id] = $value['name'].(($blnWithID) ? ' (#'.$id.')': '');
+		$query = $this->bridgedb->query("SELECT option_value FROM ".$this->prefix."options WHERE option_name='".$this->prefix."user_roles'");
+		if ($query){
+			$result = $query->fetchAssoc();
+			if ($arrDBGroups = unserialize($result['option_value'])){
+				foreach ($arrDBGroups as $id => $value){
+					$arrGroups[$id] = $value['name'].(($blnWithID) ? ' (#'.$id.')': '');
+				}
 			}
 		}
+		
 		return $arrGroups;
 	}
 	
-	public function wordpress_get_user_groups($intUserID, $arrGroups){
-		$query = $this->db->query("SELECT meta_value FROM ".$this->prefix."usermeta WHERE meta_key='wp_capabilities' AND user_id='".$this->db->escape($intUserID)."'");
-		$result = $this->db->fetch_row($query);
-		if ($arrDBGroups = unserialize($result['meta_value'])){
-			foreach ($arrDBGroups as $id => $value){
-				if (in_array($id, $arrGroups) && (int)$value == 1) return true;
+	public function wordpress_get_user_groups($intUserID){
+		$objQuery = $this->bridgedb->prepare("SELECT meta_value FROM ".$this->prefix."usermeta WHERE meta_key='".$this->prefix."capabilities' AND user_id=?")->execute($intUserID);
+		$arrReturn = array();
+		if ($objQuery){
+			$result = $objQuery->fetchAssoc();
+			if ($arrDBGroups = unserialize($result['meta_value'])){
+				foreach ($arrDBGroups as $id => $value){
+					if ((int)$value == 1) $arrReturn[] = $id;
+				}
 			}
 		}
-		return false;
+
+		return $arrReturn;
 	}
 
 }
+
+
 
 if (!class_exists('PasswordHash')){
 #
@@ -346,6 +347,4 @@ class PasswordHash {
 	}
 }
 }
-
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_wordpress_bridge',wordpress_bridge::$shortcuts);
 ?>

@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2006
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 define('EQDKP_INC', true);
@@ -22,17 +25,14 @@ $eqdkp_root_path = './../';
 include_once($eqdkp_root_path . 'common.php');
 
 class Manage_Roles extends page_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'pdh', 'jquery', 'game', 'core', 'config');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 	public function __construct(){
 		$this->user->check_auth('a_members_man');
 		$handler = array(
-			'editid'	=> array('process' => 'display_edit'),
-			'adddialog'	=> array('process' => 'display_edit'),
-			'reset'		=> array('process' => 'process_reset','csrf'=>true)
+			'editid'		=> array('process' => 'display_edit'),
+			'adddialog'		=> array('process' => 'display_edit'),
+			'defaultroles'	=> array('process' => 'save_defaultrole'),
+			'reset'			=> array('process' => 'process_reset','csrf'=>true)
 		);
 		parent::__construct(false, $handler, array('roles', 'name'), null, 'selected_ids[]');
 		$this->process();
@@ -46,6 +46,12 @@ class Manage_Roles extends page_generic {
 
 	public function process_reset(){
 		$this->game->load_default_roles();
+		$this->display();
+	}
+	
+	public function save_defaultrole(){
+		$roles = $this->in->getArray('defclassroles', 'int');
+		$this->config->set('roles_defaultclasses', json_encode($roles));
 		$this->display();
 	}
 	
@@ -83,7 +89,7 @@ class Manage_Roles extends page_generic {
 		$this->tpl->assign_vars(array(
 			'S_ADD'			=> true,
 			'EDITID'		=> $this->in->get('editid'),
-			'MULTISELECT'	=> $this->jquery->MultiSelect('role_classes', $this->game->get('classes'), ((isset($row['classes'])) ? $row['classes'] : ''), array('width' => 350, 'height' => 70)),
+			'MULTISELECT'	=> $this->jquery->MultiSelect('role_classes', $this->game->get_primary_classes(), ((isset($row['classes'])) ? $row['classes'] : ''), array('width' => 350, 'height' => 70)),
 			'REALNAME'		=> (isset($row['name'])) ? $row['name'] : '',
 			'BUTTON_NAME'	=> ($this->in->get('editid')) ? 'upd': 'add',
 		));
@@ -111,6 +117,20 @@ class Manage_Roles extends page_generic {
 		$page_suffix		= '&amp;start='.$this->in->get('start', 0);
 		$sort_suffix		= '?sort='.$this->in->get('sort');
 
+		// build the class list
+		$classes			= $this->game->get_primary_classes(array('id_0'));
+		$roles				= $this->pdh->aget('roles', 'name', 0, array($this->pdh->get('roles', 'id_list')));
+		$defautrole_config	= json_decode($this->config->get('roles_defaultclasses'), true);
+
+		foreach($classes as $classid=>$classname){
+			$this->tpl->assign_block_vars('defaultclasses', array(
+				'NAME'		=> $this->game->decorate('primary', $classid).' '.$this->game->get_name('primary', $classid),
+				'ID'		=> $classid,
+				'ROLES'		=> new hdropdown('defclassroles['.$classid.']', array('options' => $roles, 'value' => ((isset($defautrole_config[$classid])) ? $defautrole_config[$classid] : 1)))
+			));
+		}
+
+		$this->jquery->tab_header('roles_tabs');
 		$this->tpl->assign_vars(array(
 			'ROLES'				=> $hptt->get_html_table($this->in->get('sort',''), $page_suffix, $this->in->get('start', 0), 40, $footer_text),
 			'HPTT_COLUMN_COUNT'	=> $hptt->get_column_count(),
@@ -123,6 +143,5 @@ class Manage_Roles extends page_generic {
 		);
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_Manage_Roles', Manage_Roles::__shortcuts());
 registry::register('Manage_Roles');
 ?>

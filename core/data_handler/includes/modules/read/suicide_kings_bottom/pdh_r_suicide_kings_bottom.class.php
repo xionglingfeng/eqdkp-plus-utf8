@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date: 2013-01-09 20:51:38 +0100 (Mi, 09. Jan 2013) $
- * -----------------------------------------------------------------------
- * @author		$Author: godmod $
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev: 12785 $
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id: pdh_r_suicide_kings_bottom.class.php 12785 2013-01-09 19:51:38Z godmod $
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,10 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "pdh_r_suicide_kings_bottom" ) ) {
 	class pdh_r_suicide_kings_bottom extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'pdh', 'user', 'html');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 		public $default_lang = 'english';
 		public $sk_list;
@@ -60,17 +59,42 @@ if ( !class_exists( "pdh_r_suicide_kings_bottom" ) ) {
 
 			//base list for all mdkp pools
 			$member_hash = array();
-			$member_list = $this->pdh->get('member', 'id_list', array(false, false));
-			$member_list = $this->pdh->sort($member_list, 'member', 'creation_date', 'asc');
+			$arrMembers = $this->pdh->sort($this->pdh->get('member', 'id_list', array(false, false)), 'member', 'creation_date', 'asc');
 
+			/*
 			foreach($member_list as $member_id){
 				$member_hash['single'][$member_id] = md5($this->pdh->get('member','name', array($member_id)));
 				$intMainID = $this->pdh->get('member', 'mainid', array($member_id));
 				$member_hash['multi'][$intMainID] = md5($this->pdh->get('member','name', array($intMainID)));
 			}
+			*/
 			
 			//With Twinks (mainchar only)
 			foreach($this->pdh->get('multidkp',  'id_list', array()) as $mdkp_id){
+				// initialise list
+				$startList = $this->config->get('sk_fix_startlist_'.$mdkp_id);
+				if (!$startList){
+					shuffle($arrMembers);
+					$this->config->set('sk_fix_startlist_'.$mdkp_id, serialize($arrMembers));
+				}
+				
+				foreach($startList as $intMemberID){
+					if (in_array($intMemberID, $arrMembers)){
+						$member_hash['single'][] = $intMemberID;
+						$intMainID = $this->pdh->get('member', 'mainid', array($intMemberID));
+						if (!in_array($intMainID, $member_hash['multi'])) $member_hash['multi'][] = $intMainID;
+					}
+				}
+				//New Members at the bottom
+				foreach($arrMembers as $intMemberID){
+					if (!in_array($intMemberID, $startList)){
+						$member_hash['single'][] = $intMemberID;
+						$intMainID = $this->pdh->get('member', 'mainid', array($intMemberID));
+						if (!in_array($intMainID, $member_hash['multi'])) $member_hash['multi'][] = $intMainID;
+					}
+				}
+	
+				
 				$tmp_memberarray = array('multi'=>$member_hash['multi'], 'single'=>$member_hash['single']);
 				
 				$sort_list_lastitemdate = array('multi'=>array(), 'single'=>array());
@@ -78,7 +102,7 @@ if ( !class_exists( "pdh_r_suicide_kings_bottom" ) ) {
 				$sort_list_member = array('multi'=>array(), 'single'=>array());
 				
 				//---MULTI--------------------------------------------------------------------
-				foreach($member_hash['multi'] as $member_id => $hash){
+				foreach($member_hash['multi'] as $member_id){
 					//Get latest item date
 					$latest_item = $this->pdh->get('member_dates', 'last_item_date', array($member_id, $mdkp_id, true));
 					$last_raid =  $this->pdh->get('member_dates', 'last_raid', array($member_id, $mdkp_id, true));
@@ -99,7 +123,7 @@ if ( !class_exists( "pdh_r_suicide_kings_bottom" ) ) {
 				}
 				
 				//---SINGLE--------------------------------------------------------------------
-				foreach($member_hash['single'] as $member_id => $hash){
+				foreach($member_hash['single'] as $member_id){
 					//Get latest item date
 					$latest_item = $this->pdh->get('member_dates', 'last_item_date', array($member_id, $mdkp_id, false));
 					$last_raid =  $this->pdh->get('member_dates', 'last_raid', array($member_id, $mdkp_id, false));
@@ -150,12 +174,11 @@ if ( !class_exists( "pdh_r_suicide_kings_bottom" ) ) {
 				$tooltip = $this->user->lang('events').": <br />";
 				$events = $this->pdh->get('multidkp', 'event_ids', array($mdkpid));
 				if(is_array($events)) foreach($events as $event_id) $tooltip .= $this->pdh->get('event', 'name', array($event_id))."<br />";
-				$text = $this->html->ToolTip($tooltip, $text, '', $tt_options);
+				$text = new htooltip('tt_event'.$event_id, array_merge(array('content' => $tooltip, 'label' => $text), $tt_options));
 			}
 			return $text;
 		}
 
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_suicide_kings_bottom', pdh_r_suicide_kings_bottom::__shortcuts());
 ?>

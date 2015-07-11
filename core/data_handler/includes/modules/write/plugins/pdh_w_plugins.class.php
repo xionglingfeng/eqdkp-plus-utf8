@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2010
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if(!defined('EQDKP_INC')) {
 	die('Do not access this file directly.');
@@ -22,17 +25,13 @@ if(!defined('EQDKP_INC')) {
 
 if(!class_exists('pdh_w_plugins')) {
 	class pdh_w_plugins extends pdh_w_generic {
-		public static function __shortcuts() {
-		$shortcuts = array('pdh', 'db'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
-		public function __construct() {
-			parent::__construct();
-		}
 
 		public function update_version($version, $plugin_code) {
-			if($this->db->query("UPDATE __plugins SET :params WHERE code=?;", array('version'	=> $version), $plugin_code)) {
+			$objQuery = $this->db->prepare("UPDATE __plugins :p WHERE code=?;")->set(array(
+					'version'	=> $version
+			))->execute($plugin_code);
+			
+			if($objQuery) {
 				$this->pdh->enqueue_hook('plugins_update', array($plugin_code));
 				return true;
 			}
@@ -40,7 +39,9 @@ if(!class_exists('pdh_w_plugins')) {
 		}
 
 		public function delete_plugin($plugin_code) {
-			if($this->db->query("DELETE FROM __plugins WHERE `code` = ?", false, $plugin_code)) {
+			$objQuery = $this->db->prepare("DELETE FROM __plugins WHERE `code` = ?")->execute($plugin_code);
+				
+			if($objQuery) {
 				$this->pdh->enqueue_hook('plugins_update', array($plugin_code));
 				return true;
 			}
@@ -48,11 +49,13 @@ if(!class_exists('pdh_w_plugins')) {
 		}
 
 		public function add_plugin($code, $version) {
-			if($this->db->query("INSERT INTO __plugins :params", array(
+			$objQuery = $this->db->prepare("INSERT INTO __plugins :p")->set(array(
 				'code'		=> $code,
 				'status'	=> '0',
 				'version'	=> $version
-			))) {
+			))->execute();
+			
+			if($objQuery) {
 				$this->pdh->enqueue_hook('plugins_update', array($code));
 				return true;
 			}
@@ -60,7 +63,9 @@ if(!class_exists('pdh_w_plugins')) {
 		}
 		
 		public function set_status($code, $status) {
-			if($this->db->query("UPDATE __plugins SET :params WHERE code=?;", array('status' => $status), $code)) {
+			$objQuery = $this->db->prepare("UPDATE __plugins :p WHERE code=?;")->set(array('status' => $status))->execute($code);
+			
+			if($objQuery) {
 				$this->pdh->enqueue_hook('plugins_update', array($code));
 				return true;
 			}
@@ -68,5 +73,4 @@ if(!class_exists('pdh_w_plugins')) {
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_w_plugins', pdh_w_plugins::__shortcuts());
 ?>

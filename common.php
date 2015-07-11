@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2002
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,7 +24,7 @@ if ( !defined('EQDKP_INC') ){
 }
 
 // Check for required PHP Version and quit exec if requirements are not reached
-if (!version_compare(phpversion(), '5.2.0', ">=")){
+if (!version_compare(phpversion(), '5.3.0', ">=")){
 	die('
 		<b>PHP 4 detected!</b><br/><br/>
 		You need PHP5 running on your server! <br />
@@ -44,13 +47,9 @@ ini_set("display_errors", 0);
 
 include_once($eqdkp_root_path.'core/constants.php');
 include_once($eqdkp_root_path.'core/super_registry.class.php');
-if(!version_compare(phpversion(), '5.3.0', ">=")) {
-	include_once($eqdkp_root_path.'core/registry.class.5.2.php');
-	include_once($eqdkp_root_path.'core/gen_class.class.5.2.php');
-} else {
-	include_once($eqdkp_root_path.'core/registry.class.php');
-	include_once($eqdkp_root_path.'core/gen_class.class.php');
-}
+include_once($eqdkp_root_path.'core/registry.class.php');
+include_once($eqdkp_root_path.'core/gen_class.class.php');
+
 if(!isset($lite)) $lite = false;
 if(!isset($noinit)) $noinit = false;
 if(!$noinit) registry::init($eqdkp_root_path, $lite);

@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date: 2013-01-09 20:51:38 +0100 (Mi, 09. Jan 2013) $
- * -----------------------------------------------------------------------
- * @author		$Author: godmod $
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev: 12785 $
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id: pdh_r_suicide_kings_bottom.class.php 12785 2013-01-09 19:51:38Z godmod $
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,10 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "pdh_r_suicide_kings_fixed" ) ) {
 	class pdh_r_suicide_kings_fixed extends pdh_r_generic{
-		public static function __shortcuts() {
-			$shortcuts = array('pdc', 'pdh', 'user', 'html', 'config');
-			return array_merge(parent::$shortcuts, $shortcuts);
-		}
 
 		public $default_lang = 'english';
 		private $sk_list = array();
@@ -65,13 +64,8 @@ if ( !class_exists( "pdh_r_suicide_kings_fixed" ) ) {
 			$member_list = $this->pdh->get('member', 'id_list');
 			$member2main = $this->pdh->aget('member', 'mainid', 0, array($member_list));
 			$main2member = $this->pdh->aget('member', 'other_members', 0, array(array_unique($member2main)));
-			$member_list = $this->pdh->sort($member_list, 'member', 'creation_date', 'asc');
-			$main_list = array();
-			foreach($member_list as $key => $member_id) {
-				$main_list[$member2main[$member_id]] = $key;
-			}
-			$member_list = array_flip($member_list);
-			$main_list = array_flip(array_values(array_flip($main_list)));
+			
+			$arrMembers = $this->pdh->sort($this->pdh->get('member', 'id_list', array(false, false)), 'member', 'creation_date', 'asc');
 			
 			// mdkp2event list
 			$mdkplist = $this->pdh->aget('multidkp', 'event_ids', 0, array($this->pdh->get('multidkp',  'id_list', array())));
@@ -80,7 +74,34 @@ if ( !class_exists( "pdh_r_suicide_kings_fixed" ) ) {
 			$raidlist = $this->pdh->maget(array('raid', 'raid', 'item'), array('event', 'raid_attendees', 'itemsofraid'), 0, array($raid_ids));
 			
 			foreach($mdkplist as $mdkp_id => $events) {
+				$member_list = $main_list = array();
 				// initialise list
+				$startList = $this->config->get('sk_btm_startlist_'.$mdkp_id);
+				if (!$startList){
+					shuffle($arrMembers);
+					$this->config->set('sk_btm_startlist_'.$mdkp_id, serialize($arrMembers));
+				}
+				
+				foreach($startList as $intMemberID){
+					if (in_array($intMemberID, $arrMembers)){
+						$member_list[] = $intMemberID;
+						$intMainID = $this->pdh->get('member', 'mainid', array($intMemberID));
+						if (!in_array($intMainID, $main_list)) $main_list[] = $intMainID;
+					}
+				}
+				//New Members at the bottom
+				foreach($arrMembers as $intMemberID){
+					if (!in_array($intMemberID, $startList)){
+						$member_list[] = $intMemberID;
+						$intMainID = $this->pdh->get('member', 'mainid', array($intMemberID));
+						if (!in_array($intMainID, $main_list)) $main_list[] = $intMainID;
+					}
+				}
+				$member_list = array_flip($member_list);
+				$main_list = array_flip($main_list);
+				
+				$arrItempools = $this->pdh->get('multidkp', 'itempool_ids', array($mdkp_id));
+				
 				if(!isset($this->sk_list['multi'][$mdkp_id])) $this->sk_list['multi'][$mdkp_id] = $main_list;
 				if(!isset($this->sk_list['single'][$mdkp_id])) $this->sk_list['single'][$mdkp_id] = $member_list;
 				// iterate through raids
@@ -112,8 +133,12 @@ if ( !class_exists( "pdh_r_suicide_kings_fixed" ) ) {
 						$redistribute['multi'][] = $posi;
 					}
 					$items = $this->pdh->aget('item', 'buyer', 0, array($this->pdh->sort($raid['itemsofraid'], 'item', 'date', 'asc')));
-					foreach($items as $memberid) {
+					foreach($items as $itemid => $memberid) {
 						if(!in_array($memberid, $raid['raid_attendees'])) continue; // ignore items assigned to members not present in raid - most likely special members
+						//Ignore Items from different Itempool in this raid
+						$itempool_id = $this->pdh->get('item', 'itempool_id', array($itemid));
+						if(!in_array($itempool_id, $arrItempools)) continue;
+						
 						$key = array_search($memberid, $temp_list['single']);
 						unset($temp_list['single'][$key]);
 						$temp_list['single'][] = $memberid;
@@ -158,12 +183,11 @@ if ( !class_exists( "pdh_r_suicide_kings_fixed" ) ) {
 				$tooltip = $this->user->lang('events').": <br />";
 				$events = $this->pdh->get('multidkp', 'event_ids', array($mdkpid));
 				if(is_array($events)) foreach($events as $event_id) $tooltip .= $this->pdh->get('event', 'name', array($event_id))."<br />";
-				$text = $this->html->ToolTip($tooltip, $text, '', $tt_options);
+				$text = new htooltip('tt_event'.$event_id, array_merge(array('content' => $tooltip, 'label' => $text), $tt_options));
 			}
 			return $text;
 		}
 
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_suicide_kings_fixed', pdh_r_suicide_kings_fixed::__shortcuts());
 ?>

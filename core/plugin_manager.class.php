@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2011
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,10 +24,10 @@ if ( !defined('EQDKP_INC') ){
 }
 
 class plugin_manager extends gen_class {
-	public static $shortcuts = array('pdh', 'pdl', 'pgh');
-
 	public $plugins 		= array();		// Store Plugin-Objects
 	public $status			= array();		// Store Plugin-Status
+	
+	protected $apiLevel		= 20;	//API Level of Plugin Class
 	
 	public static $valid_data_types = array(
 		'id',
@@ -60,6 +63,8 @@ class plugin_manager extends gen_class {
 		foreach($registered as $plugin_code => $data) {
 			$this->status[$plugin_code] = PLUGIN_REGISTERED | $data['status'];
 			if(($data['status'] & PLUGIN_INSTALLED) && !($data['status'] & PLUGIN_DISABLED)) {
+				$this->tpl->assign_var("S_PLUGIN_".strtoupper($plugin_code), true);
+				
 				if(!$this->initialize($plugin_code)) {
 					$this->pdl->log('plugin_error', $plugin_code, 'Initialisation failed.');
 				} else {
@@ -111,6 +116,18 @@ class plugin_manager extends gen_class {
 			$this->broken($plugin_code);
 			return false;
 		}
+		//Check API Level
+		$intAPILevel = $plugin_code::getApiLevel();
+		if (!$intAPILevel || $intAPILevel < $this->apiLevel-2){
+			$this->pdl->log('plugin_error', $plugin_code, 'The Plugin API Level of the Plugin \''.$plugin_code.'\' is too old ('.$intAPILevel.' vs. '.$this->apiLevel.')');
+			$this->broken($plugin_code);
+			return false;
+		} elseif ($intAPILevel < $this->apiLevel) {
+			$this->pdl->log('plugin_error', $plugin_code, 'The Plugin API Level of the Plugin \''.$plugin_code.'\' should be updated ('.$intAPILevel.' vs. '.$this->apiLevel.')');
+			$this->broken($plugin_code);
+			return false;
+		}
+		
 		$plugin_object = registry::register($plugin_code);
 		if(!is_object($plugin_object)) {
 			$this->pdl->log('plugin_error', $plugin_code, 'Class "'.$plugin_code.'" not instantiatable.');
@@ -206,6 +223,21 @@ class plugin_manager extends gen_class {
 		return false;
 	}
 	
+	
+	/**
+	 * Removes the whole plugin from the EQdkp Installation
+	 * 
+	 * @param string $plugin_code
+	 */
+	public function remove($plugin_code){
+		$this->delete($plugin_code);
+		$plugin_code = preg_replace("/[^a-zA-Z0-9-_]/", "", $plugin_code);
+		if($plugin_code == "") return false;
+		$this->pfh->Delete($this->root_path.'plugins/'.$plugin_code.'/');
+		
+		return true;
+	}
+	
 	public function search($plugin_code = '') {
 		if($plugin_code) {
 			if(!$this->check($plugin_code, PLUGIN_REGISTERED)) return $this->initialize($plugin_code, true);
@@ -294,7 +326,7 @@ class plugin_manager extends gen_class {
 		}
 	}
 	
-	public function get_menus($menu_name='admin_menu') {
+	public function get_menus($menu_name='admin') {
 		$menu_array = array();
 		foreach($this->get_plugins() as $plugin_code) {
 			$plugin_menu = $this->get_plugin($plugin_code)->get_menu($menu_name);
@@ -363,5 +395,4 @@ class plugin_manager extends gen_class {
 		return $this->get_plugin($plugin_code)->check_dependency($dependency);
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_plugin_manager', plugin_manager::$shortcuts);
 ?>

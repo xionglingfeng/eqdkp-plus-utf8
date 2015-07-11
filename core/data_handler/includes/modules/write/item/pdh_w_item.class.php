@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2007
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if ( !defined('EQDKP_INC') ){
 	die('Do not access this file directly.');
@@ -22,14 +25,16 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "pdh_w_item" ) ) {
 	class pdh_w_item extends pdh_w_generic {
-		public static function __shortcuts() {
-		$shortcuts = array('pdh', 'db', 'game');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
-		public function __construct() {
-			parent::__construct();
-		}
+		
+		private $arrLogLang = array(
+				'item_name'			=> '{L_NAME}',
+				'member_id'			=> '{L_BUYERS}',
+				'raid_id'			=> '{L_RAID_ID}',
+				'item_value'		=> '{L_VALUE}',
+				'item_date'			=> '{L_DATE}',
+				'game_itemid'		=> '{L_ITEM_ID}',
+				'itempool'			=> '{L_ITEMPOOL}',
+		);
 
 		public function add_item($item_name, $item_buyers, $raid_id, $game_item_id, $item_value, $itempool_id, $time=false) {
 			$time		= ($time) ? $time : time();
@@ -41,7 +46,7 @@ if ( !class_exists( "pdh_w_item" ) ) {
 				$item_buyers	= array($member);
 			}
 			foreach($item_buyers as $member_id){
-				$blnResult = $this->db->query("INSERT INTO __items :params", array(
+				$objQuery = $this->db->prepare("INSERT INTO __items :p")->set(array(
 					'item_name'			=> $item_name,
 					'member_id'			=> $member_id,
 					'raid_id'			=> $raid_id,
@@ -51,22 +56,24 @@ if ( !class_exists( "pdh_w_item" ) ) {
 					'item_added_by'		=> $this->admin_user,
 					'game_itemid'		=> $game_item_id,
 					'itempool_id'		=> $itempool_id
-				));
+				))->execute();
 			}
 
-			if($blnResult) {
+			if($objQuery) {
 				//insert log
-				$item_id = $this->db->insert_id();
-				$log_action = array(
-					'{L_ID}'		=> $item_id,
-					'{L_NAME}'		=> $item_name,
-					'{L_BUYERS}'	=> implode(', ', $this->pdh->aget('member', 'name', '0', array($item_buyers))),
-					'{L_RAID_ID}'	=> $raid_id,
-					'{L_VALUE}'		=> $item_value,
-					'{L_ITEMPOOL}'	=> $this->pdh->get('itempool', 'name', $itempool_id),
-					'{L_ADDED_BY}'	=> $this->admin_user
+				$item_id = $objQuery->insertId;
+				$arrNew = array(
+					'item_name'			=> $item_name,
+					'member_id'			=> implode(', ', $this->pdh->aget('member', 'name', '0', array($item_buyers))),
+					'raid_id'			=> $raid_id,
+					'item_value'		=> $item_value,
+					'item_date'			=> '{D_'.$time.'}',
+					'game_itemid'		=> $game_item_id,
+					'itempool'			=> $this->pdh->get('itempool', 'name', $itempool_id),
 				);
-				$this->log_insert('action_item_added', $log_action);
+				
+				$log_action = $this->logs->diff(false, $arrNew, $this->arrLogLang);
+				$this->log_insert('action_item_added', $log_action, $item_id, $item_name);
 				$this->pdh->enqueue_hook('item_update', $item_id);
 				return $item_id;
 			}
@@ -91,14 +98,18 @@ if ( !class_exists( "pdh_w_item" ) ) {
 			$old['name'] = $this->pdh->get('item', 'name', array($item_id));
 			$old['raid_id'] = $this->pdh->get('item', 'raid_id', array($item_id));
 			$old['itempool_id'] = $this->pdh->get('item', 'itempool_id', array($item_id));
-	
-			#$this->db->query("START TRANSACTION;");
+			$old['date'] = $this->pdh->get('item', 'date', array($item_id));
+			$old['game_itemid'] = $this->pdh->get('item', 'game_itemid', array($item_id));
+			
 			$retu = array(true);
 			$updated_mems = array();
 			$added_mems = array();
 			$items2del = array();
+			
+			$this->db->beginTransaction();
+			
 			if($id || (count($item_buyers) == 1 && count($old['buyers']) == 1))	{
-				$succ_data = $this->db->query("UPDATE __items SET :params WHERE item_id=?;",array(
+				$objQuery = $this->db->prepare("UPDATE __items :p WHERE item_id=?;")->set(array(
 					'item_name'			=> $item_name,
 					'item_value'		=> $item_value,
 					'member_id'			=> $item_buyers[0],
@@ -107,11 +118,11 @@ if ( !class_exists( "pdh_w_item" ) ) {
 					'item_group_key'	=> $new_group_key,
 					'game_itemid'		=> $game_item_id,
 					'itempool_id'		=> $itempool_id
-				), $item_id);
+				))->execute($item_id);
 				
-				if(!$succ_data) {
-					#$this->db->query("ROLLBACK;");
-					return false;
+				if(!$objQuery) {
+					$retu[] = false;
+					break;
 				}
 				$hook_id = $item_id;
 			} else {
@@ -121,7 +132,8 @@ if ( !class_exists( "pdh_w_item" ) ) {
 					if($item_id !== false) {
 						$updated_mems[] = $member_id;
 						unset($items2del[$item_id]);
-						$succ_data = $this->db->query("UPDATE __items SET :params WHERE item_id = ?;", array(
+						
+						$objQuery = $this->db->prepare("UPDATE __items :p WHERE item_id = ?;")->set(array(
 							'item_name'			=> $item_name,
 							'item_value'		=> $item_value,
 							'member_id'			=> $member_id,
@@ -131,16 +143,16 @@ if ( !class_exists( "pdh_w_item" ) ) {
 							'game_itemid'		=> $game_item_id,
 							'itempool_id'		=> $itempool_id,
 							'item_updated_by'	=> $this->admin_user
-						), $item_id);
-
-						if(!$succ_data) {
+						))->execute($item_id);
+	
+						if(!$objQuery) {
 							$retu[] = false;
 							break;
 						}
 						$hook_id[] = $item_id;
 					} else {
 						$added_mems[] = $member_id;
-						$blaa = $this->db->query("INSERT INTO __items :params", array(
+						$objQuery = $this->db->prepare("INSERT INTO __items :p")->set(array(
 							'item_name'			=> $item_name,
 							'item_value'		=> $item_value,
 							'member_id'			=> $member_id,
@@ -149,8 +161,9 @@ if ( !class_exists( "pdh_w_item" ) ) {
 							'item_group_key'	=> $new_group_key,
 							'item_added_by'		=> $this->admin_user,
 							'itempool_id'		=> $itempool_id
-						));
-						if(!$blaa) {
+						))->execute();
+						
+						if(!$objQuery) {
 							$retu[] = false;
 							break;
 						}
@@ -158,7 +171,9 @@ if ( !class_exists( "pdh_w_item" ) ) {
 				}
 				if(is_array($items2del)) {
 					foreach($items2del as $item_id => $member_id) {
-						if(!$this->db->query("DELETE FROM __items WHERE item_id = ?", false, $item_id)) {
+						$objQuery = $this->db->prepare("DELETE FROM __items WHERE item_id = ?")->execute($item_id);
+						
+						if(!$objQuery) {
 							$retu[] = false;
 							break;
 						}
@@ -171,26 +186,32 @@ if ( !class_exists( "pdh_w_item" ) ) {
 				$new_name_string = get_coloured_names($updated_mems, $added_mems, $items2del);
 				$itempool = $this->pdh->get('itempool', 'name', $itempool_id);
 				//insert log
-				$log_action = array(
-					'{L_ID}'				=> $item_id,
-					'{L_NAME_BEFORE}'		=> $old['name'],
-					'{L_BUYERS_BEFORE}'		=> implode(', ', $old_names),
-					'{L_RAID_ID_BEFORE}'	=> $old['raid_id'],
-					'{L_VALUE_BEFORE}'		=> $old['value'],
-					'{L_ITEMPOOL_BEFORE}'	=> $this->pdh->get('itempool', 'name', $old['itempool_id']),
-					'{L_NAME_AFTER}'		=> ($old['name'] != $item_name) ? "<span class=\"negative\">".$item_name."</span>" : $item_name,
-					'{L_BUYERS_AFTER}'		=> $new_name_string,
-					'{L_RAID_ID_AFTER}'		=> ($old['raid_id'] != $raid_id) ? "<span class=\"negative\">".$raid_id."</span>" : $raid_id,
-					'{L_VALUE_AFTER}'		=> ($old['value'] != $item_value) ? "<span class=\"negative\">".$item_value."</span>" : $item_value,
-					'{L_ITEMPOOL_AFTER}'	=> ($old['itempool_id'] != $itempool_id) ? "<span class=\"negative\">".$itempool."</span>" : $itempool,
-					'{L_UPDATED_BY}'		=> $this->admin_user
+				$arrOld = array(
+						'item_name'			=> $old['name'],
+						'member_id'			=> implode(', ', $old_names),
+						'raid_id'			=> $old['raid_id'],
+						'item_value'		=> $old['value'],
+						'game_itemid'		=> $old['game_itemid'],
+						'itempool'			=> $old['itempool_id'],
+						'item_date'			=> '{D_'.$old['date'].'}',
 				);
-				$this->log_insert('action_item_updated', $log_action);
-				#$this->db->query("COMMIT;");
+				$arrNew = array(
+						'item_name'			=> $item_name,
+						'member_id'			=> $new_name_string,
+						'raid_id'			=> $raid_id,
+						'item_value'		=> $item_value,
+						'item_date'			=> '{D_'.$time.'}',
+						'game_itemid'		=> $game_item_id,
+						'itempool'			=> $itempool_id
+				);
+				
+				$log_action = $this->logs->diff($arrOld, $arrNew, $this->arrLogLang);
+				$this->log_insert('action_item_updated', $log_action, $item_id, $old['name']);
 				$this->pdh->enqueue_hook('item_update', $hook_id);
+				$this->db->commitTransaction();
 				return true;
 			}
-			#$this->db->query("ROLLBACK;");
+			$this->db->rollbackTransaction();
 			return false;
 		}
 
@@ -201,16 +222,21 @@ if ( !class_exists( "pdh_w_item" ) ) {
 			$old['value'] = $this->pdh->get('item', 'value', array($item_id));
 			$old['raid_id'] = $this->pdh->get('item', 'raid_id', array($item_id));
 			$old['itempool'] = $this->pdh->get('itempool', 'name', array($this->pdh->get('item', 'itempool_id', array($item_id))));
-			if($this->db->query("DELETE FROM __items WHERE item_id = ?;", false, $item_id)) {
+			$old['date'] = $this->pdh->get('item', 'date', array($item_id));
+			
+			$objQuery = $this->db->prepare("DELETE FROM __items WHERE item_id = ?;")->execute($item_id);
+			
+			if($objQuery) {
 				//insert log
 				$log_action = array(
-					'{L_ID}'		=> $item_id,
 					'{L_NAME}'		=> $old['name'],
 					'{L_BUYERS}'	=> $old['buyer'],
 					'{L_RAID_ID}'	=> $old['raid_id'],
 					'{L_ITEMPOOL}'	=> $old['itempool'],
+					'{L_DATE}'		=> '{D_'.$old['date'].'}',
 					'{L_VALUE}'		=> $old['value']);
-				$this->log_insert('action_item_deleted', $log_action);
+				
+				$this->log_insert('action_item_deleted', $log_action, $item_id, $old['name']);
 				$this->pdh->enqueue_hook('item_update', $item_id);
 				return true;
 			}
@@ -220,12 +246,13 @@ if ( !class_exists( "pdh_w_item" ) ) {
 		public function delete_itemsofraid($raid_id) {
 			$items = $this->pdh->get('item', 'itemsofraid', array($raid_id));
 			if(count($items) < 1) return true;
-			$this->db->query("DELETE FROM __items WHERE item_id IN ('".implode("', '", $items)."');");
+			$objQuery = $this->db->prepare("DELETE FROM __items WHERE item_id :in")->in($items)->execute();
+
 			$log_action = array(
 				'{L_ID}'		=> implode(', ', $items),
 				'{L_RAID_ID}'	=> $raid_id
 			);
-			$this->log_insert('action_itemsofraid_deleted', $log_action);
+			$this->log_insert('action_itemsofraid_deleted', $log_action, $raid_id, $this->pdh->get('raid', 'event_name', array($raid_id)));
 			$this->pdh->enqueue_hook('item_update', $items);
 			return true;
 		}
@@ -236,5 +263,4 @@ if ( !class_exists( "pdh_w_item" ) ) {
 		}
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_w_item', pdh_w_item::__shortcuts());
 ?>

@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: bbCode
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		libraries:bbCode
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,7 +25,7 @@ if ( !defined('EQDKP_INC') ){
 
 if (!class_exists("bbcode")) {
 	class bbcode extends gen_class {
-		public static $shortcuts = array('core', 'user', 'pdh', 'pm', 'config', 'pfh', 'puf'=>'urlfetcher', 'hooks');
+		public static $shortcuts = array('puf'=>'urlfetcher');
 
 		private $smiliepath = '';
 		private $arrImageExtensions = array('jpg', 'png', 'gif', 'jpeg');
@@ -55,20 +58,24 @@ if (!class_exists("bbcode")) {
 			// Smileys to find...
 			$in = array(
 				':)',
+				':-)',
 				':D',
 				':o',
 				':p',
 				':(',
-				';)'
+				';)',
+				';-)'
 			);
 
 			$out = array(
-				'<img alt=":)" src="'.$this->smiliepath.'/happy.png" />',
-				'<img alt=":D" src="'.$this->smiliepath.'/smile.png" />',
-				'<img alt=":o" src="'.$this->smiliepath.'/surprised.png" />',
-				'<img alt=":p" src="'.$this->smiliepath.'/tongue.png" />',
-				'<img alt=":(" src="'.$this->smiliepath.'/unhappy.png" />',
-				'<img alt=";)" src="'.$this->smiliepath.'/wink.png" />'
+				'<img alt=":)" src="'.$this->smiliepath.'/smile.svg" class="smilies" />',
+				'<img alt=":)" src="'.$this->smiliepath.'/smile.svg" class="smilies" />',
+				'<img alt=":D" src="'.$this->smiliepath.'/happy.svg" class="smilies" />',
+				'<img alt=":o" src="'.$this->smiliepath.'/surprised.svg" class="smilies" />',
+				'<img alt=":p" src="'.$this->smiliepath.'/tongue.svg" class="smilies" />',
+				'<img alt=":(" src="'.$this->smiliepath.'/unhappy.svg" class="smilies" />',
+				'<img alt=";)" src="'.$this->smiliepath.'/wink.svg" class="smilies" />',
+				'<img alt=";)" src="'.$this->smiliepath.'/wink.svg" class="smilies" />'
 			);
 
 			$text = preg_replace('/\<img(.*?)alt=\"(\W.*?)\"(.*?)\>/si' , '$2' , $text);
@@ -91,7 +98,7 @@ if (!class_exists("bbcode")) {
 				'/\[left](.*?)\[\/left\]/msi',
 				'/\[right](.*?)\[\/right\]/msi',
 				'/\[list\](.*?)\[\/list\]/msi',
-				'/\[\*\]\s?(.*?)\n/msi',
+				'/\[\*\]\s?(.*?)(\s|&#10;)/msi',
 				'/\[br\]/msi',
 				'/&#10;/msi'
 			);
@@ -162,7 +169,7 @@ if (!class_exists("bbcode")) {
 
 			return $text;
 		}
-
+		
 		function sanatizeFontcolor($arrMatches){
 			if (preg_match('/#[a-zA-Z0-9]{3,6}/', $arrMatches[1])){
 				return '<div style="color: '.$arrMatches[1].';">'.$arrMatches[2].'</div>';
@@ -182,7 +189,7 @@ if (!class_exists("bbcode")) {
 			$text = str_replace(array('"', "'"), array("",""), $arrURL[1]);
 			if (!filter_var($text, FILTER_VALIDATE_URL)) return '';
 			
-			return '<a href="'.filter_var($text, FILTER_SANITIZE_URL).'">'.$arrURL[2].'</a>';
+			return '<a href="'.filter_var($text, FILTER_SANITIZE_URL).'" rel="nofollow">'.$arrURL[2].'</a>';
 		}
 
 		// Download the Image to eqdkp
@@ -194,7 +201,7 @@ if (!class_exists("bbcode")) {
 				}
 
 				// Load it...
-				$tmp_name = md5(rand());
+				$tmp_name = md5(generateRandomBytes());
 				$this->pfh->CheckCreateFile($this->strImageCacheFolder.$tmp_name);
 				$this->pfh->putContent($this->strImageCacheFolder.$tmp_name, $this->puf->fetch($img));
 				$i = getimagesize($this->strImageCacheFolder.$tmp_name);
@@ -228,7 +235,7 @@ if (!class_exists("bbcode")) {
 				if (strpos($strImage, $strDataFolderAbsolute) === 0){
 					$strImageURL = $strImage;
 				} elseif(strpos($strImage, $strDataFolderRelative) === 0){
-					$strImageURL = $this->root_path.$strImage;
+					$strImageURL = $this->server_path.$strImage;
 				}
 
 				//Its not an EQdkp Image, its an external image
@@ -262,11 +269,11 @@ if (!class_exists("bbcode")) {
 							$strThumbImage = $this->strImageThumbFolder.$strThumbFilename;
 						}
 
-						return '<a href="'.$strImageURL.'" rel="lightbox"><img src="'.$strThumbImage.'" alt="image" /></a>';
+						return '<a href="'.str_replace($this->root_path, $this->server_path, $strImageURL).'" class="lightbox"><img src="'.str_replace($this->root_path, $this->server_path, $strThumbURL).'" alt="image" /></a>';
 
 					} else {
 						//No Thumbnail required, return image
-						return '<img src="'.$strImageURL.'" alt="image" />';
+						return '<img src="'.str_replace($this->root_path, $this->server_path, $strImageURL).'" alt="image" />';
 					}
 				}
 
@@ -274,11 +281,9 @@ if (!class_exists("bbcode")) {
 
 			//Show error message becaue image is not available
 			$langBits = ($this->user->check_auth('a_news_', false)) ? $this->user->lang('images_not_available_admin') : $this->user->lang('images_not_available');
-			return '<div class="errorbox roundbox">
-						<div class="icon_brokenimage">'.$langBits.'</div>
-					</div>';
-
-			return '<br/><table class="errortable" width="100%"><tr><td width="120px" align="center"><img src="images/brokenimg.png" /></td><td>'.$langBits.'</td></tr></table>';
+			return '<div class="infobox infobox-large infobox-red clearfix">
+								<i class="fa fa-meh-o fa-4x pull-left"></i> '.$langBits.'
+							</div>';
 		}
 
 		//Parse shorttags
@@ -306,19 +311,31 @@ if (!class_exists("bbcode")) {
 
 				// Replace tag
 				switch (strtolower($elements[0])) {
-					// Date
-					case 'page':
-						$arrCache[$strTag] = ($this->pdh->get('pages', 'page_exists', array($elements[1]))) ? '<a href="'.$this->pdh->get('pages', 'url', array($elements[1])).'">'.$this->pdh->get('pages', 'title', array($elements[1])).'</a>': '';
+				
+					case 'article_url':
+						$strPath = $this->controller_path.$this->pdh->get('articles', 'path', array($elements[1]));
+						$arrCache[$strTag] = ($strPath) ? $strPath : '';
 						break;
-
-					case 'page_url':
-						$arrCache[$strTag] = ($this->pdh->get('pages', 'page_exists', array($elements[1]))) ? $this->pdh->get('pages', 'url', array($elements[1])) : '';
+						
+					case 'article_url_plain':
+						$strPath = $this->controller_path_plain.$this->pdh->get('articles', 'path', array($elements[1]));
+						$arrCache[$strTag] = ($strPath) ? $strPath : '';
+						break;
+						
+					case 'category_url':
+						$strPath = $this->controller_path.$this->pdh->get('article_categories', 'path', array($elements[1]));
+						$arrCache[$strTag] = ($strPath) ? $strPath : '';
+						break;
+						
+					case 'category_url_plain':
+						$strPath = $this->controller_path_plain.$this->pdh->get('article_categories', 'path', array($elements[1]));
+						$arrCache[$strTag] = ($strPath) ? $strPath : '';
 						break;
 
 					case 'server':
 						switch($elements[1]){
 							case 'name':
-								$arrCache[$strTag] = $this->config->get('uc_servername');
+								$arrCache[$strTag] = $this->config->get('servername');
 								break;
 
 							case 'location':
@@ -344,9 +361,11 @@ if (!class_exists("bbcode")) {
 						}
 						break;
 
-					case 'char':	$member_id = $this->pdh->get('member', 'id', array($elements[1]));
+					case 'char':	if (is_numeric($elements[1])){
+										$member_id = intval($elements[1]);
+									} else $member_id = $this->pdh->get('member', 'id', array($elements[1]));
 									if ($member_id){
-										$arrCache[$strTag] = $this->pdh->get('member', 'html_memberlink', array($member_id, 'viewcharacter.php', '', false, false, true));
+										$arrCache[$strTag] = $this->pdh->get('member', 'memberlink_decorated', array($member_id, $this->routing->simpleBuild('character'), '', true));
 									}
 						break;
 
@@ -424,8 +443,57 @@ if (!class_exists("bbcode")) {
 
 			return $text;
 		}
+		
+		public function remove_bbcode($text){
+			$text = trim($text);
+		
+			// BBCode to find...
+			$in = array(
+					'/\[code\](.*?)\[\/code\]/ms',
+					'/\[b\](.*?)\[\/b\]/msi',
+					'/\[i\](.*?)\[\/i\]/msi',
+					'/\[u\](.*?)\[\/u\]/msi',
+					'/\[quote](.*?)\[\/quote\]/msi',
+					'/\[center](.*?)\[\/center\]/msi',
+					'/\[left](.*?)\[\/left\]/msi',
+					'/\[right](.*?)\[\/right\]/msi',
+					'/\[list\](.*?)\[\/list\]/msi',
+					'/\[\*\]\s?(.*?)\[br\]/msi',
+					'/\[br\]/msi',
+					'/&#10;/msi',
+					'/\[img\](.*?)\[\/img\]/msi',
+					'/\[url\="?(.*?)"?\](.*?)\[\/url\]/msi',
+					'/\[color\="?(.*?)"?\](.*?)\[\/color\]/msi',
+					'/\[size\="?(.*?)"?\](.*?)\[\/size\]/msi',
+					'/\[list\=(.*?)\](.*?)\[\/list\]/msi'
+			);
+		
+			$out = array(
+					'\1',
+					'\1',
+					'\1',
+					'\1',
+					'\1',
+					'\1',
+					'\1',
+					'\1',
+					'\1',
+					'\1',
+					'',
+					'',
+					'\1',
+					'\2',
+					'\2',
+					'\2',
+					
+			);
+			
+			$text = preg_replace($in, $out, $text);
+		
+		
+			return $text;
+		}
 
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_bbcode', bbcode::$shortcuts);
 ?>

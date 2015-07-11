@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if(!defined('EQDKP_INC'))
@@ -23,10 +26,6 @@ if(!defined('EQDKP_INC'))
 
 if(!class_exists('pdh_r_comment')){
 	class pdh_r_comment extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'db'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 		public $default_lang = 'english';
 
@@ -56,13 +55,15 @@ if(!class_exists('pdh_r_comment')){
 			}
 
 			$this->comments = array();
-			$sql = "SELECT com.*, u.username FROM __comments com, __users u WHERE com.userid = u.user_id ORDER BY com.date DESC;";
-			$result = $this->db->query($sql);
-			while( $row = $this->db->fetch_record($result)){
-				$this->comments[$row['id']] = $row;
+			
+			$objQuery = $this->db->query("SELECT com.*, u.username FROM __comments com, __users u WHERE com.userid = u.user_id ORDER BY com.date DESC;");
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$this->comments[$row['id']] = $row;
+				}
+				
+				$this->pdc->put('pdh_comments_table', $this->comments, null);
 			}
-			$this->db->free_result($result);
-			if($result) $this->pdc->put('pdh_comments_table', $this->comments, null);
 		}
 
 		public function get_comments() {
@@ -79,10 +80,22 @@ if(!class_exists('pdh_r_comment')){
 
 		public function get_filtered_list($page, $attach_id=false) {
 			$comments = array();
+			$replies = array();
 			foreach($this->comments as $id => $comment) {
 				if($comment['page'] != $page) continue;
 				if($attach_id > 0 AND $comment['attach_id'] != $attach_id) continue;
-				$comments[$id] = $comment;
+				if ((int)$comment['reply_to'] > 0){
+					if (isset($replies[(int)$comment['reply_to']])){
+						$replies[(int)$comment['reply_to']][] = $comment;
+					} else {
+						$replies[(int)$comment['reply_to']] = array();
+						$replies[(int)$comment['reply_to']][] = $comment;
+					}
+				} else {
+					$arrReplies = isset($replies[(int)$id]) ? $replies[(int)$id] : array();
+					$comment['replies'] = array_reverse($arrReplies);
+					$comments[(int)$id] = $comment;
+				}		
 			}
 			return $comments;
 		}
@@ -101,5 +114,4 @@ if(!class_exists('pdh_r_comment')){
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_comment', pdh_r_comment::__shortcuts());
 ?>

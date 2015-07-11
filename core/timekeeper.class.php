@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,7 +24,6 @@ if ( !defined('EQDKP_INC') ){
 }
 
 class timekeeper extends gen_class {
-	public static $shortcuts = array('pfh', 'time', 'tpl');
 	public static $dependencies = array('pfh');
 
 	private $times = array();
@@ -127,7 +129,7 @@ class timekeeper extends gen_class {
 	);
 
 	private function init_cronsystem(){
-		$this->system_cron_dir = $this->root_path.'core/crons/';
+		$this->system_cron_dir = $this->root_path.'core/cronjobs/';
 		$this->crontab_file  = $this->pfh->FolderPath('timekeeper', 'eqdkp').'crontab.php';
 		$this->load_crontab();
 		$this->scan_system_crontasks();
@@ -198,16 +200,16 @@ class timekeeper extends gen_class {
 		}
 	}
 
-	public function run_cron($task_name, $force_run = false){
+	public function run_cron($task_name, $force_run = false, $force_non_ajax=false){
 		if(!$force_run && !$this->cron_necessary($task_name)){
 			return false;
 		}
 
-		if ($this->crontab[$task_name]['ajax'] === true){		
+		if ($this->crontab[$task_name]['ajax'] === true && !$force_non_ajax){		
 			if ($force_run){
-				$this->tpl->add_js('$.get("'.$this->root_path.'cronjob.php'.$this->SID.'&task='.$task_name.'&force=true");');
+				$this->tpl->add_js('$.get("'.$this->server_path.'cronjob.php'.$this->SID.'&task='.$task_name.'&force=true");');
 			} else {
-				$this->tpl->add_js('$.get("'.$this->root_path.'cronjob.php'.$this->SID.'&task='.$task_name.'");');
+				$this->tpl->add_js('$.get("'.$this->server_path.'cronjob.php'.$this->SID.'&task='.$task_name.'");');
 			}
 		} else {
 			$this->execute_cron($task_name, $force_run);
@@ -215,12 +217,11 @@ class timekeeper extends gen_class {
 	}
 
 	public function execute_cron($task_name, $force_run = false){
+		define("IN_CRON", true);
 		
 		if(!$force_run && !$this->cron_necessary($task_name)){
 			return false;
 		}
-		
-		define("CRONJOB", true);
 		
 		$file_name	= $task_name.'_crontask.class.php';
 		$file_path	= $this->root_path.$this->crontab[$task_name]['path'].$file_name;
@@ -404,7 +405,7 @@ abstract class crontask extends gen_class {
 		'repeat_interval'	=> 1,
 		'multiple'			=> false,
 		'active'			=> false,
-		'path'				=> 'core/crons/',
+		'path'				=> 'core/cronjobs/',
 		'params'			=> array(),
 		'editable'			=> false,
 		'description'		=> null
@@ -416,9 +417,5 @@ abstract class crontask extends gen_class {
 	public function options() {
 		if(isset($this->options)) return $this->options;
 	}
-}
-if(version_compare(PHP_VERSION, '5.3.0', '<')) {
-	registry::add_const('short_timekeeper', timekeeper::$shortcuts);
-	registry::add_const('dep_timekeeper', timekeeper::$dependencies);
 }
 ?>

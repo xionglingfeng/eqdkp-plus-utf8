@@ -1,25 +1,29 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2011
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 if(!defined('EQDKP_INC')) {
 	header('HTTP/1.0 404 Not Found');exit;
 }
 class encryptionkey extends install_generic {
-	public static $shortcuts = array('pdl', 'in', 'pfh' => array('file_handler', array('installer')));
+	public static $shortcuts = array('pfh' => array('file_handler', array('installer')));
 	public static $before 		= 'db_access';
 
 	private $key			= '';
@@ -30,14 +34,11 @@ class encryptionkey extends install_generic {
 
 	public function get_output() {
 		$content = '
-		<div class="ui-widget" align="left">
-			<div style="margin-top: 20px; padding: 0pt 0.7em;" class="ui-state-highlight ui-corner-all"> 
-				<p>
-				'.$this->lang['encryptkey_info'].'<br /></p>
-			</div>
+		<div class="infobox infobox-large infobox-blue clearfix">
+			<i class="fa fa-info-circle fa-4x pull-left"></i>'.$this->lang['encryptkey_info'].'
 		</div>
 		<br />
-		<table width="100%" border="0" cellspacing="1" cellpadding="2">
+		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="no-borders">
 			<tr>
 				<td align="right"><strong>'.$this->lang['encryptkey'].': </strong><div class="subname">'.$this->lang['encryptkey_help'].'</div></td>
 				<td><input type="password" name="key1" size="25" value="" class="input" /></td>
@@ -80,5 +81,4 @@ class encryptionkey extends install_generic {
 		$this->pfh->putContent($this->root_path.'config.php', $content);
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_encryptionkey', encryptionkey::$shortcuts);
 ?>

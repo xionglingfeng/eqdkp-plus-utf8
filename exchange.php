@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 define('EQDKP_INC', true);
@@ -23,15 +26,6 @@ define('NO_MMODE_REDIRECT', true);
 include_once($eqdkp_root_path . 'common.php');
 
 $myOut = '';
-
-// the extensions for the image files
-$mime_types = array(
-	'png'	=> 'image/png',
-	'jpe'	=> 'image/jpeg',
-	'jpeg'	=> 'image/jpeg',
-	'jpg'	=> 'image/jpeg',
-	'gif'	=> 'image/gif',
-);
 
 if (registry::register('config')->get('pk_maintenance_mode')){
 	if (registry::register('input')->get('format') == 'json'){
@@ -46,163 +40,14 @@ if (registry::register('config')->get('pk_maintenance_mode')){
 if(registry::register('input')->get('out') != ''){
 	
 	switch (registry::register('input')->get('out')){
-
-		case 'imageupload':
-
-			if(!registry::fetch('user')->is_signedin()){
-				echo('You have no permission to see this page as you are not logged in');exit;
-			}
-
-			$fname			= $_FILES['uploadfile']['name'];
-			$fsize			= $_FILES['uploadfile']['size'];
-			$ftmpname		= $_FILES['uploadfile']['tmp_name'];
-
-			// Check if file is selected
-			if(isset($fsize) && $fsize == 0 || !$fsize){
-				echo json_encode(array(
-					'error'	=> registry::fetch('user')->lang('imageuploader_e_empty'),
-				));
-				exit;
-			}
-
-			list($imgwidth, $imgheight, $imgtype, $imgattr) = getimagesize($ftmpname);
-			$maxwidth		= (registry::register('input')->get('imgwidth', 0) > 0) ? registry::register('input')->get('imgwidth', 0) : 9000;
-			$maxheight		= (registry::register('input')->get('imgheight', 0) > 0) ? registry::register('input')->get('imgheight', 0) : 9000;
-			$maxfsize		= (registry::register('input')->get('filesize', 0) > 0) ? registry::register('input')->get('filesize', 0) : 2000000;
-
-			// check the filesize
-			if($fsize < $maxfsize){
-				if (!$imgwidth && !$imgheight){
-					echo json_encode(array(
-						'error'	=> registry::fetch('user')->lang('imageuploader_e_noimg'),
-					));
-					exit;
-				}
-
-				// Check the image dimensions
-				if ($imgwidth > $maxwidth || $imgheight > $maxheight){
-					echo json_encode(array(
-						'error'	=> sprintf(registry::fetch('user')->lang('imageuploader_e_fsize'), $maxwidth, $maxheight),
-					));
-					exit;
-				}
-				$fileEnding		= pathinfo($fname, PATHINFO_EXTENSION);
-				
-				// get the mine....
-				if(function_exists('finfo_open') && function_exists('finfo_file') && function_exists('finfo_close')){
-					$finfo			= finfo_open(FILEINFO_MIME);
-					$mime			= finfo_file($finfo, $ftmpname);
-					finfo_close($finfo);
-				}elseif(function_exists('mime_content_type')){
-					$mime			= mime_content_type( $ftmpname );
-				}else{
-					// try to get the extension... not really secure...
-
-					if(!$fileEnding){
-						echo json_encode(array(
-							'error'	=> 'Your image seems to have no file extension. This is not allowed for security reasons',
-						));
-						exit;
-					}
-					
-					if (array_key_exists($fileEnding, $mime_types)) {
-						$mime			= $mime_types[$fileEnding];
-					}
-					if(!$mime){
-						echo json_encode(array(
-							'error'	=> 'We could not get the proper mime code for the image. You tried to upload "*.'.$fileEnding.'", this mime type is not allowed.',
-						));
-						exit;
-					}
-				}
-
-				// Sometimes (PHP-5.3?) content-type contains charset definition, remove it as "charset=binary" is useless
-				$mime = array_shift(preg_split('/[; ]/', $mime));
-
-				switch ($mime) {
-					case 'image/jpeg':
-					case 'image/pjpeg':
-						if (strtolower($fileEnding) != 'jpg' && strtolower($fileEnding) != 'jpeg'){
-							echo json_encode(array(
-								'error'	=> registry::fetch('user')->lang('imageuploader_e_mime'),
-							));
-							exit;
-						}
-					break;
-					case 'image/gif':
-						if (strtolower($fileEnding) != 'gif'){
-							echo json_encode(array(
-								'error'	=> registry::fetch('user')->lang('imageuploader_e_mime'),
-							));
-							exit;
-						}
-					break;
-					case 'image/png':
-						if (strtolower($fileEnding) != 'png'){
-							echo json_encode(array(
-								'error'	=> registry::fetch('user')->lang('imageuploader_e_mime'),
-							));
-							exit;
-						}
-					break;
-					default:
-						echo json_encode(array(
-							'error'	=> sprintf(registry::fetch('user')->lang('imageuploader_e_wrongtype'), 'jpg, gif, png'),
-						));
-						exit;
-				}
-
-				$filename_out	= time().'__'.basename($fname);
-				registry::register('file_handler')->FileMove($ftmpname, registry::register('file_handler')->FolderPath('imageupload', 'eqdkp').$filename_out, true);
-				echo json_encode(array(
-					'file'	=> $filename_out,
-					'size'	=> $fsize
-				));
-				exit;
-			} else {
-				echo json_encode(array(
-					'error'	=> sprintf(registry::fetch('user')->lang('imageuploader_e_filesize'), round(($maxfsize/1024), 2)),
-				));
-				exit;
-			}
-		break;
-
-		case 'imageupload_del':
-
-			// check if the user is logged in
-			if(!registry::fetch('user')->is_signedin()){
-				echo('You have no permission to see this page as you are not logged in');exit;
-			}
-
-			// set the file name
-			$tmp_filename	= registry::register('encrypt')->decrypt(registry::register('input')->get('data', ''));
-
-			// now check if the input file type is right
-			$fileEnding		= pathinfo($tmp_filename, PATHINFO_EXTENSION);
-			if (array_key_exists($fileEnding, $mime_types)) {
-				echo('You tried to delete a file with an extension which is not allowed.... Bad guy! Do not try to hack this page...');exit;
-			}
-
-			// check if the path is ok...
-			if (isFilelinkInFolder($tmp_filename, 'data')) {
-				echo('Only actions within the data folder are allowed.');exit;
-			}
-
-			if($tmp_filename != ''){
-				registry::register('file_handler')->Delete($tmp_filename);
-			}
-		break;
-
+	
 		case 'comments':
-			if(!registry::fetch('user')->is_signedin()){
-				echo('You have no permission to see this page as you are not logged in');exit;
-			}
 			if(registry::register('input')->get('deleteid', 0)){
-				registry::register('comments')->Delete(registry::register('input')->get('page'), registry::register('input')->get('rpath'));
+				registry::register('comments')->Delete(registry::register('input')->get('page'), registry::register('input')->get('replies', 0));
 			}elseif(registry::register('input')->get('comment', '', 'htmlescape')){
 				registry::register('comments')->Save();
 			}else{
-				echo registry::register('comments')->Content(registry::register('input')->get('attach_id', 0), registry::register('input')->get('page'), registry::register('input')->get('rpath'), true);
+				echo registry::register('comments')->Content(registry::register('input')->get('attach_id'), registry::register('input')->get('page'), registry::register('input')->get('replies', 0));
 			}
 			exit;
 		break;
@@ -235,7 +80,7 @@ if(registry::register('input')->get('out') != ''){
 		case 'icalfeed':
 			// the permissions for the single modules
 			$permissions	= array(
-				'calendar'=>'u_calendar_view'
+				'calendar'	=> 'u_calendar_view'
 			);
 			$modulename		= registry::register('input')->get('module', '');
 
@@ -254,7 +99,20 @@ if(registry::register('input')->get('out') != ''){
 
 				switch($modulename){
 					case 'calendar':
-						$caleventids	= registry::register('plus_datahandler')->get('calendar_events', 'id_list', array(true, registry::register('timekeeper')->time));
+						$eventtypes		= registry::register('input')->get('type', 'raids');
+						switch($eventtypes){
+							case 'raids':
+								$eventsfilter = true;
+							break;
+							case 'all':
+								$eventsfilter = false;
+							break;
+							case 'appointments':
+								$eventsfilter = 'appointments';
+							break;
+						}
+						$caleventids	= registry::register('plus_datahandler')->get('calendar_events', 'id_list', array($eventsfilter, registry::register('timehandler')->adddays(registry::register('timehandler')->time, -30)));
+
 						if(is_array($caleventids) && count($caleventids) > 0){
 							foreach($caleventids as $calid){
 
@@ -303,11 +161,10 @@ if(registry::register('input')->get('out') != ''){
 
 								// generate the ical output
 								$e = new vevent;
-								$e->setProperty('dtstart',        array("timestamp" => registry::register('plus_datahandler')->get('calendar_events', 'time_start', array($calid)), "tz" => registry::register('config')->get('timezone')));
-								$e->setProperty('dtend',		array("timestamp" => registry::register('plus_datahandler')->get('calendar_events', 'time_end', array($calid)), "tz" => registry::register('config')->get('timezone')));
+								$e->setProperty('dtstart',		array("timestamp" => registry::register('plus_datahandler')->get('calendar_events', 'time_start', array($calid)).'Z'));
+								$e->setProperty('dtend',		array("timestamp" => registry::register('plus_datahandler')->get('calendar_events', 'time_end', array($calid)).'Z'));
 								$e->setProperty('summary',		registry::register('plus_datahandler')->get('calendar_events', 'name', array($calid)));
 								$e->setProperty('description',	$description_data);
-								//$e->setProperty('comment',		'This is a comment');
 								$e->setProperty('class',		'PUBLIC');
 								$e->setProperty('categories',	'PERSONAL');
 								$v->setComponent($e);
@@ -337,6 +194,43 @@ if(registry::register('input')->get('out') != ''){
 			echo registry::register('game')->chartooltip(registry::register('input')->get('charid', 0));
 			exit;
 		break;
+		
+		case 'portal':
+			header('content-type: text/html; charset=UTF-8');
+			registry::register('core')->cors_headers();
+			echo registry::register('portal')->get_module_external(registry::register('input')->get('id', 0));
+			exit;
+		break;
+		
+		case 'socialcounts':
+			header('Content-type: application/json; charset=utf-8');
+			echo registry::register('socialplugins')->getSocialButtonCount(rawurldecode(registry::register('input')->get('url')), registry::register('input')->get('target'));
+			exit;
+		break;
+		
+		case 'styles':
+			header('content-type: text/html; charset=UTF-8');
+			$out = '<table class="table fullwidth colorswitch hoverrows">';
+			$intCurrentStyle = register('user')->style['style_id'];
+			foreach(register('pdh')->get('styles', 'styles', array(0, false)) as $styleid=>$row){
+					$plugin_code = $row['template_path'];
+					if (file_exists(registry::get_const('root_path').'templates/'.$plugin_code.'/screenshot.png' )){
+						$screenshot = '<img src="'.registry::get_const('server_path').'templates/'.$plugin_code.'/screenshot.png" style="max-width:200px;" alt="" />';
+					} elseif(file_exists(registry::get_const('root_path').'templates/'.$plugin_code.'/screenshot.jpg' )){
+						$screenshot = '<img src="'.registry::get_const('server_path').'templates/'.$plugin_code.'/screenshot.jpg" style="max-width:200px;" alt="" />';
+					} else $screenshot = "<img src='".registry::get_const('server_path')."images/global/default-image.svg' />";
+					if($styleid == $intCurrentStyle){
+						$current = " <i class='fa fa-check-circle fa-lg'></i>";
+					} else $current = "";
+					$url = filter_var($_SERVER['HTTP_REFERER'], FILTER_SANITIZE_STRING);
+					$link = sanitize(preg_replace('#style\=([0-9]*)#', "", $url)).((strpos($url, "?") === false) ? '?' : '&').'style='.$styleid;
+					
+					$out .= '<tr><td width="10"><a href="'.$link.'">'.$screenshot.'</a></td><td><a href="'.$link.'">'.$row['style_name'].$current.'</a></td></tr>';
+			}
+			$out .= '</table>';
+			echo $out;
+			exit;
+		break;
 	}
 	
 
@@ -344,6 +238,7 @@ if(registry::register('input')->get('out') != ''){
 	if(is_file($myOut)){
 			ob_end_clean();
 			ob_start();
+			header('content-type: text/html; charset=UTF-8');
 			$outdata = file_get_contents($myOut);
 			echo((isset($outdata)) ? $outdata : '<?xml version="1.0" encoding="UTF-8"?><response><status>0</status><error>no data</error></response>');
 	}else{

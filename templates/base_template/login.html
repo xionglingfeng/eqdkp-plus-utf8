@@ -1,65 +1,87 @@
-<form method="post" action="{EQDKP_ROOT_PATH}login.php{SID}" name="login" id="login">
-<div class="content row1">
-	<div class="contentHead">
-		{L_login}
+	<div class="contentHeader">
+		<h1 class="contentTitle">{L_login}</h1>
+	</div>	
+	
+	<!-- IF S_BRIDGE_INFO -->
+	<div class="infobox infobox-large infobox-blue clearfix">
+		<i class="fa fa-info-circle fa-4x pull-left"></i> {L_login_bridge_notice}
 	</div>
-	<div class="contentInner center ">
-		<!-- IF S_BRIDGE_INFO -->
-			<div class="bluebox roundbox">
-				<div class="icon_info">{L_login_bridge_notice}</div>
-			</div>
-		<!-- ENDIF -->
-		
-		<div class="contentSideLeft <!-- IF not S_LOGGED_IN -->contentWidth60<!-- ENDIF -->">
-			
-			<fieldset class="invisible smallsettings">
-			<div class="loginform">
+	<!-- ENDIF -->
+	<form method="post" action="{EQDKP_CONTROLLER_PATH}Login{SEO_EXTENSION}{SID}" name="login" id="login" class="fv_checkit">
+	
+	<fieldset class="settings mediumsettings">
+			<div class="contentSideLeft floatLeft contentWidth60">
 				<dl>
 					<dt><label>{L_username}:</label></dt>
-					<dd><input type="text" name="username" size="30" maxlength="30" class="input required username" id="username"/></dd>
+					<dd>
+						<div class="input-icon"><i class="fa fa-user"></i>
+							<input type="text" name="username" size="30" maxlength="30" class="input username" id="username" required/>
+							<span class="fv_msg" data-errormessage="{L_fv_required_user}"></span>
+						</div>
+					</dd>
 				</dl>
 				<dl>
 					<dt><label>{L_password}:</label></dt>
-					<dd><input type="password" name="password" size="30" maxlength="32" class="input required password" id="password"/>
-						<!-- IF not S_BRIDGE_INFO -->
-						<br /><img src="{EQDKP_IMAGE_PATH}glyphs/key_lost.png" class="absmiddle" alt=""/><a href="{EQDKP_ROOT_PATH}login.php{SID}&amp;mode=lostpassword">{L_lost_password}</a>
+					<dd>
+						<div class="input-icon">
+							<i class="fa fa-key"></i>
+							<input type="password" name="password" size="30" maxlength="32" class="input password" id="password" required/>
+							<span class="fv_msg" data-errormessage="{L_fv_required_password}"></span>
+						</div>
+						<!-- IF S_SHOW_PWRESET_LINK -->
+						<br />{U_PWRESET_LINK}
 						<!-- ENDIF -->
 						<br /><br /><label><input type="checkbox" name="auto_login" />{L_remember_password}</label>
+						<input type="text" name="{HONEYPOT_VALUE}" size="30" maxlength="30" class="userpass" />
 					</dd>
 				</dl>
+				
 				
 				<!-- IF S_DISPLAY_CATPCHA -->
 				<dl>
 					<dt>
-						<label>{L_lib_captcha_head}</label><br /><span>{L_lib_captcha_insertword}</span>
+						<label>{L_lib_captcha_head}</label>
 					</dt>
-					<dd><div id="recaptcha_image" style="float:left; cursor:pointer;" onclick="javascript:Recaptcha.reload();" title="{L_lib_captcha_reload}"></div><img src="{EQDKP_ROOT_PATH}images/global/update.png" onclick="javascript:Recaptcha.reload();" title="{L_lib_captcha_reload}" alt="{L_lib_captcha_reload}" style="cursor:pointer; padding-top:20px;" /><div style="clear:both;"></div>
-					<input name="recaptcha_response_field" type="text" id="recaptcha_response_field" style="width:300px; margin-top:5px;" class="input"/>
+					<dd>
 					{FV_CAPTCHA}
 					{CAPTCHA}</dd>
 				</dl>
 				<!-- ENDIF -->
-				
 			</div>
-			</fieldset>
-		</div>
-		
-		<!-- IF not S_LOGGED_IN -->
-		<div class="contentSideRight contentWidth30">
-			<!-- IF S_REGISTER -->
-			<h3>{L_no_account}</h3>
-			<a href="{REGISTER_LINK}">{L_menu_register}</a>
+			
+			<!-- IF not S_LOGGED_IN -->
+			<div class="contentSideRight contentWidth30 floatRight">
+				<!-- IF S_REGISTER -->
+				<span class="hiddenSmartphone">
+				<h3>{L_no_account}</h3>
+				{U_REGISTER}
+				<br /><br />
+				</span>
+				<!-- ENDIF -->
+				<!-- IF S_USER_ACTIVATION and not S_BRIDGE_INFO -->
+				<h3>{L_no_activation_mail}</h3>
+				<a href="{EQDKP_CONTROLLER_PATH}Register/ResendActivation/{SID}">{L_get_new_activation_mail}</a>
+				<!-- ENDIF -->
+			</div>
 			<!-- ENDIF -->
-			<!-- IF S_USER_ACTIVATION and not S_BRIDGE_INFO -->
-			<h3>{L_no_activation_mail}</h3>
-			<a href="{EQDKP_ROOT_PATH}register.php{SID}&amp;mode=resend_activation">{L_get_new_activation_mail}</a>
-			<!-- ENDIF -->
-		</div>
-		<!-- ENDIF -->
-	</div>
+	</fieldset>
+	
+	
+	<div class="clear"></div>
+	
 	<div class="contentFooter">
-		{REDIRECT}<input type="submit" name="login" value="{L_login}" class="mainoption bi_key" /> {AUTH_LOGIN_BUTTON}
+		{REDIRECT}
+		<button type="submit" name="login" class="mainoption"><i class="fa fa-sign-in"></i>{L_login}</button>
 	</div>
-</div>
-{CSRF_TOKEN}
-</form>
+	
+	<!-- IF AUTH_LOGIN_BUTTON != "" -->
+	<br />
+	<fieldset class="settings mediumsettings">
+		<legend>{L_login_use_authmethods}</legend>
+		{AUTH_LOGIN_BUTTON}
+	</fieldset>
+	<!-- ENDIF -->
+	
+	{CSRF_TOKEN}
+	</form>
+

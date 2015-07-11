@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: myHTML
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		libraries:myHTML
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -44,12 +47,7 @@ define('DRUPAL_HASH_LENGTH', 55);
 
 class drupal_bridge extends bridge_generic {
 	
-	public static function __shortcuts() {
-		$shortcuts = array('env', 'config', 'user', 'time');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-	
-	public $name = 'Drupal';
+	public static $name = 'Drupal';
 	
 	public $data = array(
 		//Data
@@ -76,20 +74,9 @@ class drupal_bridge extends bridge_generic {
 			'QUERY'	=> '',
 		),
 	);
-	
-	public $functions = array(
-		'login'	=> array(
-			'callbefore'	=> '',
-			'function' 		=> '',
-			'callafter'		=> '',
-		),
-		'logout' 	=> '',
-		'autologin' => '',	
-		'sync'		=> '',
-	);
-	
+		
 	//Needed function
-	public function check_password($password, $hash, $strSalt = '', $boolUseHash){
+	public function check_password($password, $hash, $strSalt = '', $boolUseHash = false, $strUsername = "", $arrUserdata=array()){
 		return $this->user_check_password($password, $hash);
 	}
 	
@@ -97,7 +84,7 @@ class drupal_bridge extends bridge_generic {
 	/**
 	 * Returns a string for mapping an int to the corresponding base 64 character.
 	 */
-	function _password_itoa64() {
+	private function _password_itoa64() {
 	  return './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 	}
 
@@ -112,7 +99,7 @@ class drupal_bridge extends bridge_generic {
 	 * @return
 	 *   Encoded string
 	 */
-	function _password_base64_encode($input, $count) {
+	private function _password_base64_encode($input, $count) {
 	  $output = '';
 	  $i = 0;
 	  $itoa64 = $this->_password_itoa64();
@@ -155,7 +142,7 @@ class drupal_bridge extends bridge_generic {
 	 * @return
 	 *   A 12 character string containing the iteration count and a random salt.
 	 */
-	function _password_generate_salt($count_log2) {
+	private function _password_generate_salt($count_log2) {
 	  $output = '$S$';
 	  // Ensure that $count_log2 is within set bounds.
 	  $count_log2 = $this->_password_enforce_log2_boundaries($count_log2);
@@ -177,7 +164,7 @@ class drupal_bridge extends bridge_generic {
 	 * @return
 	 *   Integer within set bounds that is closest to $count_log2.
 	 */
-	function _password_enforce_log2_boundaries($count_log2) {
+	private function _password_enforce_log2_boundaries($count_log2) {
 	  if ($count_log2 < DRUPAL_MIN_HASH_COUNT) {
 		return DRUPAL_MIN_HASH_COUNT;
 	  }
@@ -208,7 +195,7 @@ class drupal_bridge extends bridge_generic {
 	 *   A string containing the hashed password (and salt) or FALSE on failure.
 	 *   The return string will be truncated at DRUPAL_HASH_LENGTH characters max.
 	 */
-	function _password_crypt($algo, $password, $setting) {
+	private function _password_crypt($algo, $password, $setting) {
 	  // The first 12 characters of an existing hash are its setting string.
 	  $setting = substr($setting, 0, 12);
 
@@ -246,7 +233,7 @@ class drupal_bridge extends bridge_generic {
 	/**
 	 * Parse the log2 iteration count from a stored hash or setting string.
 	 */
-	function _password_get_count_log2($setting) {
+	private function _password_get_count_log2($setting) {
 	  $itoa64 = $this->_password_itoa64();
 	  return strpos($itoa64, $setting[3]);
 	}
@@ -263,7 +250,7 @@ class drupal_bridge extends bridge_generic {
 	 * @return
 	 *   A string containing the hashed password (and a salt), or FALSE on failure.
 	 */
-	function user_hash_password($password, $count_log2 = 0) {
+	private function user_hash_password($password, $count_log2 = 0) {
 	  if (empty($count_log2)) {
 		// Use the standard iteration count.
 		$count_log2 = DRUPAL_HASH_COUNT;
@@ -286,7 +273,7 @@ class drupal_bridge extends bridge_generic {
 	 * @return
 	 *   TRUE or FALSE.
 	 */
-	function user_check_password($password, $hash) {
+	private function user_check_password($password, $hash) {
 	  if (substr($hash, 0, 2) == 'U$') {
 		// This may be an updated password from user_update_7000(). Such hashes
 		// have 'U' added as the first character and need an extra md5().
@@ -317,5 +304,4 @@ class drupal_bridge extends bridge_generic {
 	}
 	
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_drupal_bridge',drupal_bridge::__shortcuts());
 ?>

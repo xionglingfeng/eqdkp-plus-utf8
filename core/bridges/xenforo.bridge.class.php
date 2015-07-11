@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: myHTML
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date: 2014-03-18 08:04:29 +0100 (Di, 18 Mrz 2014) $
- * -----------------------------------------------------------------------
- * @author		$Author: godmod $
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		libraries:myHTML
- * @version		$Rev: 14126 $
- * 
- * $Id: wbb4.bridge.class.php 14126 2014-03-18 07:04:29Z godmod $
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,7 +25,7 @@ if ( !defined('EQDKP_INC') ){
 
 class xenforo_bridge extends bridge_generic {
 	
-	public $name = 'XenForo';
+	public static $name = 'XenForo';
 	
 	private $passwordIterations = 10;
 	
@@ -48,36 +51,30 @@ class xenforo_bridge extends bridge_generic {
 			'email'	=> 'email',
 			'salt'	=> '',
 			'QUERY'	=> '',
+			'FUNCTION' => 'get_user',
 		),
 	);
-	
-	public $functions = array(
-		'login'	=> array(
-			'callbefore'	=> '',
-			'function' 		=> '',
-			'callafter'		=> '',
-		),
-		'logout' 	=> '',
-		'autologin' => '',	
-		'sync'		=> '',
-	);
-	
+		
 	public $settings = array(
 	);
 	
-	//Needed function
-	public function check_password($password, $hash, $strSalt = '', $boolUseHash, $strUsername){
-		$query = $this->db->query("SELECT * FROM ".$this->prefix."user_authenticate WHERE user_id=".$this->db->escape(intval($hash)));
-		while($arrResult = $this->db->fetch_record($query)){
-			$arrAuthData = unserialize($arrResult['data']);
-			$scheme = $arrResult['scheme_class'];
-			$blnResult = $this->_handle_logins($scheme, $password, $hash, $arrAuthData);
-			if ($blnResult) return true;
+	public function check_password($password, $hash, $strSalt = '', $boolUseHash = false, $strUsername = "", $arrUserdata=array()){
+		$strQuery = "SELECT * FROM ".$this->prefix."user_authenticate WHERE user_id=?";
+		$objQuery = $this->bridgedb->prepare($strQuery)->execute($hash);
+	
+		if ($objQuery){
+			$arrAllResults = $objQuery->fetchAllAssoc();
+			foreach($arrAllResults as $arrResult){
+				$arrAuthData = unserialize($arrResult['data']);
+				$scheme = $arrResult['scheme_class'];
+				
+				$blnResult = $this->_handle_logins($scheme, $password, $hash, $arrAuthData);
+				if ($blnResult) return true;			
+			}		
 		}
 
 		return false;
 	}
-
 	
 	private function _handle_logins($scheme, $password, $hash, $arrAuthData){
 		switch($scheme){
@@ -386,6 +383,4 @@ if (!class_exists("XenForo_PasswordHash")){
 		}
 	}
 }
-
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_xenforo_bridge',xenforo_bridge::$shortcuts);
 ?>

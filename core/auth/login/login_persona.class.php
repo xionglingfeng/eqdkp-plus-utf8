@@ -1,42 +1,44 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
- 
+
 if ( !defined('EQDKP_INC') ){
 	header('HTTP/1.0 404 Not Found');exit;
 }
 
 class login_persona extends gen_class {
-	public static $shortcuts = array('user', 'jquery', 'db', 'in', 'config', 'env' => 'environment', 'pdh', 'tpl', 'puf'=>'urlfetcher');
+	public static $shortcuts = array('puf'=>'urlfetcher');
 	
 	private $js_loaded = false;
 	
-	public function __construct(){
-		
-		$this->options = array(
+	public static $options = array(
 			'connect_accounts'	=> true,
-		);
-		
-		$this->functions = array(
+	);
+	
+	public static $functions = array(
 			'login_button'		=> 'login_button',
 			'account_button'	=> 'account_button',
 			'get_account'		=> 'get_account',
-		);
-		
+	);
+	
+	public function __construct(){		
 	}
 	
 	public function init_js(){
@@ -50,7 +52,7 @@ var initLogin = function () {
 	
 	login = function (assertion) {
 		if (assertion) {
-			window.location.href='".$this->root_path."login.php".$this->SID."&login=true&lmethod=persona&assertion='+assertion;
+			window.location.href='".$this->controller_path."Login/".$this->SID."&login&lmethod=persona&assertion='+assertion;
 		}
 	};
 	
@@ -70,7 +72,7 @@ initLogin();
 		
 	public function login_button(){
 		$this->init_js();		
-		return '<input type="button" class="mainoption bi_persona persona_login_button" value="Persona Login" />';
+		return '<button type="button" class="mainoption persona_login_button thirdpartylogin persona loginbtn"><i class="bi_persona"></i>Persona</button>';
 	}
 	
 	public function account_button(){
@@ -83,7 +85,7 @@ initLogin();
 			
 			login = function (assertion) {
 				if (assertion) {
-					window.location.href='".$this->root_path."settings.php".$this->SID."&mode=addauthacc&lmethod=persona&assertion='+assertion;
+					window.location.href='".$this->controller_path."Settings/".$this->SID."&mode=addauthacc&lmethod=persona&assertion='+assertion;
 				}
 			};
 			
@@ -100,7 +102,7 @@ initLogin();
 		", "docready");
 		
 		
-		return '<input type="button" class="mainoption bi_persona persona_account_button" value="Persona '.$this->user->lang('auth_connect_account').'" />';
+		return '<button type="button" class="mainoption persona_account_button thirdpartylogin persona accountbtn"><i class="bi_persona"></i>Persona</button>';
 	}
 	
 	public function get_account(){
@@ -118,7 +120,7 @@ initLogin();
 	private function verify_assertion($assertion){
 		$jsonRequest = $this->puf->post('https://browserid.org/verify', "assertion=".strval(
 		   $assertion
-		)."&audience=".$_SERVER["HTTP_HOST"], "application/x-www-form-urlencoded");
+		)."&audience=".$this->env->httpHost, "application/x-www-form-urlencoded");
 		
 		$arrResult = json_decode($jsonRequest);
 
@@ -146,7 +148,7 @@ initLogin();
 			$verifyAssertion = $this->verify_assertion($this->in->get('assertion'));
 			
 			if ($verifyAssertion) {
-					$userid = $this->pdh->get('user', 'userid_for_authaccount', array($verifyAssertion));
+					$userid = $this->pdh->get('user', 'userid_for_authaccount', array($verifyAssertion, 'persona'));
 					if ($userid){
 						$userdata = $this->pdh->get('user', 'data', array($userid));
 						if ($userdata){
@@ -188,6 +190,4 @@ initLogin();
 		return false;
 	}
 }
-
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_login_persona', login_persona::$shortcuts);
 ?>

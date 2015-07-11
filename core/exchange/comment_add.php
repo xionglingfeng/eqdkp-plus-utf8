@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if (!defined('EQDKP_INC')){
@@ -22,7 +25,7 @@ if (!defined('EQDKP_INC')){
 
 if (!class_exists('exchange_comment_add')){
 	class exchange_comment_add extends gen_class {
-		public static $shortcuts = array('user', 'config', 'pex'=>'plus_exchange', 'pdh', 'time');
+		public static $shortcuts = array('pex'=>'plus_exchange');
 		public $options		= array();
 
 		public function post_comment_add($params, $body){
@@ -33,7 +36,9 @@ if (!class_exists('exchange_comment_add')){
 					//Check for page and attachid
 					if (!$xml->page || !$xml->attachid) return $this->pex->error('page or attachid is missing');
 					
-					$this->pdh->put('comment', 'insert', array($xml->attachid, $this->user->id, strip_tags($xml->comment), $xml->page));
+					$intReplyTo = ((int)$xml->reply_to) ? (int)$xml->reply_to : 0;
+					
+					$this->pdh->put('comment', 'insert', array((string)$xml->attachid, $this->user->id, (string)strip_tags($xml->comment), (string)$xml->page, $intReplyTo));
 					
 					$this->pdh->process_hook_queue();
 					return array('status'	=> 1);
@@ -47,5 +52,4 @@ if (!class_exists('exchange_comment_add')){
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_exchange_comment_add', exchange_comment_add::$shortcuts);
 ?>

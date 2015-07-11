@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: myHTML
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		libraries:myHTML
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,13 +24,8 @@ if ( !defined('EQDKP_INC') ){
 }
 
 class smf2_bridge extends bridge_generic {
-	
-	public static function __shortcuts() {
-		$shortcuts = array('time', 'config');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-	
-	public $name = "SMF 2";
+
+	public static $name = "SMF 2";
 	
 	public $data = array(
 		//Data
@@ -53,48 +51,22 @@ class smf2_bridge extends bridge_generic {
 		),
 	);
 	
-	public $functions = array(
-		'login'	=> array(
-			'callbefore'	=> '',
-			'function' 		=> '',
-			'callafter'		=> 'smf2_callafter',
-		),
-		'logout' 	=> 'smf2_logout',
-		'autologin' => '',	
-		'sync'		=> 'smf2_sync',
-	);
-	
-	public $sync_fields = array(
-		'icq',
-		'birthday',
-		'msn',
-		'user_email',
-		'username',
-		'town',
-		'gender',
-	);
-	
 	public $settings = array(
 		'cmsbridge_disable_sso'	=> array(
-			'fieldtype'	=> 'checkbox',
-			'name'		=> 'cmsbridge_disable_sso',
+			'type'	=> 'radio',
 		),
 		'cmsbridge_disable_sync' => array(
-			'fieldtype'	=> 'checkbox',
-			'name'			=> 'cmsbridge_disable_sync',
+			'type'	=> 'radio',
 		),
 		'cmsbridge_sso_cookiename'	=> array(
-			'fieldtype'	=> 'text',
-			'name'		=> 'cmsbridge_sso_cookiename',
+			'type'	=> 'text',
 		),
 		'cmsbridge_sso_cookiedomain' => array(
-				'fieldtype'	=> 'text',
-				'name'		=> 'cmsbridge_sso_cookiedomain',
+			'type'	=> 'text',
 		),
 	);
 	
-	//Needed function
-	public function check_password($password, $hash, $strSalt = '', $boolUseHash = false, $strUsername = ''){
+	public function check_password($password, $hash, $strSalt = '', $boolUseHash = false, $strUsername = "", $arrUserdata=array()){
 		//Use normal strtolower and not utf8_strotolower, because SMF2 does the same...
 		if (sha1(strtolower($strUsername).$password) == $hash){
 			return true;
@@ -102,33 +74,39 @@ class smf2_bridge extends bridge_generic {
 		return false;
 	}
 	
-	public function smf2_get_user_groups($intUserID, $arrGroups){
-		$query = $this->db->query("SELECT id_group, id_post_group, additional_groups FROM ".$this->prefix."members WHERE id_member='".$this->db->escape($intUserID)."'");
-		$result = $this->db->fetch_row($query);
-		if (in_array((int)$result['id_group'], $arrGroups)) return true;
-		if (in_array((int)$result['id_post_group'], $arrGroups)) return true;
-		$arrAditionalGroups = explode(',', $result['additional_groups']);
-		if (is_array($arrAditionalGroups)){
-			foreach ($arrAditionalGroups as $group){
-				if (in_array((int)$group, $arrGroups)) return true;
+	public function smf2_get_user_groups($intUserID){
+		$query = $this->bridgedb->prepare("SELECT id_group, id_post_group, additional_groups FROM ".$this->prefix."members WHERE id_member=?")->execute($intUserID);
+		$arrReturn = array();
+		if ($query){
+			$result = $query->fetchAssoc();
+			$arrReturn[] = (int)$result['id_group'];
+			$arrReturn[] = (int)$result['id_post_group'];
+			
+			$arrAditionalGroups = explode(',', $result['additional_groups']);
+			if (is_array($arrAditionalGroups)){
+				foreach ($arrAditionalGroups as $group){
+					$arrReturn[] = (int)$group;
+				}
 			}
-		}
+		}	
 		
-		return false;
+		return $arrReturn;
 	}
 	
-	public function smf2_callafter($strUsername, $strPassword, $boolAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash){
+	public function after_login($strUsername, $strPassword, $boolSetAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash=false){
 		//Is user active?
 		if ($boolLoginResult){
 			//Single Sign On
 			if ($this->config->get('cmsbridge_disable_sso') != '1'){
-				$this->smf2_sso($arrUserdata, $strPassword, $boolAutoLogin);
+				$this->sso($arrUserdata, $strPassword, $boolSetAutoLogin);
 			}
+			
+			return true;
 		}
-		return true;
+		return false;
 	}
 	
-	public function smf2_sso($arrUserdata, $strPassword, $boolAutoLogin = false){
+	private function sso($arrUserdata, $strPassword, $boolAutoLogin = false){
 		if (!strlen($this->config->get('cmsbridge_sso_cookiename')) || !strlen($this->config->get('cmsbridge_url'))) return false;
 		
 		$cookie_length = 31536000;
@@ -154,7 +132,7 @@ class smf2_bridge extends bridge_generic {
 		return true;
 	}
 	
-	public function smf2_logout() {
+	public function logout() {
 		$strBoardURL = parse_url($this->config->get('cmsbridge_url'), PHP_URL_HOST);
 		$strBoardPath = parse_url($this->config->get('cmsbridge_url'), PHP_URL_PATH);
 		$arrDomains = explode('.', $strBoardURL);
@@ -168,7 +146,7 @@ class smf2_bridge extends bridge_generic {
 		setcookie($this->config->get('cmsbridge_sso_cookiename'), '', 0, $strBoardPath, $cookieDomain, $this->env->ssl);
 	}
 	
-	public function smf2_sync($arrUserdata){
+	public function sync($arrUserdata){
 		if ($this->config->get('cmsbridge_disable_sync') == '1'){
 			return false;
 		}
@@ -176,10 +154,18 @@ class smf2_bridge extends bridge_generic {
 			'icq' 			=> $arrUserdata['icq'],
 			'town'			=> $arrUserdata['location'],
 			'birthday'		=> $this->_handle_birthday($arrUserdata['birthdate']),
-			'msn'			=> $arrUserdata['msn'],
 			'gender'		=> $arrUserdata['gender'],
 		);
 		return $sync_array;
+	}
+	
+	public function sync_fields(){
+		return array(
+			'icq'		=> 'ICQ',
+			'birthday'	=> 'Birthday',
+			'town'		=> 'Town',
+			'gender'	=> 'Gender',
+		);
 	}
 	
 	private function _handle_birthday($date){
@@ -191,5 +177,4 @@ class smf2_bridge extends bridge_generic {
 	}
 	
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_smf2_bridge',smf2_bridge::__shortcuts());
 ?>

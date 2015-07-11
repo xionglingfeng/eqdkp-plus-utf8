@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2009
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if ( !defined('EQDKP_INC') ){
 	die('Do not access this file directly.');
@@ -22,11 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "pdh_r_links" ) ){
 	class pdh_r_links extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'db', 'user', 'bbcode'=>'bbcode'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
 		public $links;
 
 		public $hooks = array(
@@ -57,20 +55,20 @@ if ( !class_exists( "pdh_r_links" ) ){
 					FROM
 					__links
 					ORDER BY link_sortid;";
-			$r_result = $this->db->query($sql);
-
-			while( $row = $this->db->fetch_record($r_result) ){
-				$this->links[$row['link_id']]['id']			= $row['link_id'];
-				$this->links[$row['link_id']]['name']		= $row['link_name'];
-				$this->links[$row['link_id']]['url']		= $row['link_url'];
-				$this->links[$row['link_id']]['window']		= $row['link_window'];
-				$this->links[$row['link_id']]['menu']		= $row['link_menu'];
-				$this->links[$row['link_id']]['visibility']	= $row['link_visibility'];
-				$this->links[$row['link_id']]['height']		= $row['link_height'];
+			
+			$objQuery = $this->db->query($sql);
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$this->links[$row['link_id']]['id']			= $row['link_id'];
+					$this->links[$row['link_id']]['name']		= $row['link_name'];
+					$this->links[$row['link_id']]['url']		= $row['link_url'];
+					$this->links[$row['link_id']]['window']		= $row['link_window'];
+					$this->links[$row['link_id']]['menu']		= $row['link_menu'];
+					$this->links[$row['link_id']]['visibility']	= xhtml_entity_decode($row['link_visibility']);
+					$this->links[$row['link_id']]['height']		= $row['link_height'];
+				}
+				$this->pdc->put('pdh_links_table', $this->links, NULL);
 			}
-			$this->db->free_result($r_result);
-
-			if($r_result) $this->pdc->put('pdh_links_table', $this->links, NULL);
 			return true;
 		}
 
@@ -90,12 +88,12 @@ if ( !class_exists( "pdh_r_links" ) ){
 			return $this->links[$id]['height'];
 		}
 
-		public function get_menu($menu_id){
+		public function get_menu($show_hidden=false){
 			$menu = array();
 
 			if (is_array($this->links)){
 				foreach ($this->links as $link){
-					if ($this->handle_permission($link['visibility'])){
+					if ($show_hidden || $this->handle_permission($link['visibility'])){
 						$target = '';
 						$extern = false;
 						$url = $this->parse_links($link['url']);
@@ -116,38 +114,32 @@ if ( !class_exists( "pdh_r_links" ) ){
 								break ;
 							case '2':
 							case '3':
-							case '4': $url = 'wrapper.php'.$this->SID.'&amp;id='.$link['id'];
+							case '4': 
+							case '5': 	$url = $this->routing->build("external", $link['name'], $link['id'], true, true);
 								break ;
 						}
 
 
-						$menu[$link['menu']][] = array('link' => $url, 'target' => $target, 'text' =>  $link['name'], 'check' => '', 'plus_link' => $extern, 'id'=>'pluslink'.$link['id']);
+						$menu[] = array('link' => $url, 'target' => $target, 'text' =>  $link['name'], 'check' => '', 'plus_link' => $extern, 'id'=>'pluslink'.$link['id']);
 					}
 				}
-				return (isset($menu[$menu_id]) && is_array($menu[$menu_id]) ? $menu[$menu_id] : array());
+				return $menu;
 			} else {
 				return array();
 			}
 		}
 
 		private function handle_permission($visibility){
-			$perm = false;
-
-			switch ($visibility){
-				//Public links
-				case '0':  $perm = true;
-					break;
-				//Guests
-				case '1':  $perm = (!$this->user->is_signedin()) ? true : false;
-					break ;
-				//Logged-Ins
-				case '2':  $perm = ($this->user->is_signedin()) ? true : false;
-					break ;
-				//Admins
-				case '3':  $perm = ($this->user->check_auth('a_', false)) ? true : false;
-					break ;
+			if ($visibility == "") return false;
+			$arrJSON = json_decode($visibility, true);
+			if (!$arrJSON) return false;
+			
+			foreach($arrJSON as $intGroup){
+				if ($intGroup == 0) return true;
+				if ($this->user->check_group($intGroup, false)) return true;
 			}
-			return $perm;
+
+			return false;
 		}
 
 		private function parse_links($text){
@@ -155,5 +147,4 @@ if ( !class_exists( "pdh_r_links" ) ){
 		}
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_links', pdh_r_links::__shortcuts());
 ?>

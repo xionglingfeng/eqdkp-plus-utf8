@@ -1,18 +1,27 @@
-<div class="errorbox roundbox" id="lu_error" style="display:none;">
-		<div class="icon_false"><span id="lu_error_label"></span></div>
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li class="current"><a>{L_liveupdate}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
+<div class="infobox infobox-large infobox-red clearfix" id="lu_error" style="display:none;">
+	<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> <span id="lu_error_label"></span>
 </div>
 <!-- IF S_START -->
 	<!-- IF S_NEW_VERSION && S_REQUIREMENTS -->
-	<div class="errorbox roundbox">
-		<div class="icon_false"><b>{L_liveupdate_update_available}</b></div>
+	<div class="infobox infobox-large infobox-red clearfix">
+		<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_liveupdate_update_available}
 	</div>
 	<!-- ELSEIF S_NEW_VERSION && not S_REQUIREMENTS -->
-	<div class="errorbox roundbox">
-		<div class="icon_false">{L_liveupdate_update_requirements_failed}</div>
+	<div class="infobox infobox-large infobox-red clearfix">
+		<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_liveupdate_update_requirements_failed}
 	</div>
 	<!-- ELSE -->
-	<div class="greenbox roundbox">
-		<div class="icon_ok">{L_liveupdate_no_update_available}</div>
+	<div class="infobox infobox-large infobox-green clearfix">
+		<i class="fa fa-check fa-4x pull-left"></i> {L_liveupdate_no_update_available}
 	</div>
 	<!-- ENDIF -->
 	<form method="post" action="{ACTION}">
@@ -40,10 +49,10 @@
 		<!-- ENDIF -->
 	</fieldset>
 	<!-- IF S_NEW_VERSION && S_REQUIREMENTS -->
-	<input type="submit" name="show" value="{L_liveupdate_start}" class="mainoption bi_ok" />
+	<button class="mainoptio" type="submit" name="show"><i class="fa fa-check"></i> {L_liveupdate_start}</button>
 	<!-- ENDIF -->
-	<!-- IF S_RELEASE_CHANNEL && S_REQUIREMENTS && not S_NEW_VERSION -->
-	<input type="submit" name="refresh" value="{L_liveupdate_check_for_updates}" class="mainoption bi_reload" />
+	<!-- IF S_UPDATE_BUTTON && S_REQUIREMENTS && not S_NEW_VERSION -->
+	<button  type="submit" name="refresh" class="mainoption"><i class="fa fa-refresh"></i> {L_livecore_sett_f_update_check_for_updates}</button>
 	<!-- ENDIF -->
 	
 	</form>
@@ -55,12 +64,12 @@
 	.ui-progressbar { position:relative; height:30px;}
 	.nl_progressbar_label { position: absolute; width: 90%; text-align: center; line-height: 30px; left:5%; right:5%;}
 </style>
-<div class="bluebox roundbox" id="lu_dontclose">
-		<div class="icon_info"><strong>{L_liveupdate_dontclose}</strong></div>
+<div class="infobox infobox-large infobox-blue clearfix">
+	<i class="fa fa-info-circle fa-4x pull-left"></i> {L_liveupdate_dontclose}
 </div>
 <br />
 <div id="nl_progressbar">
-	<span class="nl_progressbar_label"><img src="{EQDKP_IMAGE_PATH}global/loading.gif" id="lu_loading_img" /> &nbsp;<span id="nl_progressbar_label">{L_liveupdate}...</span></span></div>
+	<span class="nl_progressbar_label"><i class="fa fa-refresh fa-spin fa-lg"></i> &nbsp;<span id="nl_progressbar_label">{L_liveupdate}...</span></span>
 </div>
 <!-- ENDIF -->
 
@@ -76,10 +85,10 @@
 	<!-- IF S_SHOW_5 -->
 	<form method="post" action="{ACTION}">
 		<!-- IF S_CONFLICTED_FILES -->
-		<div class="errorbox roundbox" id="lu_dontclose">
-			<div class="icon_false">{L_liveupdate_conflictedfiles_note}</div>
+		<div class="infobox infobox-large infobox-red clearfix" id="lu_dontclose">
+			<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_liveupdate_conflictedfiles_note}
 		</div>
-		<br />
+
 		<fieldset class="settings">
 			<legend>{L_liveupdate_conflictedfiles}</legend>
 			<!-- BEGIN conflicted_row -->
@@ -88,7 +97,7 @@
 				<dd><a href="javascript:liveupdate_diff('{conflicted_row.ENCODED_FILENAME}');">{L_liveupdate_show_differences}</a></dd>
 			</dl>
 			<!-- END conflicted_row -->
-			<input type="submit" value="{L_liveupdate_downloadfiles}" name="download" class="mainoption bi_save"/>
+			<button type="submit" class="mainoption" name="download"><i class="fa fa-download"></i>{L_liveupdate_downloadfiles}</button>
 		</fieldset>		
 		<br />
 		<!-- ENDIF -->
@@ -105,19 +114,20 @@
 		</fieldset>
 		<br />
 		<!-- ENDIF -->
-	<input type="submit" value="{L_bridge_continue}" name="submit" class="mainoption bi_ok" <!-- IF S_CONFLICTED_FILES -->onclick="confirm_conflicted(); return false;"<!-- ENDIF --> />
-	<input type="button" value="{L_cancel}" name="cancel" class="mainoption bi_cancel" onclick="window.location.href='manage_live_update.php{SID}'"/>
-	<input type="hidden" name="show" value="5" >
+		<button type="submit" class="mainoption" name="submit" <!-- IF S_CONFLICTED_FILES -->onclick="confirm_conflicted(); return false;"<!-- ENDIF -->><i class=""></i>{L_bridge_continue}</button>
+		<button type="button" name="cancel" class="mainoption" onclick="window.location.href='manage_live_update.php{SID}'"><i class="fa fa-chevron-left"></i>{L_cancel}</button>
+		<input type="hidden" name="show" value="5" >
 	</form>
 	<!-- ENDIF -->
 
 
 	<!-- IF S_SHOW_9 -->
 	<form method="post" action="{ACTION}">
-		<div class="errorbox roundbox" id="lu_dontclose">
-			<div class="icon_false">{L_liveupdate_missingfiles_note}</div>
+		<div class="infobox infobox-large infobox-red clearfix" id="lu_dontclose">
+			<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_liveupdate_missingfiles_note}
 		</div>
-		<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch">
+
+		<table  class="table fullwidth colorswitch">
 			<tr>
 			  <th>{L_liveupdate_missingfiles}</th>
 			</tr>
@@ -127,12 +137,12 @@
 		  </tr>
 		  <!-- END missing_row -->
 		  <tr>
-			<th><input type="button" value="{L_liveupdate_checkagain}" name="submit" class="mainoption bi_ok" onclick="lu_step8()" /> <input type="submit" value="{L_liveupdate_downloadfiles}" name="download" class="mainoption bi_save"/></th>
+			<th><input  value=""  /> <input  class=" bi_save"/></th>
 			</tr> 
 		</table>
-
-	
-	<input type="hidden" name="show" value="9" >
+		<button type="button" name="submit" class="mainoption" onclick="lu_step8();"><i class="fa fa-refresh"></i>{L_liveupdate_checkagain}</button>
+		<button class="mainoption" type="submit" value="" name="download"><i class="fa fa-download"></i>{L_liveupdate_downloadfiles}</button>
+		<input type="hidden" name="show" value="9" >
 	</form>
 	<!-- ENDIF -->
 

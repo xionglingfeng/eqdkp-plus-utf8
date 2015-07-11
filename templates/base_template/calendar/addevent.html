@@ -1,7 +1,26 @@
 <script type='text/javascript'>
 //<![CDATA[
+function openAddTemplate(){
+	$( "#dialog-add-template" ).dialog( "open" );
+}
+	
 $(document).ready(function() {
-
+	$( "#dialog-add-template" ).dialog({
+		height: 200,
+		width: 400,
+		modal: true,
+		autoOpen: false,
+	});
+	
+	$('#addtemplate-button').on('click', function(){
+		var templatename = $('#mytemplatename').val();
+		$( "#dialog-add-template" ).dialog( "close" );
+		if (templatename != ""){
+			$('#templatename').val(templatename);
+			$('#addtemplate-submitbtn').click();
+		}
+	})
+	
 	$('#selectmode').change(function() {
 		if($(this).val() == 'raid'){
 			changeCalendars('1');
@@ -38,7 +57,7 @@ $(document).ready(function() {
 		}
 	});
 
-	$('.allday_cb').change(function() {
+	$("input[type='checkbox'][name='allday']").change(function() {
 		if($(this).prop('checked') == true){
 			$('#cal_startdate').datetimepicker('disableTimepicker');
 			$('#cal_enddate').datetimepicker('disableTimepicker');
@@ -65,15 +84,16 @@ $(document).ready(function() {
 	$("#cal_raidtemplate").bind("change", function(e){
 		$(".resettemplate_input").val('');
 		if($(this).val() > 0){
-			$.getJSON("addevent.php{SID}&loadtemplate="+$(this).val(), function(data){
+			$.getJSON("{EQDKP_CONTROLLER_PATH}editcalendarevent{SEO_EXTENSION}{SID}&loadtemplate="+$(this).val(), function(data){
 				$.each(data, function(i,item){
 					//if(item.field == 'dw_raidleader'){
 						//$("#dw_raidleader").attr("value","3")
-						$("#dw_raidleader").multiselect("refresh");
+						
 						//}else{
 						$("#"+item.field).val(item.value);
 						//}
 				});
+				$("#dw_raidleader").multiselect("refresh");
 				$('#cal_raidmodeselect').trigger('change');
 			});
 		}
@@ -82,7 +102,7 @@ $(document).ready(function() {
 	// Delete templates
 	$("#template_delbutton").bind("click", function(){
 		if($("#cal_raidtemplate").val() > 0){
-			$.get('addevent.php{SID}&link_hash={CSRF_DELETETEMPLATE}&deletetemplate='+$("#cal_raidtemplate").val(), function(data) {
+			$.get('{EQDKP_CONTROLLER_PATH}editcalendarevent{SEO_EXTENSION}{SID}&link_hash={CSRF_DELETETEMPLATE}&deletetemplate='+$("#cal_raidtemplate").val(), function(data) {
 				$('#cal_raidtemplate').find('option').remove();
 				$('#cal_raidtemplate').append(data);
 			});
@@ -94,21 +114,21 @@ $(document).ready(function() {
 
 		if($('#selectmode').val() == 'raid'){
 			if(($('input[name="raid_attendees_count"]').val() < 1) || ($('input[name="raid_attendees_count"]').val() == '0')){
-				ModalAlert('{L_raidevent_event_val_attnd}');
+				ModalAlert({L_raidevent_event_val_attnd|jsencode});
 				return false;
 			}
 			if(($('input[name="raid_eventid"]').val() == '') || ($('input[name="raid_eventid"]').val() < 1)){
-				ModalAlert('{L_raidevent_event_val_name}');
+				ModalAlert({L_raidevent_event_val_name|jsencode});
 				return false;
 			}
 		}else{
 			var dv_eventname = $('input[name="eventname"]').val();
 			if(dv_eventname.length < 3){
-				ModalAlert("{L_raidevent_event_val_name}");
+				ModalAlert({L_raidevent_event_val_name|jsencode});
 				return false;
 			}
 			if($('input[name="calendar_id"]').val() < 1){
-				ModalAlert('{L_raidevent_raid_val_eventid}');
+				ModalAlert({L_raidevent_raid_val_eventid|jsencode});
 				return false;
 			}
 		}
@@ -136,7 +156,7 @@ function changeCalendars(cal_mode){
 
 	// check if a calendar is available for this mode
 	if ($('#calendar_id option').length == 0) {
-		ModalAlert('{L_raidevent_raid_val_addevent}');
+		ModalAlert({L_raidevent_raid_val_addevent|jsencode});
 	}
 }
 
@@ -144,9 +164,9 @@ function ModalAlert(text){
 	$( "<div></div>" ).dialog({
 			height: 200,
 			modal: true,
-			title: '{L_raidevent_raid_errorhead}',
+			title: {L_raidevent_raid_errorhead|jsencode},
 			buttons: { Ok: function() { $(this).dialog('close'); } }
-		}).html('<p class="confirmdialog"><span class="ui-icon ui-icon-alert" style="float:left; margin:0 7px 20px 0;"></span>'+text+'</p>');
+		}).html('<p class="confirmdialog"><i class="fa fa-exclamation-triangle fa-2x" style="float:left; margin:0 7px 24px 0;"></i>'+text+'</p>');
 }
 
 function attendeeCount(){
@@ -164,24 +184,18 @@ function attendeeCount(){
 	<input type="hidden" name="eventid" value="{EVENT_ID}" />
 
 	<!-- IF IS_CLONED -->
-	<div class="bluebox roundbox">
-		<div class="icon_repeating">
-			{L_calendar_event_clones_info}<br/>{RADIO_EDITCLONES}
-		</div>
+	<div class="infobox infobox-large infobox-blue clearfix">
+		<i class="fa fa-retweet fa-4x pull-left"></i> {L_calendar_event_clones_info}<br/>{RADIO_EDITCLONES}
 	</div>
 	<!-- ENDIF -->
 
-	<fieldset class="settings mediumsettings floatLeft" id="eventsettings" style="width: 470px;">
-		<legend class="event">{L_calendar_mode_event}</legend>
-		<legend class="raid">{L_calendar_mode_raid}</legend>
-
-		<dl>
-			<dt><label>{L_calendar_mode}</label></dt>
-			<dd>{DR_CALENDARMODE}</dd>
-		</dl>
+	<fieldset class="settings mediumsettings floatLeft" id="eventsettings" style="width: 540px;">
+		<legend>{DR_CALENDARMODE}</legend>
 		<dl class="raid">
 			<dt><label>{L_raidevent_template}</label></dt>
-			<dd>{DR_TEMPLATE} <img src="../images/global/delete.png" alt="{L_delete}" id="template_delbutton" /></dd>
+			<dd>{DR_TEMPLATE} 
+				<button type="button" name="delete_template" id="template_delbutton"><i class="fa fa-trash-o"></i></button>
+			</dd>
 		</dl>
 		<hr />
 		<dl>
@@ -198,55 +212,60 @@ function attendeeCount(){
 		</dl>
 		<dl class="raid">
 			<dt><label>{L_raidevent_raidevent}:</label></dt>
-			<dd><span id="raidevent_dropdown">{DR_EVENT}</span> <img src="../images/glyphs/add.png" alt="{L_raidevent_raidevent_add}" title="{L_raidevent_raidevent_add}" class="hand" onclick="AddEventDialog()" /></dd>
+			<dd>
+				<span id="raidevent_dropdown">{DR_EVENT}</span> 
+				<button type="button" name="add_event" onclick="AddEventDialog()"><i class="fa fa-plus"></i></button>
+			</dd>
 		</dl>
-		<dl class="raid">
-			<dt><label>{L_raidevent_templatename}:</label></dt>
-			<dd><input type="text" name="templatename" value="{TEMPLATE_NAME}" class="input resettemplate_input" id="name" /> {HELP_TEMPLATE}</dd>
-		</dl>
+		<!-- IF DKP_ENABLED -->
 		<dl class="raid">
 			<dt><label>{L_raidevent_value}:</label></dt>
 			<dd><input type="text" name="raid_value" size="8" maxlength="7" value="{RAID_VALUE}" class="input resettemplate_input" id="input_dkpvalue" /> {HELP_VALUE}</dd>
 		</dl>
+		<!-- ENDIF -->
 		<dl class="raid">
 			<dt><label>{L_raidevent_raidleader}:</label></dt>
 			<dd>{DR_RAIDLEADER}</dd>
 		</dl>
 		<dl>
-			<dt><label><span id="startdate_title">{L_calendar_startdate}</span>:</label></dt>
-			<dd>{JQ_DATE_START}</dd>
-		</dl>
-		<dl class="allday">
-			<dt><label>{L_calendar_enddate}:</label></dt>
-			<dd>{JQ_DATE_END}</dd>
+			<dt><label>{L_calendar_date}:</label></dt>
+			<dd>{JQ_DATE_START} - {JQ_DATE_END}</dd>
 		</dl>
 		<dl class="raid">
 			<dt><label>{L_calendar_deadline}:</label></dt>
-			<dd><input type="text" name="deadlinedate" id="deadlinedate" size="5" maxlength="255" value="{DATE_DEADLINE}" /> {L_calendar_deadline_entity}</dd>
-		</dl>
-		<dl>
-			<dt><label>{L_calendar_repeat}:</label></dt>
-			<dd>{DR_REPEAT}</dd>
+			<dd><input type="text" name="deadlinedate" id="deadlinedate" class="core-spinner" data-min="0" size="5" maxlength="255" value="{DATE_DEADLINE}" /> {L_calendar_deadline_entity}</dd>
 		</dl>
 		<dl class="event">
 			<dt><label>{L_calendar_allday_event}:</label></dt>
 			<dd>{CB_ALLDAY}</dd>
 		</dl>
 		<dl>
+			<dt><label>{L_calendar_repeat}:</label></dt>
+			<dd>{DR_REPEAT}</dd>
+		</dl>
+		<dl>
 			<dt><label>{L_note}:</label></dt>
 			<dd><textarea name="note" class="input resettemplate_input" id="input_note" rows="2" cols="32">{NOTE}</textarea></dd>
 		</dl>
+
+		<!-- IF not IS_EDIT -->
+		<hr />
+		<dl class="raid">
+			<dt><label>{L_raidevent_autogroups}:</label></dt>
+			<dd>{DR_GROUPS} {DR_STATUS}</dd>
+		</dl>
+		<!-- ENDIF -->
 
 	</fieldset>
 
 	<fieldset class="settings floatRight raid" style="width: 310px;">
 		<legend>{L_raidevent_attendees}</legend>
 		<dl>
-			<dt><label><img src="../images/global/help.png" alt=""/> {L_calendar_distri}:</label></dt>
+			<dt><label><i class="fa fa-cogs fa-lg"></i> {L_calendar_distri}:</label></dt>
 			<dd>{DR_RAIDMODE}</dd>
 		</dl>
 		<dl>
-			<dt><label><img src="../images/calendar/summ.png" alt=""/> {L_raidevent_attendees}:</label></dt>
+			<dt><label><i class="fa fa-group fa-lg"></i> {L_raidevent_attendees}:</label></dt>
 			<dd><input type="text" size="3" maxlength="2" name="raid_attendees_count" value="{ATTENDEE_COUNT}" readonly="readonly" id="attendees_summ" /></dd>
 		</dl>
 		<div id="raidmode_class">
@@ -272,13 +291,29 @@ function attendeeCount(){
 	<div class="clear"></div>
 
 	<!-- IF IS_EDIT -->
-		<input type="submit" name="upd" value="{L_calendars_upd_button}" class="mainoption" />
-		<input type="submit" name="addtemplate" value="{L_raidevent_savetemplate}" class="liteoption bi_archive raid" />
+		<button type="submit" name="upd" class="mainoption"><i class="fa fa-check"></i>{L_calendars_upd_button}</button>
+		<button type="button" class="liteoption raid" onclick="openAddTemplate();"><i class="fa fa-clipboard"></i>{L_raidevent_savetemplate}</button>
+		<button type="submit" name="addtemplate" class="liteoption displayNone" id="addtemplate-submitbtn"></button>
 	<!-- ELSE -->
 		<input type="hidden" name="addevent"/>
-		<input type="submit" name="addevent" value="{L_calendars_add_button}" class="mainoption bi_ok" id="submittheform"/>
-		<input type="reset"  name="reset" value="{L_reset}" class="liteoption bi_reset" />
-		<input type="submit" name="addtemplate" value="{L_raidevent_savetemplate}" class="liteoption bi_archive raid" id="save_template" />
+		<button type="submit" name="addevent" id="submittheform" class="mainoption"><i class="fa fa-check"></i>{L_calendars_add_button}</button>
+		<button type="button" class="liteoption raid" onclick="openAddTemplate();"><i class="fa fa-clipboard"></i>{L_raidevent_savetemplate}</button>
+		<button type="submit" name="addtemplate" class="liteoption displayNone" id="addtemplate-submitbtn"></button>
+		<button type="reset"  name="reset" class="liteoption"><i class="fa fa-trash-o"></i>{L_reset}</button>
 	<!-- ENDIF -->
+	
+	<input type="hidden" name="templatename" value="{TEMPLATE_NAME}" class="input resettemplate_input" id="templatename" />
 {CSRF_TOKEN}
 </form>
+
+<div id="dialog-add-template" title="{L_raidevent_savetemplate}" style="display:none;">
+			<fieldset class="settings mediumsettings">
+				<dl>
+					<dt><label>{L_name}:</label></dt>
+					<dd>
+						<input type="text" id="mytemplatename" style="width: 90%"/>
+					</dd>
+				</dl>
+			</fieldset>
+		<button type="button" id="addtemplate-button"><i class="fa fa-check"></i> {L_submit}</button>
+</div>

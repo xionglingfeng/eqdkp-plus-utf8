@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -82,7 +85,9 @@ if (!class_exists("filehandler_ftp")) {
 
 					// We need the temp folder.. create it!
 					$blnResult = $this->CheckCreateFolder('', 'tmp');
-					$this->ftp->chmod($this->remove_rootpath($this->tmp_Folder), 0777);
+					
+					$chmod = (defined('CHMOD') ? CHMOD : 0775);
+					$this->ftp->chmod($this->remove_rootpath($this->tmp_Folder), $chmod);
 					$this->ftp->setTempDir($this->tmp_Folder);
 					if (!$blnResult){
 						echo 'FTP-Error: Could not create tmp-folder';
@@ -108,7 +113,8 @@ if (!class_exists("filehandler_ftp")) {
 			return $this->FilePath($path.'/index.html', $plugin);
 		}
 
-		private function mkdir_r($name, $chmod=0777){
+		private function mkdir_r($name, $chmod=false){
+			if($chmod === false) $chmod = $this->get_chmod();
 			if (!$this->init_ftp()) return false;
 			$name = $this->remove_rootpath($name);
 			$this->ftp->mkdir_r($name, $chmod);
@@ -135,6 +141,12 @@ if (!class_exists("filehandler_ftp")) {
 			if (!$this->init_ftp()) return false;
 			$filename = $this->remove_rootpath($filename);
 			return $this->ftp->put_string($filename, $data);
+		}
+		
+		public function addContent($filename, $data){
+			if (!$this->init_ftp()) return false;
+			$filename = $this->remove_rootpath($filename);
+			return $this->ftp->add_string($filename, $data);
 		}
 
 		/**
@@ -265,7 +277,7 @@ if (!class_exists("filehandler_ftp")) {
 			}
 			if(is_file($this->root_path.$path)){
 				if (!$this->init_ftp()) return false;
-				//$this->ftp->chmod($path, 0777);
+				//$this->ftp->chmod($path, $this->get_chmod());
 			}
 			return is_file($this->root_path.$path);
 		}
@@ -289,7 +301,7 @@ if (!class_exists("filehandler_ftp")) {
 			$old_file = $this->remove_rootpath($old_file);
 			$new_file = $this->remove_rootpath($new_file);
 			$result = $this->ftp->rename($old_file, $new_file);
-			$this->ftp->chmod($new_file, 0777);
+			$this->ftp->chmod($new_file, $this->get_chmod());
 			return $result;
 		}
 
@@ -382,9 +394,14 @@ if (!class_exists("filehandler_ftp")) {
 						case 2:	ImageJPEG($img,	$this->tmp_Folder.$filename, 95);		break;	// JPG
 						case 3:	ImagePNG($img,	$this->tmp_Folder.$filename, 0);		break;	// PNG
 					}
+					
+					$this->rename($this->tmp_Folder.$filename, $thumbfolder.$filename);
+					$this->Delete($this->tmp_Folder.$filename);
+				
+				} else {
+					$this->copy($image, $thumbfolder.$filename);
 				}
-				$this->rename($this->tmp_Folder.$filename, $thumbfolder.$filename);
-				$this->Delete($this->tmp_Folder.$filename);
+				
 			}
 		}
 		
@@ -392,7 +409,24 @@ if (!class_exists("filehandler_ftp")) {
 			if (strpos($string, $this->root_path) === 0){
 				return substr($string, strlen($this->root_path));
 			}
+			
+			$strServerpath = $this->config->get('server_path');
+			if(stripos($string, $strServerpath ) === 0)
+				return substr($string, strlen($strServerpath));
+			
+			if (strpos($string, '../') === 0){
+				return str_replace("../", "", $string);
+			}
+			
 			return $string;
+		}
+		
+		//These methods here have been defined somewhere else. But the pfh is called so early in super registry, that they are not available when pfh needs it.
+		//Therefore they have been redeclared here.
+		
+		private function get_chmod(){
+			if(defined('CHMOD')) return CHMOD;
+			return 0775;
 		}
 		
 	}

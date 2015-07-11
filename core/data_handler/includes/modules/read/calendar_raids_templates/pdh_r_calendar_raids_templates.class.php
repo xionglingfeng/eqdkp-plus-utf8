@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if (!defined('EQDKP_INC')){
@@ -22,10 +25,6 @@ if (!defined('EQDKP_INC')){
 
 if (!class_exists('pdh_r_calendar_raids_templates')){
 	class pdh_r_calendar_raids_templates extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'db'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 		private $rctemplates;
 		public $hooks = array(
@@ -61,17 +60,21 @@ if (!class_exists('pdh_r_calendar_raids_templates')){
 
 			// empty array as default
 			$this->rctemplates	= array();
-			$myresult		= $this->db->query('SELECT * FROM __calendar_raid_templates;');
-			while ($row = $this->db->fetch_record($myresult)){
-				$templatearray = json_decode($row['tpldata'], true);
-				$this->rctemplates[$row['id']]['name'] = $row['name'];
-				if(is_array($templatearray)){
-					foreach($templatearray as $tplkey=>$tplvalue){
-						$this->rctemplates[$row['id']][$tplkey] = $tplvalue;
+			
+			$objQuery = $this->db->query('SELECT * FROM __calendar_raid_templates;');
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$templatearray = json_decode($row['tpldata'], true);
+					$this->rctemplates[$row['id']]['name'] = $row['name'];
+					if(is_array($templatearray)){
+						foreach($templatearray as $tplkey=>$tplvalue){
+							$this->rctemplates[$row['id']][$tplkey] = $tplvalue;
+						}
 					}
 				}
+				$this->pdc->put('pdh_calendar_raids_table.templates', $this->rctemplates, NULL);
 			}
-			if($myresult) $this->pdc->put('pdh_calendar_raids_table.templates', $this->rctemplates, NULL);
+	
 			return true;
 		}
 
@@ -109,6 +112,4 @@ if (!class_exists('pdh_r_calendar_raids_templates')){
 
 	} //end class
 } //end if class not exists
-
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_calendar_raids_templates', pdh_r_calendar_raids_templates::__shortcuts());
 ?>

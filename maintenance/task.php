@@ -1,33 +1,36 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 // EQdkp required files/vars
 define('EQDKP_INC', true);
 define('MAINTENANCE_MODE',1);
 
-$eqdkp_root_path = '../';
+$eqdkp_root_path = './../';
 $lite = true;
 define('DEBUG', 3);
 require_once($eqdkp_root_path.'common.php');
 require_once($eqdkp_root_path.'maintenance/includes/task.aclass.php');
 
 class task_display extends gen_class {
-	public static $shortcuts = array('tpl', 'user', 'in', 'pdl',
+	public static $shortcuts = array(
 		'core' => array('core', array('maintenance', 'task.html', 'maintenance_message.html')),
 		'mmt'	=> 'mmtaskmanager',
 	);
@@ -69,8 +72,9 @@ class task_display extends gen_class {
 					$dep_obj->init_lang();
 					$form		.= '<tr><td>'.$dep_obj->get_description().'</td></tr>';
 				}
-				$form .= '<tr><th><a href="./task.php'.$this->SID.'&amp;task='.$task_obj->dependencies[0].'">'.$this->user->lang('start_here').'</a></th></tr>';
-				$form .= '</table>';
+				$form .= '</table>
+					<a href="./task.php'.$this->SID.'&amp;task='.$task_obj->dependencies[0].'"><button>'.$this->user->lang('start_here').'</button></a>
+						';
 
 				$this->tpl->assign_vars(array(
 					'FORM_METHOD'		=> 'GET',
@@ -88,7 +92,7 @@ class task_display extends gen_class {
 				));
 			}
 			$timer_end = microtime(true);
-			$this->core->create_breadcrump($this->user->lang($task_obj->type), 'task_manager.php'.$this->SID.'&amp;type='.$task_obj->type);
+			$this->core->create_breadcrump($this->user->lang($task_obj->type), $this->SID.'&amp;type='.$task_obj->type);
 			$this->core->create_breadcrump($task_obj->lang[$task]);
 
 
@@ -103,6 +107,5 @@ class task_display extends gen_class {
 		$this->core->page_tail();
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_task_display', task_display::$shortcuts);
 registry::register('task_display');
 ?>

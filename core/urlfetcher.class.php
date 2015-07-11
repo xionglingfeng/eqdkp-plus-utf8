@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2011
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,7 +24,6 @@ if ( !defined('EQDKP_INC') ){
 }
 
 class urlfetcher  extends gen_class {
-	public static $shortcuts = array();
 
 	private $useragent			= '';		// User Agent
 	private $timeout			= 15;											// Timeout
@@ -47,6 +49,8 @@ class urlfetcher  extends gen_class {
 				break;
 			}
 		}
+		
+		if(!$this->pdl->type_known('urlfetcher')) $this->pdl->register_type('urlfetcher', null, null, array(2,3,4));
 	}
 
 	/**
@@ -60,13 +64,19 @@ class urlfetcher  extends gen_class {
 		$this->method = ($this->method) ? $this->method : 'fopen';
 		if (!$conn_timeout) $conn_timeout = $this->conn_timeout;
 		if (!$timeout) $timeout = $this->timeout;
+		$this->pdl->log('urlfetcher', 'fetch url: '.$geturl.' method: '.$this->method);
 		return $this->{'get_'.$this->method}($geturl, $header, $conn_timeout, $timeout);
 	}
 	
 	public function post($url, $data, $content_type = "text/html; charset=utf-8", $header='', $conn_timeout = false, $timeout = false){
+		if(is_array($data)){
+			$data = http_build_query($data);
+		}
+		
 		$this->method = ($this->method) ? $this->method : 'fopen';
 		if (!$conn_timeout) $conn_timeout = $this->conn_timeout;
 		if (!$timeout) $timeout = $this->timeout;
+		$this->pdl->log('urlfetcher', 'post url: '.$geturl.' method: '.$this->method);
 		return $this->{'post_'.$this->method}($url, $data, $content_type, $header, $conn_timeout, $timeout);
 	}
 
@@ -96,7 +106,19 @@ class urlfetcher  extends gen_class {
 			$curl = curl_init();
 			curl_setopt_array($curl, $curlOptions);
 			$getdata = curl_exec($curl);
+			
+			$code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+			
+			$arrCurlInfo = curl_getinfo($curl);
+			$curl_error = curl_errno($curl);
+			$this->pdl->log('urlfetcher', 'Curl Error Nr. '.$curl_error);
+			$this->pdl->log('urlfetcher', 'Curl Info: '.print_r($curl_error, true));
+			$this->pdl->log('urlfetcher', 'Response Code: '.$code);
+			$this->pdl->log('urlfetcher', 'Response: '.strlen($getdata).'; First 200 Chars: '.substr($getdata, 0, 200));
+			
 			curl_close($curl);
+			if(intval($code) >= 400) return false;
+			
 			return $getdata;	
 		} else {
 			$curlOptions[CURLOPT_HEADER] = true;
@@ -127,6 +149,7 @@ class urlfetcher  extends gen_class {
 						}
 						curl_setopt($curl, CURLOPT_POSTFIELDS, null); //also switch modes after Redirect
 						curl_setopt($curl, CURLOPT_HTTPGET, true);
+						$this->pdl->log('urlfetcher', 'Redirect to '.$newurl.' because of Code '.$code);
 					} else {
 						$code = 0;
 					}
@@ -141,10 +164,20 @@ class urlfetcher  extends gen_class {
 			
 			curl_setopt($curl, CURLOPT_URL, $newurl);
 			$getdata = curl_exec($curl);
-			curl_close($curl);
+			$code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 			
+			$arrCurlInfo = curl_getinfo($curl);
+			$curl_error = curl_errno($curl);
+			$this->pdl->log('urlfetcher', 'Curl Error Nr. '.$curl_error);
+			$this->pdl->log('urlfetcher', 'Curl Info: '.print_r($curl_error, true));
+			
+			curl_close($curl);
 			//Remove Header
 			list ($header,$page) = preg_split('/\r\n\r\n/',$getdata,2); 
+			
+			$this->pdl->log('urlfetcher', 'Response Code: '.$code);
+			$this->pdl->log('urlfetcher', 'Reponse Header: '.$header);
+			$this->pdl->log('urlfetcher', 'Response: '.strlen($page).'; First 200 Chars: '.substr($page, 0, 200));
 			 
 			return $page;
 		}
@@ -182,7 +215,17 @@ class urlfetcher  extends gen_class {
 		$curl = curl_init();
 		curl_setopt_array($curl, $curlOptions);
 		$getdata = curl_exec($curl);
+		$code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+		
+		$arrCurlInfo = curl_getinfo($curl);
+		$curl_error = curl_errno($curl);
+		$this->pdl->log('urlfetcher', 'Curl Error Nr. '.$curl_error);
+		$this->pdl->log('urlfetcher', 'Curl Info: '.print_r($curl_error, true));
+		
 		curl_close($curl);
+		
+		$this->pdl->log('urlfetcher', 'Response Code: '.$code);	
+		$this->pdl->log('urlfetcher', 'Response: '.strlen($getdata).'; First 200 Chars: '.substr($getdata, 0, 200));
 		return trim($getdata);
 	}
 
@@ -210,6 +253,9 @@ class urlfetcher  extends gen_class {
 		);
 		$context	= @stream_context_create($opts);
 		$getdata	= @file_get_contents($geturl, false, $context);
+		
+		$this->pdl->log('urlfetcher', 'Response: '.strlen($getdata).'; First 200 Chars: '.substr($getdata, 0, 200));
+		
 		return $getdata;
 	}
 	
@@ -230,6 +276,9 @@ class urlfetcher  extends gen_class {
 		
 		$context	= @stream_context_create($opts);
 		$getdata	= @file_get_contents($url, false, $context);
+		
+		$this->pdl->log('urlfetcher', 'Response: '.strlen($getdata).'; First 200 Chars: '.substr($getdata, 0, 200));
+		
 		return $getdata;
 	
 	}
@@ -269,6 +318,9 @@ class urlfetcher  extends gen_class {
 			}
 			fclose($fp);
 		}
+		
+		$this->pdl->log('urlfetcher', 'Response: '.strlen($getdata).'; First 200 Chars: '.substr($getdata, 0, 200));
+		
 		return $getdata;
 	}
 	
@@ -304,6 +356,9 @@ class urlfetcher  extends gen_class {
 			}
 			fclose($fp);
 		}
+		
+		$this->pdl->log('urlfetcher', 'Response: '.strlen($getdata).'; First 200 Chars: '.substr($getdata, 0, 200));
+		
 		return $getdata;
 	}
 

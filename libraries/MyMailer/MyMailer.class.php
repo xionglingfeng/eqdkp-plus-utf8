@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: MyMailer
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		libraries:MyMailer
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,6 +25,8 @@ if ( !defined('EQDKP_INC') ){
 
 // Include Needed files...
 include_once('class.phpmailer.php');
+include_once('class.pop3.php');
+include_once('class.smtp.php');
 
 /**************** OPTIONS HELP *****************
 	$options = array(
@@ -36,7 +41,6 @@ class MyMailer extends PHPMailer {
 	private $myoptions = array();
 
 	public static $shortcuts = array(
-		'core', 'user', 'config',
 		'crypt'		=> 'encrypt',
 	);
 
@@ -74,7 +78,7 @@ class MyMailer extends PHPMailer {
 	}
 
 	public function Set_Language($lang){
-		$this->mydeflang = $lang;
+		$this->mydeflang	= $lang;
 	}
 
 	public function generateSubject($input){
@@ -118,25 +122,65 @@ class MyMailer extends PHPMailer {
 	/**
 	* Template
 	*
-	* @param $templatename	Name of the Email template to use
-	* @param $inputs				Array with input variables to change in mail body
+	* @param $templatename		Name of the Email template to use
+	* @param $inputs			Array with input variables to change in mail body
 	* @return traue/false
 	*/
 	private function Template($templatename, $inputs){
 		// Check if the template is from a file or not
 		if($this->myoptions['template_type'] == 'input'){
-			$body   = $templatename;
+			$body	= $templatename.nl2br($this->Signature);
 		}else{
+			//Specific Email Template
 			if (strpos($templatename, $this->root_path) === 0){
-				$body   = $this->getFile($templatename);
+				$content	= $this->getFile($templatename);
 			} else {
-				$body   = $this->getFile($this->root_path.'language/'.$this->mydeflang.'/email/'.$templatename);
+				$content	= $this->getFile($this->root_path.'language/'.$this->mydeflang.'/email/'.$templatename);
 			}
+			
+			//General Body Email Template
+			$intDefaultTemplate	= register('config')->get('default_style');
+			$strTemplatePath	= register('pdh')->get('styles', 'templatepath', array($intDefaultTemplate));
+				
+			if(is_file($this->root_path.'templates/'.$strTemplatePath.'/email.tpl')){
+				// get the logo
+				if(is_file(register('file_handler')->FolderPath('','files').register('config')->get('custom_logo'))){
+					$headerlogo	= register('file_handler')->FolderPath('','files').register('config')->get('custom_logo');
+				}else{
+					$headerlogo	= register('environment')->buildlink().'templates/eqdkp_modern/images/logo.svg';
+				}
+				$this->AddEmbeddedImage($headerlogo, 'headerlogo');
+				
+				// load the images out of the template/images/email folder. If the image is a svg, also include png woth same name if available
+				$images	= glob($this->root_path."templates/eqdkp_modern/images/emails/*.{jpg,png,svg}", GLOB_BRACE);
+				$arrEmbedd	= array();
+				foreach($images as $image){
+					$imageinfo	= pathinfo($image);
+					$arrEmbedd[str_replace('-','', $imageinfo["filename"])][] = array('filename' => $imageinfo["basename"], 'extension' => $imageinfo["extension"]);
+				}
+				foreach($arrEmbedd as $fileid=>$filedata){
+					foreach($filedata as $image){
+						$this->AddEmbeddedImage($this->root_path.'templates/eqdkp_modern/images/emails/'.$image['filename'], $fileid.'_'.$image['extension']);
+					}
+				}
+				#d($arrEmbedd);die();
+				#$this->AddEmbeddedImage($this->root_path.'templates/eqdkp_modern/images/background-head.svg', 'backgroundimage');
+				#$this->AddEmbeddedImage($this->root_path.'templates/eqdkp_modern/images/background-head.png', 'backgroundimage_fallback');
+
+				// replace the stuff
+				$body	= $this->getFile($this->root_path.'templates/'.$strTemplatePath.'/email.tpl');
+				$body	= str_replace('{CONTENT}', $content, $body);
+				$body	= str_replace('{LOGO}', $headerlogo, $body);
+				$body	= str_replace('{PLUSVERSION}', VERSION_EXT, $body);
+				$body	= str_replace('{SUBJECT}', $this->Subject, $body);
+				$body	= str_replace('{PLUSLINK}', register('environment')->buildlink(), $body);
+				$body	= str_replace('{SIGNATURE}', nl2br($this->Signature), $body);
+			} else $body = $content.nl2br($this->Signature);
 		}
-		$body   = str_replace("[\]",'',$body);
+		$body	= str_replace("[\]",'',$body );
 		if(is_array($inputs)){
 			foreach($inputs as $name => $value){
-				$body = str_replace("{".$name."}",$value,$body);
+				$body	= str_replace("{".$name."}",$value,$body );
 			}
 		}
 		return $body;
@@ -151,20 +195,24 @@ class MyMailer extends PHPMailer {
 	* @return traue/false
 	*/
 	private function GenerateMail($subject, $templatename, $bodyvars, $from){
-		$this->From     = $from;
-		$this->CharSet	= 'UTF-8';
-		$this->FromName = $this->dkpname;
-		$this->Subject  = $this->generateSubject($subject);
-		$tmp_body		= $this->Template($templatename, $bodyvars);
-		$signature 		= ($this->config->get('lib_email_signature')) ? "\n".$this->config->get('lib_email_signature_value') : '';
+		$this->From			= $from;
+		$this->CharSet		= 'UTF-8';
+		$this->FromName		= $this->dkpname;
+		$this->Subject		= $this->generateSubject($subject);
+		$this->Signature	= ($this->config->get('lib_email_signature')) ? "\n".$this->config->get('lib_email_signature_value') : '';
+		$tmp_body			= $this->Template($templatename, $bodyvars);
 
 		if($this->myoptions['mail_type'] == 'text'){
 			// Text Mail
-			$this->Body	= $tmp_body.$signature;
+			$this->Body		= $tmp_body.$this->Signature;
 		}else{
 			// HTML Mail
-			$this->MsgHTML($tmp_body.nl2br($signature));
-			$this->AltBody = $this->nohtmlmssg;
+			$this->MsgHTML($tmp_body);
+			$this->AltBody	= $this->nohtmlmssg;
+		}
+		
+		if (DEBUG == 4){
+			pd($this->Body);
 		}
 	}
 
@@ -190,9 +238,9 @@ class MyMailer extends PHPMailer {
 				$this->Sendmail	= $this->config->get('lib_email_sendmail_path');
 			}
 		}else{
-			$this->Mailer   = 'mail';
+			$this->Mailer	= 'mail';
 		}
-		$sendput = $this->Send();
+		$sendput			= $this->Send();
 		$this->ClearAddresses();
 		return $sendput;
 	}
@@ -211,5 +259,4 @@ class MyMailer extends PHPMailer {
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_MyMailer', MyMailer::$shortcuts);
 ?>

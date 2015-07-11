@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2011
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,9 +24,6 @@ if ( !defined('EQDKP_INC') ){
 }
 
 class plugin_generic extends gen_class {
-	public static $shortcuts = array('user', 'db', 'pdl', 'config', 
-		'acl' => 'acl'
-	);
 
 	protected $code 				= '';
 	protected $pm 					= false;
@@ -41,10 +41,14 @@ class plugin_generic extends gen_class {
 	protected $exchange_feeds		= array();
 	protected $pdh_read_modules		= array();
 	protected $pdh_write_modules	= array();
-
+	
 	public function __construct() {
 		$this->code = get_class($this);
 		$this->user->register_plug_language($this->code);
+	}
+	
+	public static function getApiLevel(){
+		return (isset(static::$apiLevel)) ? static::$apiLevel : 0;
 	}
 	
 	protected function add_sql($type, $sql, $order='') {
@@ -73,8 +77,12 @@ class plugin_generic extends gen_class {
 			foreach ($permissions as $auth_value => $permission) {
 				if ($permission['groups']){
 					foreach($permission['groups'] as $key=>$group_id){
-						$this->db->query("DELETE FROM __auth_groups WHERE group_id = ".$this->db->escape($group_id)." AND auth_id = ".$this->db->escape($this->acl->get_auth_id($auth_value)));
-						$this->db->query("INSERT INTO __auth_groups (group_id, auth_id, auth_setting) VALUES (".$this->db->escape($group_id).", ".$this->db->escape($this->acl->get_auth_id($auth_value)).", 'Y')");
+						$this->db->prepare("DELETE FROM __auth_groups WHERE group_id = ? AND auth_id = ?")->execute($group_id, $this->acl->get_auth_id($auth_value));
+						$this->db->prepare("INSERT INTO __auth_groups :p")->set(array(
+								'group_id' => $group_id,
+								'auth_id'	=> $this->acl->get_auth_id($auth_value),
+								'auth_setting' => 'Y',
+						))->execute();
 					}
 				}
 			}
@@ -82,7 +90,7 @@ class plugin_generic extends gen_class {
 
 		ksort($this->sql_queries[SQL_INSTALL]);
 		foreach($this->sql_queries[SQL_INSTALL] as $sql) {
-			if(!$this->db->query($sql)) return $this->db->error($sql);
+			if(!$this->db->query($sql)) return $this->db->error;
 		}
 		return true;
 	}
@@ -97,13 +105,14 @@ class plugin_generic extends gen_class {
 				$auth_ids[] = $this->acl->get_auth_id($auth_value);
 				$this->acl->del_auth_option($auth_value);
 			}
-			$this->db->query("DELETE FROM __auth_users WHERE `auth_id` IN ('".implode("', '", $auth_ids)."');");
-			$this->db->query("DELETE FROM __auth_groups WHERE `auth_id` IN ('".implode("', '", $auth_ids)."');");
+			
+			$this->db->prepare("DELETE FROM __auth_users WHERE `auth_id` :in")->in($auth_ids)->execute();
+			$this->db->prepare("DELETE FROM __auth_groups WHERE `auth_id` :in")->in($auth_ids)->execute();
 		}
 		
 		ksort($this->sql_queries[SQL_UNINSTALL]);
 		foreach($this->sql_queries[SQL_UNINSTALL] as $sql) {
-			if(!$this->db->query($sql)) return $this->db->error($sql);
+			if(!$this->db->query($sql)) return $this->db->error;
 		}
 		return true;
 	}
@@ -218,9 +227,9 @@ class plugin_generic extends gen_class {
 		// Look for $this->user->lang('<code>_plugin') - otherwise just use $this->user->lang('<code>')
 		$code = $this->get_data('code');
 		$cbox_group = ( $this->user->lang($code.'_plugin') ) ? $this->user->lang($code . '_plugin') : $this->user->lang($code);	
-		$plugin_icon = (strlen($this->get_data('icon'))) ? $this->get_data('icon') : $this->root_path."images/admin/plugin.png";
+		$plugin_icon = (strlen($this->get_data('icon'))) ? $this->get_data('icon') : "fa-puzzle-piece";
 
-		$cbox_group = '<img src="'.	$plugin_icon.'" alt="" /> ' .$cbox_group ;
+		$cbox_group = $this->core->icon_font($plugin_icon, 'fa-lg fa-fw').' '.$cbox_group ;
 
 		foreach ( $this->permissions as $auth_id => $permissions ){
 			$cbox_array[$cbox_group][] = array(
@@ -257,5 +266,4 @@ class plugin_generic extends gen_class {
 		return false;
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_plugin_generic', plugin_generic::$shortcuts);
 ?>

@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2010
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 define('EQDKP_INC', true);
 define('IN_ADMIN', true);
@@ -22,19 +25,16 @@ $eqdkp_root_path = './../';
 include_once ($eqdkp_root_path . 'common.php');
 
 class ManageProfileFields extends page_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'pdh', 'jquery', 'game', 'core', 'config', 'html');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 	public function __construct(){
 		$this->user->check_auth('a_config_man');
 		$handler = array(
-			'enable' => array('process' => 'enable', 'csrf'=>true),
-			'disable' => array('process' => 'disable', 'csrf'=>true),
-			'new'	=> array('process' => 'edit'),
+			'enable'	=> array('process' => 'enable', 'csrf'=>true),
+			'disable'	=> array('process' => 'disable', 'csrf'=>true),
+			'new'		=> array('process' => 'edit'),
+			'reset'		=> array('process' => 'process_reset','csrf'=>true)
 		);
-		parent::__construct(false, $handler, array('profile_fields', 'language'), null, 'del_ids[]');
+		parent::__construct(false, $handler, array('profile_fields', 'lang'), null, 'del_ids[]');
 		$this->process();
 	}
 
@@ -78,6 +78,11 @@ class ManageProfileFields extends page_generic {
 		$this->display($message);
 	}
 	
+	public function process_reset(){
+		$this->game->AddProfileFields();
+		$this->display();
+	}
+	
 	public function add(){
 		if ($this->in->get('id') != ""){
 		//Update
@@ -96,11 +101,14 @@ class ManageProfileFields extends page_generic {
 	}
 
 	public function edit(){
-		$field_data = $this->pdh->get('profile_fields', 'fields', array($this->in->get('edit')));
+		if($this->in->get('edit')) $field_data = $this->pdh->get('profile_fields', 'fields', array($this->in->get('edit')));
+		else $field_data = array('lang' => '', 'options_language' => '', 'type' => '', 'category' => '', 'size' => '', 'image' => '', 'options' => array());
 		$types = array(
-			'text'	=> 'Text',
+			'text'		=> 'Text',
 			'int'		=> 'Integer',
-			'dropdown' => 'Dropdown',
+			'dropdown'	=> 'Dropdown',
+			'link'		=> 'Link',
+			'multiselect' => 'Multiselect',
 		);
 
 		$categories = array(
@@ -111,19 +119,20 @@ class ManageProfileFields extends page_generic {
 		);
 
 		$this->tpl->assign_vars(array (
-			'S_EDIT'					=> true,
 			'L_IMAGE_NOTE'				=> sprintf($this->user->lang('profilefield_image_note'), $this->game->get_game()),
 			'F_PAGE_MANAGER'			=> 'manage_profilefields.php'.$this->SID,
-			'ID'						=> ($this->in->get('edit')) ? $this->in->get('edit') : '',
-			'LANGUAGE'					=> (isset($field_data['language'])) ? $field_data['language'] : '',
-			'TYPE_DD'					=> $this->html->DropDown('type', $types, ((isset($field_data['fieldtype'])) ? $field_data['fieldtype'] : ''), '', ' onchange="handle_fieldtypes(this.value);"'),
-			'CATEGORY_DD'				=> $this->html->DropDown('category', $categories, ((isset($field_data['category'])) ? $field_data['category'] : '')),
-			'SIZE'						=> (isset($field_data['size'])) ? $field_data['size'] : '',
-			'IMAGE'						=> (isset($field_data['image'])) ? $field_data['image'] : '',
-			'S_SHOW_OPTIONS'			=> (isset($field_data['fieldtype']) && $field_data['fieldtype'] == 'dropdown') ? '' : 'style="display:none;"',
+			'ID'						=> $this->in->get('edit'),
+			'LANGUAGE'					=> $field_data['lang'],
+			'OPTIONS_LANGUAGE'			=> $field_data['options_language'],
+			'TYPE_DD'					=> new hdropdown('type', array('options' => $types, 'value' => $field_data['type'], 'id' => 'type_dd')),
+			
+			'CATEGORY_DD'				=> new hdropdown('category', array('options' => $categories, 'value' => $field_data['category'])),
+			'SIZE'						=> $field_data['size'],
+			'IMAGE'						=> $field_data['image'],
+			'S_SHOW_OPTIONS'			=> ($field_data['type'] == 'dropdown' || $field_data['type'] == 'multiselect') ? '' : 'style="display:none;"',
 		));
 
-		if (isset($field_data['fieldtype']) && $field_data['fieldtype'] == 'dropdown'){
+		if ($field_data['type'] == 'dropdown' || $field_data['type'] == 'multiselect'){
 			foreach ($field_data['options'] as $key => $value){
 				$this->tpl->assign_block_vars('options_row', array(
 					'ID'		=> $key,
@@ -131,10 +140,24 @@ class ManageProfileFields extends page_generic {
 				));
 			}
 		}
+		
+		$this->tpl->add_js('
+$("#addopt_icon").click(function(){
+	var fields = $("#new_options > span:last-child").clone(true);
+	$("#addopt_icon").remove();
+	$("#new_options").append(fields);
+});
+$("#type_dd").change(function(){
+	if($("#type_dd").attr("value") == "dropdown" || $("#type_dd").attr("value") == "multiselect") {
+		$("#options_row").show();
+	} else {
+		$("#options_row").hide();
+	}
+});', 'docready');
 
 		$this->core->set_vars(array (
 			'page_title'		=> $this->user->lang('manage_profilefields'),
-			'template_file'		=> 'admin/manage_profilefields.html',
+			'template_file'		=> 'admin/manage_profilefields_edit.html',
 			'display'			=> true
 		));
 	}
@@ -144,19 +167,23 @@ class ManageProfileFields extends page_generic {
 			$this->pdh->process_hook_queue();
 			$this->core->messages($message);
 		}
+		
+		$this->jquery->Dialog('ResetProfileFields', '', array('custom_js'=> "window.location = 'manage_profilefields.php".$this->SID."&reset=true&link_hash=".$this->CSRFGetToken('reset')."';", 'message'=> $this->user->lang('reset_profilefieldstext')), 'confirm');
+		
+		
 		$this->confirm_delete($this->user->lang('confirm_del_profilefields'));
 		$fields = $this->pdh->get('profile_fields', 'fields');
 		if (is_array($fields)) {
 			foreach ($fields as $key=>$value){
 				$this->tpl->assign_block_vars('profile_row', array (
 					'ID'			=> $key,
-					'TYPE'			=> $value['fieldtype'],
+					'TYPE'			=> $value['type'],
 					'CATEGORY'		=> ($this->game->glang('uc_cat_'.$value['category'])) ?  $this->game->glang('uc_cat_'.$value['category']) : $this->user->lang('uc_cat_'.$value['category']),
 					'SIZE'			=> $value['size'],
 					'VISIBLE'		=> $value['visible'],
-					'NAME'			=> $value['language'],
-					'ENABLED_ICON'	=> ($value['enabled'] == 1) ? 'green' : 'red',
-					'ENABLE'		=> ($value['enabled'] == 1) ? 'disable' : 'enable',
+					'NAME'			=> $value['lang'],
+					'ENABLED_ICON'	=> ($value['enabled'] == 1) ? 'eqdkp-icon-online' : 'eqdkp-icon-offline',
+					'ENABLE'		=> ($value['enabled'] == 1) ? 'fa-eye-slash grey' : 'fa-eye',
 					'L_ENABLE'		=> ($value['enabled'] == 1) ? $this->user->lang('deactivate') : $this->user->lang('activate'),
 					'U_EDIT'		=> 'manage_profilefields.php'.$this->SID.'&amp;edit='.$key,
 					'U_ENABLE'		=> 'manage_profilefields.php'.$this->SID.'&amp;'.(($value['enabled'] == 1) ? 'disable' : 'enable').'='.$key.'&amp;link_hash='.(($value['enabled'] == 1) ? $this->CSRFGetToken('disable') : $this->CSRFGetToken('enable')),
@@ -177,6 +204,5 @@ class ManageProfileFields extends page_generic {
 		));
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_ManageProfileFields', ManageProfileFields::__shortcuts());
 registry::register('ManageProfileFields');
 ?>

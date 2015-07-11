@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2007
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if(!defined('EQDKP_INC')) {
 	die('Do not access this file directly.');
@@ -22,14 +25,12 @@ if(!defined('EQDKP_INC')) {
 
 if(!class_exists('pdh_w_event')) {
 	class pdh_w_event extends pdh_w_generic {
-		public static function __shortcuts() {
-		$shortcuts = array('pdh', 'db'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
-		public function __construct() {
-			parent::__construct();
-		}
+		
+		private $arrLogLang = array(
+			'event_name' 	=> "{L_NAME}",
+			'event_value'	=> "{L_VALUE}",
+			'event_icon'	=> "{L_ICON}",
+		);
 
 		public function add_event($name, $value, $icon) {
 			$arrSet = array(
@@ -38,16 +39,17 @@ if(!class_exists('pdh_w_event')) {
 				'event_icon'	=> $icon,
 				'event_added_by'=> $this->admin_user,
 			);
-			if($this->db->query("INSERT INTO __events :params", $arrSet)) {
-				$id = $this->db->insert_id();
+			
+			$objQuery = $this->db->prepare("INSERT INTO __events :p")->set($arrSet)->execute();
+			
+			if($objQuery) {
+				$id = $objQuery->insertId;
 				$log_action = array(
-					'id'			=> $id,
 					'{L_NAME}'		=> $name,
 					'{L_VALUE}'		=> $value,
 					'{L_ICON}'		=> $icon,
-					'{L_ADDED_BY}'	=> $this->admin_user
 				);
-				$this->log_insert('action_event_added', $log_action);
+				$this->log_insert('action_event_added', $log_action, $id, $name);
 				$this->pdh->enqueue_hook('event_update', array($id));
 				return $id;
 			}
@@ -66,18 +68,22 @@ if(!class_exists('pdh_w_event')) {
 				'event_updated_by'=> $this->admin_user,
 			);
 			
-			if($this->db->query("UPDATE __events SET :params WHERE event_id =?", $arrSet, $id)) {
-				$log_action = array(
-					'id'				=> $id,
-					'{L_NAME_BEFORE}'	=> $old['name'],
-					'{L_VALUE_BEFORE}'	=> $old['value'],
-					'{L_ICON_BEFORE}'	=> $old['icon'],
-					'{L_NAME_AFTER}'	=> ($old['name'] != $name) ? '<span class=\"negative\">'.$name.'</span>' : $name,
-					'{L_VALUE_AFTER}'	=> ($old['value'] != $value) ? '<span class=\"negative\">'.$value.'</span>' : $value,
-					'{L_ICON_AFTER}'	=> ($old['icon'] != $icon) ? '<span class=\"negatvie\">'.$icon.'</span>' : $icon,
-					'{L_UPDATED_BY}'	=> $this->admin_user
+			$objQuery = $this->db->prepare("UPDATE __events :p WHERE event_id =?")->set($arrSet)->execute($id);
+			
+			if($objQuery) {
+				$arrOld = array(
+					'event_name' 	=> $old['name'],
+					'event_value'	=> $old['value'],
+					'event_icon'	=> $old['icon'],
 				);
-				$this->log_insert('action_event_updated', $log_action);
+				$arrNew = array(
+					'event_name' 	=> $name,
+					'event_value'	=> $value,
+					'event_icon'	=> $icon,
+				);
+				$log_action = $this->logs->diff($arrOld, $arrNew, $this->arrLogLang);
+				if ($log_action) $this->log_insert('action_event_updated', $log_action, $id, $old['name']);
+								
 				$this->pdh->enqueue_hook('event_update', array($id));
 				return true;
 			}
@@ -88,16 +94,18 @@ if(!class_exists('pdh_w_event')) {
 			$old['name'] = $this->pdh->get('event', 'name', array($id));
 			$old['value'] = $this->pdh->get('event', 'value', array($id));
 			$old['icon'] = $this->pdh->get('event', 'icon', array($id));
+			
+			$this->db->beginTransaction();
+			
+			$objQuery = $this->db->prepare("DELETE FROM __events WHERE event_id = ?;")->execute($id);
 
-			$this->db->query("START TRANSACTION");
-			if($this->db->query("DELETE FROM __events WHERE event_id = ?;", false, $id)) {
+			if($objQuery) {
 				$log_action = array(
-					'id'			=> $id,
 					'{L_NAME}'		=> $old['name'],
 					'{L_VALUE}'		=> $old['value'],
 					'{L_ICON}'		=> $old['icon']
 				);
-				$this->log_insert('action_event_deleted', $log_action);
+				$this->log_insert('action_event_deleted', $log_action, $id, $old['name']);
 
 				//delete raids and adjustments
 				$retu = array(true);
@@ -105,13 +113,14 @@ if(!class_exists('pdh_w_event')) {
 				$retu[] = $this->pdh->put('adjustment', 'delete_adjustmentsofevent', array($id));
 
 				//delete multidkp2event data
-				if(!in_array(false, $retu, true) AND $this->db->query("DELETE FROM __multidkp2event WHERE multidkp2event_event_id = ?;", false, $id)) {
-					$this->db->query("COMMIT");
+				$objQuery = $this->db->prepare("DELETE FROM __multidkp2event WHERE multidkp2event_event_id = ?;")->execute($id);
+				if(!in_array(false, $retu, true) AND $objQuery) {
+					$this->db->commitTransaction();
 					$this->pdh->enqueue_hook('event_update', array($id));
 					return true;
 				}
 			}
-			$this->db->query("ROLLBACK");
+			$this->db->rollbackTransaction();
 			return false;
 		}
 		
@@ -122,5 +131,4 @@ if(!class_exists('pdh_w_event')) {
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_w_event', pdh_w_event::__shortcuts());
 ?>

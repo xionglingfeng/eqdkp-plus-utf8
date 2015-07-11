@@ -1,0 +1,54 @@
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li><a href="{EQDKP_ROOT_PATH}admin/manage_crons.php{SID}">{L_manage_cronjobs}</a></li>
+		<li class="current"><a>{CRON_DESC}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
+<form action="{ACTION}&amp;cron={CRON_NAME}" method="post">
+	<div class="infobox infobox-large infobox-blue clearfix">
+		<i class="fa fa-info-circle fa-4x pull-left"></i> <strong>{L_repeat_note}</strong>
+	</div>
+		
+	<fieldset class="settings">
+	<legend>{CRON_DESC}</legend>
+		<dl>
+			<dt><label>{L_name}:</label></dt>
+			<dd>{CRON_NAME}</dd>
+		</dl>
+		<dl>
+			<dt><label>{L_description}:</label></dt>
+			<dd><input name="cron_desc" type="text" class="input" id="cron_desc" value="{CRON_DESC}" style="width:95%;" /></dd>
+		</dl>
+		<dl>
+			<dt><label>{L_cron_start_time}:</label></dt>
+			<dd>{START_PICKER}</dd>
+		</dl>
+		<dl>
+			<dt><label>{L_repeat}:</label></dt>
+			<dd><input type="checkbox" name="cron_repeat" value="1" {CRON_REPEAT} /></dd>
+		</dl>
+		<dl>
+			<dt><label>{L_repeat_interval}:</label></dt>
+			<dd><input name="repeat_value" type="text" class="input" id="start_h2" value="{CRON_REPEAT_VALUE}" size="5" maxlength="2" /> - {REPEAT_DD}</dd>
+		</dl>
+	</fieldset>
+	<!-- IF S_PARAMS -->
+	<fieldset class="settings">
+	<legend>{L_settings}</legend>
+		<!-- BEGIN fields -->
+		<dl>
+			<dt><label>{fields.NAME}</label><br /><span>{fields.HELP}</span></dt>
+			<dd>{fields.FIELD}</dd>
+		</dl>
+		<!-- END fields -->
+
+	</fieldset>
+	<!-- ENDIF -->
+	<button name="upd" type="submit" class="mainoption" id="update" ><i class="fa fa-check"></i>{L_save}</button>
+	<button name="cancel" type="submit" class="liteoption" id="cancel"><i class="fa fa-chevron-left"></i>{L_cancel}</button>
+{CSRF_TOKEN}
+</form>

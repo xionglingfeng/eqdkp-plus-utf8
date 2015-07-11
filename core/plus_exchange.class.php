@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if( !defined( 'EQDKP_INC' ) ) {
@@ -22,7 +25,6 @@ if( !defined( 'EQDKP_INC' ) ) {
 
 if( !class_exists( "plus_exchange" ) ) {
 	class plus_exchange extends gen_class {
-		public static $shortcuts = array('xmltools' => 'xmltools', 'pm', 'portal', 'pdh');
 
 		//module lists
 		private $initialized_modules	= array();
@@ -35,14 +37,15 @@ if( !class_exists( "plus_exchange" ) ) {
 			$this->scan_modules();
 		}
 
-		public function register_module($module_name, $module_dir){
+		public function register_module($module_name, $module_dir, $class_params=array()){
 			//create object
 			$module = 'exchange_'.$module_name;
 			if (!is_file($this->root_path.$module_dir.'.php')) return false;
 			include($this->root_path.$module_dir.'.php');
-			$class = register($module);
+			$class = register($module, $class_params);
 			$this->modules[$module_name] = array(
-				'path'		=> $module_dir				
+				'path'			=> $module_dir,
+				'class_params'	=> $class_params,
 			);
 			return true;
 		}
@@ -65,6 +68,7 @@ if( !class_exists( "plus_exchange" ) ) {
 					}
 				}
 			}
+			
 			//Plugins
 			$plugs = $this->pm->get_plugins(PLUGIN_INSTALLED);
 			if (is_array($plugs)){
@@ -81,31 +85,41 @@ if( !class_exists( "plus_exchange" ) ) {
 				}
 			}
 			//Portal modules
-			$enabled_modules = $this->pdh->aget('portal', 'position', 0, array($this->pdh->get('portal', 'id_list', array(array('enabled' => 1)))));
-			if(is_array($enabled_modules)){
-				foreach($enabled_modules as $module_id => $posi) {
+			$layouts = $this->pdh->get('portal_layouts', 'id_list');
+			$module_ids = array();
+			foreach($layouts as $layout_id) {
+				$modules = $this->pdh->get('portal_layouts', 'modules', array($layout_id));
+				foreach($modules as $position => $module) {
+					foreach($module as $mod_id) {
+						$module_ids[$mod_id] = $mod_id;
+					}
+				}
+			}
+			
+			if(is_array($module_ids)) {
+				foreach($module_ids as $module_id) {
 					$path = $this->pdh->get('portal', 'path', array($module_id));
-					$plugin = $this->pdh->get('portal', 'plugin', array($module_id));
-					$obj = $this->portal->get_module($path, $plugin);
-					
-					if ($obj && $this->portal->check_visibility($module_id)){
-						$arrExchangeModules = $obj->get_exchangeModules();
+					$obj = $path.'_portal';
+					if (class_exists($obj) && $this->portal->check_visibility($module_id)){
+						$arrExchangeModules = $obj::get_data('exchangeMod');
+						$plugin = $this->pdh->get('portal', 'plugin', array($module_id));
 						foreach ($arrExchangeModules as $module_name){
 							if ($plugin != ''){
 								$module_dir = 'plugins/'.$plugin.'/portal/exchange/'.$module_name;
 							} else {
 								$module_dir = 'portal/'.$path.'/exchange/'.$module_name;
 							}
-							$this->register_module($module_name, $module_dir);
+							$this->register_module($module_name, $module_dir, array($module_id));
 						}
 					}
 				}
 			}
+			
 		}
 
 		public function execute(){
 			//Get all Arguments
-			$request_url = $_SERVER['REQUEST_URI'];
+			$request_url = $this->env->request;
 			$request_method = $_SERVER['REQUEST_METHOD'];
 
 			$request_args['get'] = $_GET;
@@ -120,7 +134,7 @@ if( !class_exists( "plus_exchange" ) ) {
 
 				include ($this->root_path.$this->modules[$function]['path'].'.php');
 				$module = 'exchange_'.$function;
-				$class = register($module);
+				$class = register($module, $this->modules[$function]['class_params']);
 				$method = strtolower($request_method).'_'.$function;
 
 				if (method_exists($class, $method)){
@@ -184,8 +198,4 @@ if( !class_exists( "plus_exchange" ) ) {
 		}
 	}//end class
 } //end if
-
-
-
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_plus_exchange', plus_exchange::$shortcuts);
 ?>

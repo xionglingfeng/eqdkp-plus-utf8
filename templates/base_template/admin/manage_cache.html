@@ -1,3 +1,14 @@
+<!-- IF S_NORMAL_HEADER -->
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li class="current"><a>{L_pdc_manager}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+<!-- ENDIF -->
+
 <form method="post" action="{ACTION}" name="post">
 <fieldset class="settings">
 	<legend>{L_pdc_settings}</legend>
@@ -18,14 +29,14 @@
 	</dl>
 	<div id="all_cache_divs">
 	<div id="div_cache_none" style="display:{DIV_CACHE_NONE_VISIBLE}">
-		<div class="errorbox roundbox">
-			<div class="icon_false">{L_pdc_cache_info_none}</div>
+		<div class="infobox infobox-large infobox-red clearfix">
+			<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_pdc_cache_info_none}
 		</div>
 	</div>
 
 	<div id="div_cache_file" style="display:{DIV_CACHE_FILE_VISIBLE}">
-		<div class="bluebox roundbox">
-			<div class="icon_info">{L_pdc_cache_info_file}</div>
+		<div class="infobox infobox-large infobox-blue clearfix">
+			<i class="fa fa-info-circle fa-4x pull-left"></i> {L_pdc_cache_info_file}
 		</div>
 		<br />
 		<dl>
@@ -39,8 +50,8 @@
 	</div>
 
 	<div id="div_cache_xcache" style="display:{DIV_CACHE_XCACHE_VISIBLE}">
-		<div class="bluebox roundbox">
-			<div class="icon_info">{L_pdc_cache_info_xcache}</div>
+		<div class="infobox infobox-large infobox-blue clearfix">
+			<i class="fa fa-info-circle fa-4x pull-left"></i> {L_pdc_cache_info_xcache}
 		</div>
 		<br />
 		<dl>
@@ -53,8 +64,8 @@
 		</dl>
 	</div>
 	<div id="div_cache_apc" style="display:{DIV_CACHE_APC_VISIBLE}">
-		<div class="bluebox roundbox">
-			<div class="icon_info">{L_pdc_cache_info_apc}</div>
+		<div class="infobox infobox-large infobox-blue clearfix">
+			<i class="fa fa-info-circle fa-4x pull-left"></i> {L_pdc_cache_info_apc}
 		</div>
 		<br />
 		<dl>
@@ -67,8 +78,8 @@
 		</dl>
 	</div>
 	<div id="div_cache_memcache" style="display:{DIV_CACHE_MEMCACHE_VISIBLE}">
-		<div class="bluebox roundbox">
-			<div class="icon_info">{L_pdc_cache_info_memcache}</div>
+		<div class="infobox infobox-large infobox-blue clearfix">
+			<i class="fa fa-info-circle fa-4x pull-left"></i> {L_pdc_cache_info_memcache}
 		</div>
 		<br />
 		<dl>
@@ -90,36 +101,43 @@
 	</div>
 	</div>
 	<br />
-	<div align='center'>
-		<input type="submit" name="cache_save" value="{L_save}" class="mainoption bi_ok" />
+	<div>
+		<button type="submit" name="cache_save" class="mainoption"><i class="fa fa-check"></i>{L_save}</button>
 	</div>
 </fieldset>
 
 <!-- IF PDC_CACHE_ENABLED -->
+<br />
 <fieldset class="settings">
 	<legend>{L_pdc_table}</legend>
-	<div class="bluebox roundbox">
-		<div class="icon_info">{L_CACHE_TABLE_INFO}</div>
+	<div class="infobox infobox-large infobox-blue clearfix">
+		<i class="fa fa-info-circle fa-4x pull-left"></i> {L_CACHE_TABLE_INFO}
 	</div>
 	<br />
-	<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch hoverrows">
+	<div class="tableHeader floatRight">
+		<button type="submit" name="cache_clear" class="mainoption"><i class="fa fa-times"></i>{L_pdc_clear}</button>
+		<button type="submit" name="cache_cleanup" class="mainoption"><i class="fa fa-trash-o"></i>{L_pdc_cleanup}</button>
+	</div>
+	<table class="table fullwidth colorswitch hoverrows">
 		<tr>
 			<th>{L_pdc_globalprefix}</th>
 			<th>{L_pdc_entity}</th>
 			<th>{L_pdc_status}</th>
+			<th>{L_pdc_expire_time}</th>
 		</tr>
 		<!-- BEGIN cache_entity_list_row -->
 		<tr>
 			<td>{cache_entity_list_row.GLOBAL_PREFIX}</td>
 			<td>{cache_entity_list_row.KEY}</td>
 			<td>{cache_entity_list_row.EXPIRED}</td>
+			<td>{cache_entity_list_row.EXPIRY_DATE}</td>
 		</tr>
 		<!-- END cache_entity_list_row -->
 	</table>
 	<br />
-	<div align='center'>
-		<input type="submit" name="cache_clear" value="{L_pdc_clear}" class="mainoption bi_delete" />
-		<input type="submit" name="cache_cleanup" value="{L_pdc_cleanup}" class="mainoption bi_reset" />
+	<div>
+		<button type="submit" name="cache_clear" class="mainoption"><i class="fa fa-times"></i>{L_pdc_clear}</button>
+		<button type="submit" name="cache_cleanup" class="mainoption"><i class="fa fa-trash-o"></i>{L_pdc_cleanup}</button>
 	</div>
 </fieldset>
 <!-- ENDIF -->

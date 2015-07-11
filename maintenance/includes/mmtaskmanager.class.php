@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,7 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "mmtaskmanager" ) ) {
 	class mmtaskmanager extends gen_class {
-		public static $shortcuts = array('db', 'config');
 
 		private $tasks		= array();
 		public $task_data	= array();
@@ -40,12 +42,14 @@ if ( !class_exists( "mmtaskmanager" ) ) {
 				}
 			}
 			//scan update-tasks from installed plugins
-			$plug_res = $this->db->query("SELECT code FROM __plugins WHERE status = '1';");
+			$objQuery = $this->db->query("SELECT code FROM __plugins WHERE status = '1';");
 			$plugs = array();
-			while ( $row = $this->db->fetch_record($plug_res) ) {
-				$plugs[] = $row['code'];
+			if ($objQuery){
+				while ( $row = $objQuery->fetchAssoc() ) {
+					$plugs[] = $row['code'];
+				}
 			}
-			$this->db->free_result($plug_res);
+			
 			$task_dir = $this->root_path.'plugins/';
 			$folder = scandir($task_dir);
 			foreach($folder as $file) {
@@ -90,6 +94,19 @@ if ( !class_exists( "mmtaskmanager" ) ) {
 			return count($this->tasks);
 		}
 		
+		public function get_task_hash(){
+			if(empty($this->tasks)){
+				$this->scan_tasks();
+			}
+			
+			$arrTasks = $this->tasks;
+			asort($arrTasks);
+			
+			$arrKeys = array_keys($arrTasks);
+			$strHash = md5(serialize($arrKeys));
+			return $strHash;
+		}
+		
 		public function init_tasks() {
 			require_once($this->root_path.'maintenance/includes/task.aclass.php');
 			$this->get_task_list();
@@ -118,6 +135,7 @@ if ( !class_exists( "mmtaskmanager" ) ) {
 					'necessary'		=> $task_obj->a_is_necessary(),
 					'applicable'	=> $task_obj->a_is_applicable(),
 					'version'		=> $task_obj->version,
+					'ext_version'	=> $task_obj->ext_version,
 					'author'		=> $task_obj->author,
 					'name'			=> $task_obj->name
 				);
@@ -126,5 +144,4 @@ if ( !class_exists( "mmtaskmanager" ) ) {
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_mmtaskmanager', mmtaskmanager::$shortcuts);
 ?>

@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 define('EQDKP_INC', true);
@@ -22,10 +25,6 @@ $eqdkp_root_path = './../';
 include_once($eqdkp_root_path . 'common.php');
 
 class MySQL_Info extends page_generic{
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'pm', 'core', 'config', 'db');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 	public function __construct(){
 		$this->user->check_auth('a_config_man');
@@ -43,20 +42,22 @@ class MySQL_Info extends page_generic{
 		$table_size = 0;
 		$index_size = 0;
 
-		$arrTables = $this->db->get_table_information(false, true);
+		$arrTables = $this->db->listTables();
 
-		foreach ($arrTables as $key => $value){
+		foreach ($arrTables as $strTablename){
+			$arrTableInfos = $this->db->fieldInformation($strTablename);
+			
 			$this->tpl->assign_block_vars('table_row', array(
-				'TABLE_NAME'	=> $key,
-				'ROWS'			=> $value['rows'],
-				'COLLATION'		=> $value['collation'],
-				'ENGINE'		=> $value['engine'],
-				'TABLE_SIZE'	=> $this->convert_db_size($value['data_length']),
-				'INDEX_SIZE'	=> $this->convert_db_size($value['index_length']))
+				'TABLE_NAME'	=> $strTablename,
+				'ROWS'			=> $arrTableInfos['rows'],
+				'COLLATION'		=> $arrTableInfos['collation'],
+				'ENGINE'		=> $arrTableInfos['engine'],
+				'TABLE_SIZE'	=> $this->convert_db_size($arrTableInfos['data_length']),
+				'INDEX_SIZE'	=> $this->convert_db_size($arrTableInfos['index_length']))
 			);
 
-			$index_size += $value['index_length'];
-			$table_size += $value['data_length'];
+			$index_size += $arrTableInfos['index_length'];
+			$table_size += $arrTableInfos['data_length'];
 			$table_count++;
 		}
 
@@ -69,7 +70,7 @@ class MySQL_Info extends page_generic{
 			'DB_ENGINE'			=> $this->dbtype,
 			'DB_NAME'			=> $this->dbname,
 			'DB_PREFIX'			=> $this->table_prefix,
-			'DB_VERSION'		=> 'Client ('.$this->db->client_version().')<br/>Server ('.$this->db->server_version().')',
+			'DB_VERSION'		=> 'Client ('.$this->db->client_version.')<br/>Server ('.$this->db->server_version.')',
 		));
 
 		$this->core->set_vars(array(
@@ -92,6 +93,5 @@ class MySQL_Info extends page_generic{
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_MySQL_Info', MySQL_Info::__shortcuts());
 registry::register('MySQL_Info');
 ?>

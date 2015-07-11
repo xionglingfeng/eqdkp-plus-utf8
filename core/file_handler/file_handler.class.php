@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -62,12 +65,38 @@ if (!class_exists("file_handler")) {
 			return $this->fhandler->FileDate($filename, $plugin);
 		}
 
-		public function FilePath($path, $plugin=false, $blnCreateFile=true){
-			return $this->fhandler->FilePath($path, $plugin, $blnCreateFile);
+		public function FilePath($path, $plugin=false, $blnCreateFile=true, $linkType = 'relative'){
+			$strFilePath = $this->fhandler->FilePath($path, $plugin, $blnCreateFile);
+			
+			switch ($linkType){
+				case 'relative': return $strFilePath;
+				break;
+				
+				case 'absolute': return registry::register('environment')->link.$this->remove_rootpath($strFilePath);
+				break;
+				
+				case 'serverpath' : return $this->server_path.$this->remove_rootpath($strFilePath);
+				break;
+				
+				default: return $this->remove_rootpath($strFilePath);
+			}
 		}
 
-		public function FolderPath($foldername, $plugin=false, $blnPlain = false){
-			return $this->fhandler->FolderPath($foldername, $plugin, $blnPlain);
+		public function FolderPath($foldername, $plugin=false, $linkType = 'relative'){
+			$strFilePath = $this->fhandler->FolderPath($foldername, $plugin, false);
+			switch ($linkType){
+				case 'relative': return $strFilePath;
+				break;
+				
+				case 'absolute': return registry::register('environment')->link.$this->remove_rootpath($strFilePath);
+				break;
+				
+				case 'serverpath' : return $this->server_path.$this->remove_rootpath($strFilePath);
+				break;
+				
+				default: return $this->remove_rootpath($strFilePath);
+			}
+			
 		}
 
 		public function FileSize($file, $plugin=false){
@@ -93,10 +122,13 @@ if (!class_exists("file_handler")) {
 			}
 			
 			switch ($linkType){
-				case 'relative': return $this->root_path.$this->remove_rootpath($link);
+				case 'relative': return $link;
 				break;
 				
 				case 'absolute': return registry::register('environment')->link.$this->remove_rootpath($link);
+				break;
+				
+				case 'serverpath': return $this->server_path.$this->remove_rootpath($link);
 				break;
 				
 				default: return $this->remove_rootpath($link);
@@ -132,6 +164,10 @@ if (!class_exists("file_handler")) {
 
 		public function putContent($filename, $data){
 			return $this->fhandler->putContent($filename, $data);
+		}
+		
+		public function addContent($filename, $data){
+			return $this->fhandler->addContent($filename, $data);
 		}
 
 		public function is_writable($file, $testfile=false){

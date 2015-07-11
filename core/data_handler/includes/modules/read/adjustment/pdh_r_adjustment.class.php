@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if(!defined('EQDKP_INC'))
@@ -23,10 +26,7 @@ if(!defined('EQDKP_INC'))
 
 if(!class_exists('pdh_r_adjustment')){
 	class pdh_r_adjustment extends pdh_r_generic{
-		public static function __shortcuts() {
-			$shortcuts = array('db', 'pdh', 'user', 'time', 'pdc', 'apa' => 'auto_point_adjustments');
-			return array_merge(parent::$shortcuts, $shortcuts);
-		}
+		public static $shortcuts = array('apa' => 'auto_point_adjustments');
 
 		public $default_lang = 'english';
 		public $adjustments;
@@ -45,6 +45,7 @@ if(!class_exists('pdh_r_adjustment')){
 			'adj_value'			=> array('value', array('%adjustment_id%'), array()),
 			'adj_reason_link'	=> array('link', array('%adjustment_id%', '%link_url%', '%link_url_suffix%'), array()),
 			'adj_event'			=> array('event_name', array('%adjustment_id%'), array()),
+			'adj_member'		=> array('member_name', array('%adjustment_id%'), array()),
 			'adj_members'		=> array('m4agk4a', array('%adjustment_id%'), array()),
 			'adj_raid'			=> array('raid_id', array('%adjustment_id%', '%raid_link_url%', '%raid_link_url_suffix%'), array()),
 			'adjedit'			=> array('editicon', array('%adjustment_id%', '%link_url%', '%link_url_suffix%'), array()),
@@ -66,22 +67,24 @@ if(!class_exists('pdh_r_adjustment')){
 			if($this->adjustments !== NULL){
 				return true;
 			}
-			$sql = "SELECT * FROM __adjustments ORDER BY adjustment_date DESC;";
-			$result = $this->db->query($sql);
-
-			while( $row = $this->db->fetch_record($result) ){
-				$this->adjustments[$row['adjustment_id']]['value'] = $row['adjustment_value'];
-				$this->adjustments[$row['adjustment_id']]['date'] = $row['adjustment_date'];
-				$this->adjustments[$row['adjustment_id']]['member'] = $row['member_id'];
-				$this->adjustments[$row['adjustment_id']]['reason'] = $row['adjustment_reason'];
-				$this->adjustments[$row['adjustment_id']]['event'] = $row['event_id'];
-				$this->adjustments[$row['adjustment_id']]['added_by'] = $row['adjustment_added_by'];
-				$this->adjustments[$row['adjustment_id']]['updated_by'] = $row['adjustment_updated_by'];
-				$this->adjustments[$row['adjustment_id']]['group_key'] = $row['adjustment_group_key'];
-				$this->adjustments[$row['adjustment_id']]['raid_id'] = $row['raid_id'];
+			
+			$objQuery = $this->db->query("SELECT * FROM __adjustments ORDER BY adjustment_date DESC;");
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$this->adjustments[$row['adjustment_id']]['value'] = $row['adjustment_value'];
+					$this->adjustments[$row['adjustment_id']]['date'] = $row['adjustment_date'];
+					$this->adjustments[$row['adjustment_id']]['member'] = $row['member_id'];
+					$this->adjustments[$row['adjustment_id']]['reason'] = $row['adjustment_reason'];
+					$this->adjustments[$row['adjustment_id']]['event'] = $row['event_id'];
+					$this->adjustments[$row['adjustment_id']]['added_by'] = $row['adjustment_added_by'];
+					$this->adjustments[$row['adjustment_id']]['updated_by'] = $row['adjustment_updated_by'];
+					$this->adjustments[$row['adjustment_id']]['group_key'] = $row['adjustment_group_key'];
+					$this->adjustments[$row['adjustment_id']]['raid_id'] = $row['raid_id'];
+				}
+				
+				$this->pdc->put('pdh_adjustment_table', $this->adjustments, null);
 			}
-			$this->db->free_result($result);
-			if($result) $this->pdc->put('pdh_adjustment_table', $this->adjustments, null);
+	
 		}
 
 		public function get_id_list(){
@@ -141,7 +144,7 @@ if(!class_exists('pdh_r_adjustment')){
 			return isset($this->adjustments[$adj_id]) ? $this->adjustments[$adj_id]['reason'] : '';
 		}
 
-		public function get_raid_id($adj_id,$base_url, $url_suffix = ''){
+		public function get_raid_id($adj_id){
 			return $this->adjustments[$adj_id]['raid_id'];
 		}
 		
@@ -161,17 +164,41 @@ if(!class_exists('pdh_r_adjustment')){
 			}
 			return $adjustment_ids;
 		}
+		
+		public function get_adjsofmembers($arrMemberIDs){
+			$adj4member = array();
+			foreach($arrMemberIDs as $member_id){
+				$arrAdj = $this->get_adjsofmember($member_id);
+				if (is_array($arrAdj)) $adj4member = array_merge($adj4member, $arrAdj);
+			}
+			return array_unique($adj4member);
+		}
 
-		public function get_adjsofraid($raid_id){
+		
+		public function get_adjsofuser($user_id){
+			$arrMemberList = $this->pdh->get('member', 'connection_id', array($user_id));
 			$adjustment_ids = array();
-			if(is_array($this->adjustments)){
-				foreach($this->adjustments as $id => $adj){
-					if($raid_id == $adj['raid_id']){
+			if (is_array($this->adjustments)){
+				foreach($this->adjustments as $id => $details){
+					if(in_array($details['member'],$arrMemberList)){
 						$adjustment_ids[] = $id;
 					}
 				}
 			}
 			return $adjustment_ids;
+		}
+
+		public function get_adjsofraid($raid_id, $blnGroupedByAdjKey=false){
+			$adjustment_ids = $adjGrouped = array();
+			if(is_array($this->adjustments)){
+				foreach($this->adjustments as $id => $adj){
+					if($raid_id == $adj['raid_id']){
+						$adjustment_ids[] = $id;
+						$adjGrouped[$this->get_group_key($id)] = $id;
+					}
+				}
+			}
+			return ($blnGroupedByAdjKey) ? $adjGrouped : $adjustment_ids;
 		}
 
 		public function get_adjsofeventid($event_id) {
@@ -215,9 +242,15 @@ if(!class_exists('pdh_r_adjustment')){
 		}
 
 		public function get_editicon($adj_id, $baseurl, $url_suffix='') {
-			return "<a href='".$this->get_link($adj_id, $baseurl, $url_suffix)."'>
-			<img src='".$this->root_path."images/glyphs/edit.png' alt='".$this->user->lang('edit')."' title='".$this->user->lang('edit')."' />
-			</a>";
+			$out = "<a href='".$this->get_link($adj_id, $baseurl, $url_suffix)."'>
+						<i class='fa fa-pencil fa-lg' title='".$this->user->lang('edit')."'></i>
+					</a>";
+			
+			$out .= '&nbsp;&nbsp;&nbsp;<a href="'.$this->get_link($adj_id, $baseurl, '&copy=true').'">
+				<i class="fa fa-copy fa-lg" title="'.$this->user->lang('copy').'"></i>
+			</a>';
+				
+			return $out;
 		}
 
 		public function get_m4agk4a($adj_id) {
@@ -235,5 +268,4 @@ if(!class_exists('pdh_r_adjustment')){
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_adjustment', pdh_r_adjustment::__shortcuts());
 ?>

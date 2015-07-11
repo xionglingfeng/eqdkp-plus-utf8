@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2007
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if(!defined('EQDKP_INC')){
 	die('Do not access this file directly.');
@@ -22,7 +25,6 @@ if(!defined('EQDKP_INC')){
 
 if(!class_exists('pdh_w_generic')){
 	class pdh_w_generic extends gen_class {
-		public static $shortcuts = array('logs', 'time');
 		public $admin_user			= '';		// Username of admin		@var admin_user
 		public $current_time		= 0;		// Current time				@var time
 
@@ -44,10 +46,9 @@ if(!class_exists('pdh_w_generic')){
 			return $group_key;
 		}
 
-		public function log_insert($tag, $values, $admin_action=true, $plugin='', $userid=false){
-			return $this->logs->add($tag, $values, $admin_action, $plugin, 1, $userid, 0);
+		public function log_insert($tag, $values, $record_id, $record='', $admin_action=true, $plugin='', $userid = false){
+			return $this->logs->add($tag, $values, $record_id, $record, $admin_action, $plugin, 1, $userid, 0);
 		}
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_w_generic', pdh_w_generic::$shortcuts);
 ?>

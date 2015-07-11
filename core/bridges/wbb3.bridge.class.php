@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: myHTML
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		libraries:myHTML
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,12 +25,7 @@ if ( !defined('EQDKP_INC') ){
 
 class wbb3_bridge extends bridge_generic {
 	
-	public static function __shortcuts() {
-		$shortcuts = array('env', 'config', 'user', 'time');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-	
-	public $name = 'WBB 3';
+	public static $name = 'WBB 3';
 	
 	public $data = array(
 		//Data
@@ -55,26 +53,14 @@ class wbb3_bridge extends bridge_generic {
 		),
 	);
 	
-	public $functions = array(
-		'login'	=> array(
-			'callbefore'	=> '',
-			'function' 		=> '',
-			'callafter'		=> 'wbb3_callafter',
-		),
-		'logout' 	=> 'wbb3_logout',
-		'autologin' => '',	
-		'sync'		=> '',
-	);
-	
 	public $settings = array(
 		'cmsbridge_disable_sso'	=> array(
-			'fieldtype'	=> 'checkbox',
-			'name'		=> 'cmsbridge_disable_sso',
+			'type'	=> 'radio',
 		),
 	);
 	
 	//Needed function
-	public function check_password($password, $hash, $strSalt = '', $boolUseHash){
+	public function check_password($password, $hash, $strSalt = '', $boolUseHash = false, $strUsername = "", $arrUserdata=array()){
 		$settings = $this->get_encryption_settings();
 		$strHashedPassword = $this->getDoubleSaltedHash($settings, $password, $strSalt);
 		if ($hash === $strHashedPassword) return true;
@@ -85,93 +71,106 @@ class wbb3_bridge extends bridge_generic {
 
 	private function get_encryption_settings(){
 		$config = array();
-		$result = $this->db->fetch_array("SELECT * FROM ".$this->prefix."option WHERE optionName = 'encryption_method' OR optionName = 'encryption_enable_salting' OR optionName = 'encryption_salt_position' OR optionName = 'encryption_encrypt_before_salting'");
-		if (is_array($result)){
-			foreach ($result as $value){
-				$config[$value['optionName']] = $value['optionValue'];
+		$objQuery = $this->bridgedb->query("SELECT * FROM ".$this->prefix."option WHERE optionName = 'encryption_method' OR optionName = 'encryption_enable_salting' OR optionName = 'encryption_salt_position' OR optionName = 'encryption_encrypt_before_salting'");
+		if ($objQuery){
+			$result = $objQuery->fetchAllAssoc();
+			if (is_array($result)){
+				foreach ($result as $value){
+					$config[$value['optionName']] = $value['optionValue'];
+				}
 			}
 		}
 		return $config;
 	}
 	
-	public function wbb3_callafter($strUsername, $strPassword, $boolAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash){
-		//Is user active?
+	public function after_login($strUsername, $strPassword, $boolSetAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash=false){
 		if ($boolLoginResult){
+			//Is user active?
 			if ($arrUserdata['banned'] != '0' || $arrUserdata['activationCode'] != '0') {
 				return false;
 			}
-		}
-		
-		//Single Sign On
-		if ($this->config->get('cmsbridge_disable_sso') != '1'){
-			$this->wbb3_sso($arrUserdata, $boolAutoLogin);
-		}
-		return true;
-	}
-	
-	public function wbb3_sso($arrUserdata, $boolAutoLogin){
-		//Get wbb package ID
-		$query = $this->db->query("SELECT packageID FROM ".$this->prefix."package WHERE package='com.woltlab.wbb'");
-		$packageId = $this->db->fetch_row($query);
-		if (isset($packageId['packageID'])){
-			$user_id = intval($arrUserdata['id']);
-			$strSessionID = md5(rand().rand()).'a7w8er45';
-			$this->db->query("DELETE FROM ".$this->prefix."session WHERE userID='".$this->db->escape($user_id)."'");
-			//PW is true, logg the user into our Forum
-			$arrSet = array(
-				'sessionID'					=> $strSessionID,
-				'packageID'					=> $packageId['packageID'],
-				'userID'					=> (int) $user_id,
-				'ipAddress'					=> $this->env->ip,
-				'userAgent'					=> $this->env->useragent,
-				'lastActivityTime'			=> (int) $this->time->time,
-				'requestURI'				=> '',
-				'requestMethod'				=> 'GET',
-				'username'					=> $arrUserdata['username'],
-			);
 			
-			$this->db->query("INSERT INTO ".$this->prefix."session :params", $arrSet);
-			
-			$config = array();
-			$result = $this->db->fetch_array("SELECT * FROM ".$this->prefix."option WHERE optionName = 'cookie_prefix' OR optionName = 'cookie_path' OR optionName = 'cookie_domain'");
-			if (is_array($result)){
-				foreach ($result as $value){
-					if (isset($config[$value['optionName']]) && intval($packageId['packageID']) != intval($value['packageID'])) continue;
-					$config[$value['optionName']] = $value['optionValue'];
-				}
+			//Single Sign On
+			if ($this->config->get('cmsbridge_disable_sso') != '1'){
+				$this->sso($arrUserdata, $boolSetAutoLogin);
 			}
 			
-			$expire = $this->time->time + 31536000;
-			if($config['cookie_domain'] == '') {
-				$arrDomains = explode('.', $this->env->server_name);
-				$arrDomainsReversed = array_reverse($arrDomains);
-				if (count($arrDomainsReversed) > 1){
-					$config['cookie_domain'] = '.'.$arrDomainsReversed[1].'.'.$arrDomainsReversed[0];
-				} else {
-					$config['cookie_domain'] = $this->env->server_name;
-				}
-			}
-			//SID Cookie
-			setcookie($config['cookie_prefix'].'cookieHash', $strSessionID, $expire, $config['cookie_path'], $config['cookie_domain'], $this->env->ssl);
 			return true;
 		}
 		
 		return false;
 	}
 	
-	public function wbb3_logout(){
-		$arrUserdata = $this->get_userdata($this->user->data['username']);
+	private function sso($arrUserdata, $boolAutoLogin){
+		//Get wbb package ID
+		$query = $this->bridgedb->query("SELECT packageID FROM ".$this->prefix."package WHERE package='com.woltlab.wbb'");
+		if($query){
+			$packageId = $query->fetchAssoc();
+			if (isset($packageId['packageID'])){
+				$user_id = intval($arrUserdata['id']);
+				$strSessionID = substr(md5(generateRandomBytes(55)).md5(generateRandomBytes(55)), 0, 40);
+				$this->bridgedb->prepare("DELETE FROM ".$this->prefix."session WHERE userID=?")->execute($user_id);
+				//PW is true, logg the user into our Forum
+				$arrSet = array(
+					'sessionID'					=> $strSessionID,
+					'packageID'					=> $packageId['packageID'],
+					'userID'					=> (int) $user_id,
+					'ipAddress'					=> $this->env->ip,
+					'userAgent'					=> $this->env->useragent,
+					'lastActivityTime'			=> (int) $this->time->time,
+					'requestURI'				=> '',
+					'requestMethod'				=> 'GET',
+					'username'					=> $arrUserdata['username'],
+				);
+				$this->bridgedb->prepare("INSERT INTO ".$this->prefix."session :p")->set($arrSet)->execute();
+				
+				$config = array();
+				$objQuery = $this->bridgedb->query("SELECT * FROM ".$this->prefix."option WHERE optionName = 'cookie_prefix' OR optionName = 'cookie_path' OR optionName = 'cookie_domain'");
+				if ($objQuery){
+					$result = $objQuery->fetchAllAssoc();
+					if (is_array($result)){
+						foreach ($result as $value){
+							if (isset($config[$value['optionName']]) && intval($packageId['packageID']) != intval($value['packageID'])) continue;
+							$config[$value['optionName']] = $value['optionValue'];
+						}
+					}
+				} else return;
+				
+				$expire = $this->time->time + 31536000;
+				if($config['cookie_domain'] == '') {
+					$arrDomains = explode('.', $this->env->server_name);
+					$arrDomainsReversed = array_reverse($arrDomains);
+					if (count($arrDomainsReversed) > 1){
+						$config['cookie_domain'] = '.'.$arrDomainsReversed[1].'.'.$arrDomainsReversed[0];
+					} else {
+						$config['cookie_domain'] = $this->env->server_name;
+					}
+				}
+				//SID Cookie
+				setcookie($config['cookie_prefix'].'cookieHash', $strSessionID, $expire, $config['cookie_path'], $config['cookie_domain'], $this->env->ssl);
+				return true;
+			}					
+		}
+
+		return false;
+	}
+	
+	public function logout(){
+		$arrUserdata = $this->bridge->get_userdata($this->user->data['username']);
 		if (isset($arrUserdata['id'])){
-			$this->db->query("DELETE FROM ".$this->prefix."session WHERE userID='".$this->db->escape($arrUserdata['id'])."'");
+			$this->bridgedb->prepare("DELETE FROM ".$this->prefix."session WHERE userID=?")->execute($arrUserdata['id']);
 		}
 		$config = array();
-		$result = $this->db->fetch_array("SELECT * FROM ".$this->prefix."option WHERE optionName = 'cookie_prefix' OR optionName = 'cookie_path' OR optionName = 'cookie_domain'");
-		if (is_array($result)){
-			foreach ($result as $value){
-				if (isset($config[$value['optionName']]) && intval($packageId['packageID']) != intval($value['packageID'])) continue;
-				$config[$value['optionName']] = $value['optionValue'];
+		$objQuery = $this->bridgedb->query("SELECT * FROM ".$this->prefix."option WHERE optionName = 'cookie_prefix' OR optionName = 'cookie_path' OR optionName = 'cookie_domain'");
+		if ($objQuery){
+			$result = $objQuery->fetchAllAssoc();
+			if (is_array($result)){
+				foreach ($result as $value){
+					if (isset($config[$value['optionName']]) && intval($packageId['packageID']) != intval($value['packageID'])) continue;
+					$config[$value['optionName']] = $value['optionValue'];
+				}
 			}
-		}
+		} else return;
 		
 		if($config['cookie_domain'] == '') {
 			$arrDomains = explode('.', $this->env->server_name);
@@ -193,7 +192,7 @@ class wbb3_bridge extends bridge_generic {
 	 * @param	string		$salt
 	 * @return 	string 		$hash
 	 */
-	public function getDoubleSaltedHash($settings, $value, $salt) {
+	private function getDoubleSaltedHash($settings, $value, $salt) {
 		return $this->encrypt($salt . $this->getSaltedHash($settings, $value, $salt), $settings['encryption_method']);
 	}
 	
@@ -204,7 +203,7 @@ class wbb3_bridge extends bridge_generic {
 	 * @param	string		$salt
 	 * @return 	string 		$hash
 	 */
-	public function getSaltedHash($settings, $value, $salt) {
+	private function getSaltedHash($settings, $value, $salt) {
 		if (!isset($settings['encryption_enable_salting']) || $settings['encryption_enable_salting'] == '1') {
 			$hash = '';
 			// salt
@@ -239,7 +238,7 @@ class wbb3_bridge extends bridge_generic {
 	 * @param 	string 		$value
 	 * @return 	string 		$hash
 	 */
-	public function encrypt($value, $encryption_method = 'sha1') {
+	private function encrypt($value, $encryption_method = 'sha1') {
 		switch ($encryption_method) {
 			case 'sha1': return sha1($value);
 			case 'md5': return md5($value);
@@ -249,5 +248,4 @@ class wbb3_bridge extends bridge_generic {
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_wbb3_bridge',wbb3_bridge::__shortcuts());
 ?>

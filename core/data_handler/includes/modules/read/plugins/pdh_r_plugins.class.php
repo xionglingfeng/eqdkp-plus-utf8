@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2010
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if ( !defined('EQDKP_INC') ){
 	die('Do not access this file directly.');
@@ -22,10 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "pdh_r_plugins" ) ) {
 	class pdh_r_plugins extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'db'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 		public $default_lang = 'english';
 		public $plugins;
@@ -44,16 +43,19 @@ if ( !class_exists( "pdh_r_plugins" ) ) {
 			if($this->plugins !== NULL){
 				return true;
 			}
-			$result = $this->db->query("SELECT * FROM __plugins ORDER BY code");
-			while($drow = $this->db->fetch_record($result) ){
-				$this->plugins[$drow['code']] = array(
-					'code'		=> $drow['code'],
-					'version'	=> $drow['version'],
-					'status'	=> $drow['status']
-				);
+			
+			$objQuery = $this->db->query("SELECT * FROM __plugins ORDER BY code");
+			if($objQuery){
+				while($drow = $objQuery->fetchAssoc()){
+					$this->plugins[$drow['code']] = array(
+						'code'		=> $drow['code'],
+						'version'	=> $drow['version'],
+						'status'	=> $drow['status']
+					);
+				}
+				
+				$this->pdc->put('pdh_plugins_table', $this->plugins, null);
 			}
-			$this->db->free_result($result);
-			if($result) $this->pdc->put('pdh_plugins_table', $this->plugins, null);
 		}
 
 		public function get_id_list() {
@@ -65,5 +67,4 @@ if ( !class_exists( "pdh_r_plugins" ) ) {
 		}
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_plugins', pdh_r_plugins::__shortcuts());
 ?>

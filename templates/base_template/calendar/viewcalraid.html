@@ -1,6 +1,23 @@
 <script language="JavaScript" type="text/javascript">
 //<![CDATA[
 $(function(){
+	$('.guesttooltip').each(function() {
+		$(this).qtip({
+			content: $(this).next('.guesttooltip-data'),
+			position: {
+				at: 'bottom center',
+				my: 'top center'
+			},
+			style: {
+				tip: {
+					corner: true
+				},
+				width: 300,
+				widget: true
+			}
+		});
+	});
+	
 	$(".guesteditpanel").click( function(){
 		$(".guestpanel", this).show();
 	});
@@ -11,74 +28,88 @@ $(function(){
 	$('#addguest').click( function(){
 		AddGuest('{EVENT_ID}');
 	});
-	
-	$(".membertooltip").qtip({
-		content: {
-			text: true,
-			attr: 'title',
-			title: {
-				text: false,
-				button: false
-			}
-		},
-		position: {
-			at: "bottom center",
-			my: "top center"
-		},
-		style: {
-			classes: "ui-tooltip-shadow",
-			tip: {
-				corner: true,
-				width: 20
-			},
-			widget: true
-		},
-		events: {
-			render: function() {
-				$(this).css({ width: 300 });
-			}
-		}
-	});
-	
+
 	$('#raidcal_change_signin').click(function(){
-		$('#raidcal_signin_form').show();
+		$('#toogleRaidcalSignin').show();
 		$('#raidcal_alrdysignin').hide();
 	});
-	
-	$('.charname_toggle').click(function() {
-		$(".charchange_menu", $(this).parent().parent()).slideToggle("slow");
-	});
 
-	$('.charnote_toggle').click(function() {
-		$(".notechange_menu", $(this).parent().parent()).slideToggle("slow");
-	});
+	$('.char_adminmenu').each(function() {
+		var id = $(this).attr('data-charadmintt-id');
+		var $this = $(this);
+		
+		$this.qtip({
+			content: {
+				text: $('#' + id + '').html(),
+				title: {
+					text: "{L_calendar_admin_menu}",
+					button: true
+				}
+			},
+			position: {
+				viewport: $('div.portal')
+			},
+			hide: false,
+			show: {
+				event: 'click',
+				solo: true
+			},
+			style: {
+				tip: {
+					corner: true,
+					height: 8
+				},
+				widget: true
+			},
+			events: {
+				show: function(event, api) {
+					$('[name="submit_charchange"]').click(function(){
+						$.post("{U_CALENDAREVENT}", {
+							change_char: true,
+							charchange_status: $(this).parent().find('.charchange_status').val(),
+							charchange_role: $(this).parent().find('[name="charchange_role"]').val(),
+							charchange_char: $(this).parent().find('[name="charchange_char"]').val(),
+							subscribed_member_id : $(this).parent().find('[name="charchange_attendee"]').val(),
+							eventid: $('[name="eventid"]').val(),
+							link_hash: '{CSRF_CHANGECHAR_TOKEN}'
+						},
+						function(data){
+							window.location = '{U_CALENDAREVENT}';
+						});
+					});
 
-	$('[name="submit_charchange"]').click(function(){
-		$.post("viewcalraid.php", { 
-			changecharmenu: true,
-			charchange_status: $(this).parent().find('.charchange_status').val(),
-			charchange_role: $(this).parent().find('[name="charchange_role"]').val(),
-			charchange_char: $(this).parent().find('[name="charchange_char"]').val(),
-			subscribed_member_id : $(this).parent().find('[name="charchange_attendee"]').val(),
-			eventid: $('[name="eventid"]').val(),
-			link_hash: '{CSRF_CHANGECHARMENU_TOKEN}'
-		},
-		function(data){
-			window.location = 'viewcalraid.php{SID}&eventid='+$('[name="eventid"]').val();
+					$('[name="submit_groupchange"]').click(function(){
+						$.post("{U_CALENDAREVENT}", {
+							change_group: true,
+							groupchange_group: $(this).parent().find('[name="groupchange_group"]').val(),
+							subscribed_member_id: $(this).parent().find('[name="groupchange_attendee"]').val(),
+							eventid: $('[name="eventid"]').val(),
+							link_hash: '{CSRF_CHANGEGRP_TOKEN}'
+						},
+						function(data){
+							window.location = '{U_CALENDAREVENT}';
+						});
+					});
+
+					$('[name="submit_notechange"]').click(function(){
+						$.post("{U_CALENDAREVENT}", { 
+							change_note: true,
+							notechange_note: $(this).parent().find('[name="notechange_note"]').val(),
+							subscribed_member_id: $(this).parent().find('[name="notechange_attendee"]').val(),
+							eventid: $('[name="eventid"]').val(),
+							link_hash: '{CSRF_CHANGENOTE_TOKEN}'
+						},
+						function(data){
+							window.location = '{U_CALENDAREVENT}';
+						});
+					});
+				}
+			}
 		});
 	});
 
-	$('[name="submit_notechange"]').click(function(){
-		$.post("viewcalraid.php", { 
-			changenotemenu: true,
-			notechange_note: $(this).parent().find('[name="notechange_note"]').val(),
-			subscribed_member_id: $(this).parent().find('[name="notechange_attendee"]').val(),
-			eventid: $('[name="eventid"]').val(),
-			link_hash: '{CSRF_CHANGENOTEMENU_TOKEN}'
-		},
-		function(data){
-			window.location = 'viewcalraid.php{SID}&eventid='+$('[name="eventid"]').val();
-		});
+	var checkboxes = $('[name="modstat_change[]"]').click(function(event){
+		$('#moderate_status_btn').prop("disabled", checkboxes.filter(':checked').length == 0);
 	});
 });
 
@@ -88,31 +119,55 @@ $(function(){
 
 	$(".notsigned_button").click(function(){
 		$(".notsignedpanel").toggle("fast");
-		$(this).toggleClass("bi_plus");
-		$(this).toggleClass("bi_minus");
+		$(".notsigned_button i").toggleClass("fa fa-plus-circle");
+		$(".notsigned_button i").toggleClass("fa fa-minus-circle");
 		return false;
 	});
 	
 	$(".notsignedpanel_close").click(function(){
 		$(".notsignedpanel").hide("fast");
-		$(".notsigned_button").toggleClass("bi_minus");
-		$(".notsigned_button").toggleClass("bi_plus");
+		$(".notsigned_button i").toggleClass("fa fa-minus-circle");
+		$(".notsigned_button i").toggleClass("fa fa-plus-circle");
 	});
 
 	// the search filed
-	var unsigned_attendees_f 	= unsigned_attendees;
-	// TODO: rewrite that for 2.0.. i think the unsigned_f is not longer usefull..
-	$('#notsignedfilter').bind('keyup change', function(){
-		searchname			= $(this).val();
-		filter_unsigned = [];
-		unsigned_attendees_f = $.grep(unsigned_attendees, function(unsignarr){
-	    	return unsignarr.name.match(new RegExp(searchname, 'i'));
-		});
-		
+	var unsigned_attendees_f	= unsigned_attendees;
+
+	$('#notsignedfilter, #notsignedlevel, #notsignedactive').bind('keyup change', function(){
+		searchname				= $('#notsignedfilter').val();
+		levelfilter				= $('#notsignedlevel').val();
+		filter_unsigned			= -1;
+		unsigned_attendees_f 	= unsigned_attendees;
+
+		// show only active members
+		if($('#notsignedactive').is(':checked')){
+			unsigned_attendees_f = $.grep(unsigned_attendees_f, function(unsignarr){
+				return unsignarr.active > 0;
+			});
+		}
+
+		// filter by level
+		if(levelfilter > 0 && levelfilter != ''){
+			unsigned_attendees_f = $.grep(unsigned_attendees_f, function(unsignarr){
+				return unsignarr.level >= levelfilter;
+			});
+		}
+
+		if(searchname != ''){
+			unsigned_attendees_f = $.grep(unsigned_attendees_f, function(unsignarr){
+				return unsignarr.name.match(new RegExp(searchname, 'i'));
+			});
+		}
+
 		// populate the filter
-		$.each(unsigned_attendees_f, function(i, item) {
-			filter_unsigned.push(item.id);
-		});
+		if(unsigned_attendees_f.length > 0){
+			filter_unsigned			= [];
+			$.each(unsigned_attendees_f, function(i, item) {
+				filter_unsigned.push(item.id);
+			});
+		}
+
+		// populate now
 		populate_unsigned(unsigned_attendees, a_checkboxes, filter_unsigned);
 
 		// disable the right chars..
@@ -122,7 +177,7 @@ $(function(){
 	});
 
 	// Build the unsigned list
-	populate_unsigned(unsigned_attendees, '')
+	populate_unsigned(unsigned_attendees, '');
 
 	// handle the 
 	$(document).on("click", '.notsigned_check', function(){
@@ -174,32 +229,34 @@ function check_unsigned(selector, unsigned_attendees_f, a_checkboxes){
 
 function populate_unsigned(arrAttendees, arrCheckboxes, arrFilter){
 	attoutput = '';
-	$.each(arrAttendees, function(i, item) {
-		checkbox_checked	= (arrCheckboxes.length > 0 && $.inArray(parseInt(item.id), arrCheckboxes) != -1) ? 'checked="checked"' : '';
-		// TODO: Use css class instead of style tag
-		filter_applied		= (typeof(arrFilter) != "undefined" && arrFilter.length > 0 && $.inArray(parseInt(item.id), arrFilter) == -1) ? ' style="display:none;"' : '';
-		
-		attoutput += '<div id="unsigened_'+item.id+'"'+filter_applied+'>';
-		attoutput += '<!-- IF IS_OPERATOR --><input type="checkbox" name="memberid[]" value="'+item.id+'" id="member'+item.id+'" title="'+item.userid+'" class="notsigned_check" '+checkbox_checked+' /> <!-- ENDIF -->';
-		if(item.class_icon != ''){
-			attoutput += item.class_icon;
-		}
-		attoutput += ' <span class="class_'+item.class_id+'" id="memberid_'+item.id+'">'+item.name+'</span>';
-		
-		if(item.roles != ''){
-			attoutput += '<select size="1" name="memrole['+item.id+']" id="memroles'+item.id+'" class="input">';
-			$.each(item.roles, function(roleindex, rolename) {
-				if (item.defaultrole == roleindex){
-					var selected = ' selected="selected"';
-				} else {
-					var selected = '';
-				}
-				attoutput += '<option value="'+roleindex+'"'+selected+'>'+rolename+'</option>';
-			});
-			attoutput += '</select>';
-		}
-		attoutput += "</div>";
-	});
+	if(arrAttendees != null && arrAttendees.length > 0) {
+		$.each(arrAttendees, function(i, item) {
+			checkbox_checked	= (arrCheckboxes.length > 0 && $.inArray(parseInt(item.id), arrCheckboxes) != -1) ? 'checked="checked"' : '';
+			filter_applied		= ((typeof(arrFilter) != "undefined" && arrFilter.length > 0 && $.inArray(parseInt(item.id), arrFilter) == -1) || arrFilter == -1) ? '  style="display: none;"' : '';
+			console.log(arrFilter);console.log(filter_applied);
+			attoutput += '<div id="unsigened_'+item.id+'"'+filter_applied+'>';
+			attoutput += '<!-- IF IS_OPERATOR --><input type="checkbox" name="memberid[]" value="'+item.id+'" id="member'+item.id+'" title="'+item.userid+'" class="notsigned_check" '+checkbox_checked+' /> <!-- ENDIF -->';
+			if(item.class_icon != ''){
+				attoutput += item.class_icon;
+			}
+			attoutput += ' <span class="class_'+item.class_id+'" id="memberid_'+item.id+'">'+item.name+'</span>';
+			
+			if(item.roles != ''){
+				console.log(item.roles);
+				attoutput += '<select size="1" name="memrole['+item.id+']" id="memroles'+item.id+'" class="input">';
+				$.each(item.roles, function(roleindex, rolename) {
+					if (item.defaultrole == roleindex){
+						var selected = ' selected="selected"';
+					} else {
+						var selected = '';
+					}
+					attoutput += '<option value="'+roleindex+'"'+selected+'>'+rolename+'</option>';
+				});
+				attoutput += '</select>';
+			}
+			attoutput += "</div>";
+		});
+	}
 	$("#memberScroller").html(attoutput);
 }
 <!-- ENDIF -->
@@ -217,7 +274,23 @@ function populate_unsigned(arrAttendees, arrCheckboxes, arrFilter){
 	<form name="unsingnn" method="post" action="{ACTION}">
 		<input type="hidden" name="eventid" value="{EVENT_ID}" />
 		<div id='pnlHeader'>{L_raidevent_raid_unsigned_head}</div><br/>
-		<div>{L_raidevent_raid_unsigned_search}: <input type="text" name="notsignedfilter" id="notsignedfilter" value="" /></div>
+		
+		<fieldset class="settings">
+			<dl>
+				<dt><label>{L_raidevent_raid_unsigned_search}</label></dt>
+				<dd><input type="text" name="notsignedfilter" id="notsignedfilter" value="" /></dd>
+			</dl>
+
+			<dl>
+				<dt><label>{L_raidevent_raid_unsigned_active}</label></dt>
+				<dd><input type="checkbox" name="notsignedactive" value="1" id="notsignedactive" /></dd>
+			</dl>
+			<dl>
+				<dt><label>{L_raidevent_raid_unsigned_level}</label><br /><span>{L_raidevent_raid_unsigned_level_help}</span></dt>
+				<dd><input type="text" name="notsignedlevel" id="notsignedlevel" value="0" size="5" /></dd>
+			</dl>
+		</fieldset>
+		
 		<div id="memberScroller">
 		</div>
 		<!-- IF IS_OPERATOR -->
@@ -230,16 +303,34 @@ function populate_unsigned(arrAttendees, arrCheckboxes, arrFilter){
 </div>
 <!-- ENDIF -->
 
+<!-- IF S_NEXT_OR_PREV_RAIDEVENT -->
+<div>
+	<!-- IF S_PREV_RAID_EVENT -->
+	<div class="floatLeft">
+		<a href="{U_PREV_RAID_EVENT}"><i class="fa fa-chevron-left"></i> {PREV_RAID_EVENTNAME}</a>
+	</div>
+	<!-- ENDIF -->
+	
+	<!-- IF S_NEXT_RAID_EVENT -->
+	<div class="floatRight">
+		<a href="{U_NEXT_RAID_EVENT}">{NEXT_RAID_EVENTNAME} <i class="fa fa-chevron-right"></i></a>
+	</div>
+	<!-- ENDIF -->
+	<div class="clear"></div>
+	<br />
+</div>
+<!-- ENDIF -->
+
 <form method="post" action="{ACTION}" name="post">
 	<input type="hidden" name="event_id" value="{EVENT_ID}" />
 	<input type="hidden" name="subscribed_member_id" value="{SUBSCRIBED_MEMBER_ID}" />
-	
+	<div id="toogleRaidcalInfos">
 	<div>
-		<div class="raidcal_name floatLeft">{RAIDICON} {RAIDNAME}</div>
+		<div class="raidcal_name floatLeft">{RAIDICON} {RAIDNAME} <span class="toggle_button">&nbsp;</span></div>
 		<div class="floatRight">{MENU_OPTIONS}</div>
 	</div>
 	<div class="clear"></div>
-	<fieldset class="settings smallsettings raidcal_infos">
+	<fieldset class="settings smallsettings raidcal_infos toggle_container">
 		<dl class="raidcal_date">
 			<dt><label>{L_date}</label></dt>
 			<dd>{RAIDDATE}, {L_raidevent_raid_time_from} {RAIDTIME_START} {L_raidevent_raid_time_till} {RAIDTIME_END}
@@ -249,6 +340,10 @@ function populate_unsigned(arrAttendees, arrCheckboxes, arrFilter){
 		<dl class="raidcal_deadline">
 			<dt><label>{L_calendar_deadline}</label></dt>
 			<dd>{RAIDTIME_DEADLINE}</dd>
+		</dl>
+		<dl class="raidcal_calendar">
+			<dt><label>{L_calendar}</label></dt>
+			<dd>{CALENDAR}</dd>
 		</dl>
 		<dl class="raidcal_creator">
 			<dt><label><!-- IF RAIDLEADER -->
@@ -267,73 +362,101 @@ function populate_unsigned(arrAttendees, arrCheckboxes, arrFilter){
 			<dd><!-- IF RAIDNOTE -->{RAIDNOTE}<!-- ELSE -->{L_raidevent_raid_noraidnote}<!-- ENDIF --></dd>
 		</dl>
 	</fieldset>
+	</div>
 		
 	<!-- IF not RAID_CLOSED and not RAID_DEADLINE and not NO_CHAR_ASSIGNED -->
-	<fieldset class="settings smallsettings" id="raidcal_signin_form" <!-- IF IS_SIGNEDIN -->style="display:none"<!-- ENDIF -->>
-		<legend>{L_raidevent_raid_signin}</legend>
-		<dl>
-			<dt><label>{L_raidevent_raid_char_role}</label></dt>
-			<dd>{DD_MYCHARS} {DD_MYROLE}</dd>
-		</dl>
-		<dl>
-			<dt><label>{L_note}</label></dt>
-			<dd><input type="text" name="signupnote" size="45" class="input" value="{PLAYER_NOTE}" /></dd>
-		</dl>
-		<dl>
-			<dt><label>{L_status}</label></dt>
-			<dd>{DD_SIGNUPSTATUS} </dd>
-		</dl>
-		<input type="submit" name="update_status" value="{L_raidevent_raid_statusbttn}" 	class="mainoption" />
-	</fieldset>
-	
-	<div class="greenbox" id="raidcal_alrdysignin" <!-- IF not IS_SIGNEDIN -->style="display:none"<!-- ENDIF -->>
-		<div class="icon_info">
-			{L_SIGNEDIN_MSG}
-			<input type="button" value="{L_raidevent_raid_changesignin}" id="raidcal_change_signin" class="mainoption bi_edit" />
-		</div>
+	<div id="toogleRaidcalSignin" <!-- IF IS_SIGNEDIN -->style="display:none"<!-- ENDIF -->>
+		<h2>{L_raidevent_raid_signin}<span class="toggle_button">&nbsp;</span></h2>
+		<fieldset class="toggle_container settings smallsettings">
+			<!-- IF IS_SIGNEDIN and IS_STATUSCHANGE_WARN and IS_STATUS_CONFIRMED -->
+			<div class="infobox infobox-large infobox-red clearfix">
+				<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_raidevent_raid_statuschange_warning}
+			</div>
+			<!-- ENDIF -->
+			<dl>
+				<dt><label>{L_raidevent_raid_char_role}</label></dt>
+				<dd>{DD_MYCHARS} {DD_MYROLE}</dd>
+			</dl>
+			<dl>
+				<dt><label>{L_note}</label></dt>
+				<dd><input type="text" name="signupnote" size="45" class="input" value="{PLAYER_NOTE}" /></dd>
+			</dl>
+			<dl>
+				<dt><label>{L_status}<!-- IF IS_SIGNEDIN and IS_STATUSCHANGE_WARN --> <i class="fa fa-exclamation-triangle coretip" data-coretip="{L_raidevent_raid_statuschange_warning}"></i><!-- ENDIF --></label></dt>
+				<dd>{DD_SIGNUPSTATUS} </dd>
+			</dl>
+			<input type="submit" name="update_status" value="{L_raidevent_raid_statusbttn}" 	class="mainoption" />
+		</fieldset>
+	</div>
+
+	<div class="infobox infobox-large infobox-green clearfix" id="raidcal_alrdysignin" <!-- IF not IS_SIGNEDIN -->style="display:none"<!-- ENDIF -->>
+		<i class="fa fa-user fa-4x pull-left"></i>
+		{L_SIGNEDIN_MSG}
+		<input type="button" value="{L_raidevent_raid_changesignin}" id="raidcal_change_signin" class="mainoption bi_edit" />
 	</div>
 	<!-- ELSE -->
 	<!-- IF NO_CHAR_ASSIGNED and S_LOGGED_IN -->
-	<div class="errorbox roundbox">
-		<div class="icon_char">{L_raidevent_raid_nochar}</div>
+	<div class="infobox infobox-large infobox-red clearfix">
+		<i class="fa fa-male fa-4x pull-left"></i> {L_raidevent_raid_nochar}
 	</div>
 	<!-- ENDIF -->
 	<!-- IF RAID_CLOSED -->
-	<div class="errorbox roundbox">
-		<div class="closed">{L_raidevent_raid_closed}</div>
+	<div class="infobox infobox-large infobox-red clearfix">
+		<i class="fa fa-clock fa-4x pull-left"></i> {L_raidevent_raid_closed}
 	</div>
 	<!-- ENDIF -->
 	<!-- IF RAID_DEADLINE -->
-	<div class="errorbox roundbox">
-		<div class="deadline">{L_raidevent_raid_deadl_reach}</div>
+	<div class="infobox infobox-large infobox-red clearfix">
+		<i class="fa fa-clock-o fa-4x pull-left"></i> {L_raidevent_raid_deadl_reach}
 	</div>
 	<!-- ENDIF -->
 	<!-- ENDIF -->
 	<!-- IF NO_STATUSES -->
-	<div class="errorbox roundbox">
-		<div class="icon_false">{L_raidevent_raid_no_status}</div>
+	<div class="infobox infobox-large infobox-red clearfix">
+		<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_raidevent_raid_no_status}
 	</div>
 	<!-- ENDIF -->
 	<!-- IF ROLESWOCLASS -->
-	<div class="errorbox roundbox">
-		<div class="icon_false">{L_raidevent_raid_roleswoclass}</div>
+	<div class="infobox infobox-large infobox-red clearfix">
+		<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_raidevent_raid_roleswoclass}
 	</div>
 	<!-- ENDIF -->
 	<!-- IF IS_OPERATOR -->
-	<fieldset class="settings smallsettings moderation_panel">
-		<legend>{L_raidevent_raid_moderation}</legend>
-		
-		<dl>
-			<dt><label>{L_raidevent_raid_mod_select}</label></dt>
-			<dd>{DD_MODSIGNUPSTATUS} 
-				<input type="submit" name="moderate_status" value="{L_raidevent_raid_modstatus}" class="mainoption bi_ok" />
-			</dd>
-		</dl>
-		<dl>
-			<dt><label>{L_raidevent_raid_confirmall}</label></dt>
-			<dd><input type="submit" name="confirmall" value="{L_raidevent_raid_confirmall}" class="mainoption bi_ok" /></dd>
-		</dl>
-	</fieldset>
+	<div id="toogleRaidcalModeration">
+		<h2>{L_raidevent_raid_moderation}<span class="toggle_button">&nbsp;</span></h2>
+		<fieldset class="settings smallsettings moderation_panel toggle_container">
+			<dl>
+				<dt><label>{L_raidevent_raid_mod_select}</label></dt>
+				<dd>
+					{DD_MODSIGNUPSTATUS} 
+					<input type="submit" disabled="disabled" name="moderate_status" value="{L_raidevent_raid_modstatus}" class="mainoption bi_ok" id="moderate_status_btn"/>
+				</dd>
+			</dl>
+			<!-- IF SHOW_RAIDGROUPS -->
+			<dl>
+				<dt><label>{L_raidevent_raid_mod_raidgroup}</label></dt>
+				<dd>
+					{DD_MODRAIDGROUPS} 
+					<input type="submit" name="moderate_group" value="{L_raidevent_raid_modgroup}" class="mainoption bi_ok" />
+				</dd>
+			</dl>
+			<!-- ENDIF -->
+			<dl>
+				<dt><label>{L_raidevent_raid_confirmall}</label></dt>
+				<dd><input type="submit" name="confirmall" value="{L_raidevent_raid_confirmall}" class="mainoption bi_ok" id="button_confirmall"/></dd>
+			</dl>
+		</fieldset>
+	</div>
+	<!-- IF SHOW_RAIDGROUPS -->
+	<div class="table">
+		<div class="tr">
+			<div class="td">
+				<span class="group_selector"><i class="fa fa-users fa-lg"></i> {DD_RAIDGROUPS}</span>
+			</div>
+		</div>
+	</div>
+	<!-- ENDIF -->
+	
 	<!-- ENDIF -->
 	
 	<div class="row1">
@@ -341,5 +464,3 @@ function populate_unsigned(arrAttendees, arrCheckboxes, arrFilter){
 	</div>
 {CSRF_TOKEN}
 </form>
-<br />
-{COMMENTS}

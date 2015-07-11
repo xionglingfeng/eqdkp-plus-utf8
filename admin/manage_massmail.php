@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2002
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 define('EQDKP_INC', true);
@@ -22,11 +25,8 @@ $eqdkp_root_path = './../';
 include_once($eqdkp_root_path . 'common.php');
 
 class Manage_Massmail extends page_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'pdh', 'jquery', 'core', 'config', 'pm', 'time', 'env', 'email'=>'MyMailer', 'crypt'=>'encrypt', 'html', 'time', 'logs', 'hooks');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
+	public static $shortcuts = array('email'=>'MyMailer', 'crypt'=>'encrypt');
+		
 	public function __construct(){
 		$this->user->check_auth('a_users_massmail');
 		$handler = array(
@@ -40,17 +40,41 @@ class Manage_Massmail extends page_generic {
 	}
 
 	public function process_data(){
-		//Latest News List
-		$arrNews = $this->pdh->aget('news', 'news', 0, array($this->pdh->sort($this->pdh->get('news', 'id_list', array()), 'news', 'date', 'desc')));
-		$arrNewsList = array();
-		if (is_array($arrNews )) {
-			foreach ($arrNews as $newsid => $value){
-				$arrNewsList[] = array(
-					'date'		=> $this->pdh->get('news', 'html_date', array($newsid)),
-					'headline'	=> sanitize($value['news_headline']),
-					'content'	=> '<b><u><a href="'.$this->env->link.'viewnews.php?id='.$newsid.'">'.sanitize($value['news_headline']).'</a></u></b><br /> '.sanitize($value['news_message']),
-				);
+		//Latest Articles
+		$arrArticles = $this->pdh->get('articles', 'id_list', array());
+		$arrArticles = $this->pdh->limit($arrArticles, 0, 25);
+		$arrArticles = $this->pdh->sort($arrArticles, 'articles', 'date', 'desc');
+		foreach($arrArticles as $intArticleID){
+			$strText = $this->pdh->get('articles',  'text', array($intArticleID));
+			$arrContent = preg_split('#<hr(.*)id="system-readmore"(.*)\/>#iU', xhtml_entity_decode($strText));
+			
+			$strText = $this->bbcode->remove_embeddedMedia($this->bbcode->remove_shorttags($arrContent[0]));
+			
+			//Replace Image Gallery
+			$arrGalleryObjects = array();
+			preg_match_all('#<p(.*)class="system-gallery"(.*) data-sort="(.*)" data-folder="(.*)">(.*)</p>#iU', $strText, $arrGalleryObjects, PREG_PATTERN_ORDER);
+			if (count($arrGalleryObjects[0])){
+				include_once($this->root_path.'core/gallery.class.php');
+				foreach($arrGalleryObjects[4] as $key=>$val){
+					$strText = str_replace($arrGalleryObjects[0][$key], "", $strText);
+				}
 			}
+			
+			//Replace Raidloot
+			$arrRaidlootObjects = array();
+			preg_match_all('#<p(.*)class="system-raidloot"(.*) data-id="(.*)"(.*) data-chars="(.*)">(.*)</p>#iU', $strText, $arrRaidlootObjects, PREG_PATTERN_ORDER);
+			if (count($arrRaidlootObjects[0])){
+				include_once($this->root_path.'core/gallery.class.php');
+				foreach($arrRaidlootObjects[3] as $key=>$val){
+					$strText = str_replace($arrRaidlootObjects[0][$key], "", $strText);
+				}
+			}
+			
+			$arrNewsList[] = array(
+					'date'		=> $this->pdh->get('articles', 'html_date', array($intArticleID)),
+					'headline'	=> $this->pdh->get('articles', 'title', array($intArticleID)),
+					'content'	=> '<b><u><a href="'.$this->user->removeSIDfromString($this->env->link.$this->pdh->get('articles',  'path', array($intArticleID))).'">'.unsanitize($this->pdh->get('articles', 'title', array($intArticleID))).'</a></u></b><br /> '.$strText,
+			);
 		}
 
 		//Next Events List
@@ -62,7 +86,7 @@ class Manage_Massmail extends page_generic {
 		$arrRaidList = array();
 		if (is_array($arrRaidIDlist)){
 			foreach ($arrRaidIDlist as $intRaidID){
-				$ahref_start = ((int)$this->pdh->get('calendar_events', 'calendartype', array($intRaidID)) == 1) ? '<a href="'.$this->env->link.'calendar/viewcalraid.php?eventid='.$intRaidID.'">' : '';
+				$ahref_start = ((int)$this->pdh->get('calendar_events', 'calendartype', array($intRaidID)) == 1) ? '<a href="'.$this->env->link.$this->routing->build('calendarevent', $this->pdh->get('calendar_events', 'name', array($intRaidID)), $intRaidID, false, true).'">' : '';
 				$ahref_end	= ((int)$this->pdh->get('calendar_events', 'calendartype', array($intRaidID)) == 1) ? '</a>' : '';
 
 				$arrRaidList[] = array(
@@ -137,7 +161,7 @@ class Manage_Massmail extends page_generic {
 		if ($this->in->get('event_id', 0) > 0){
 			$event_id = $this->in->get('event_id', 0);
 			$arrSearch = array('{EVENT_NAME}', '{EVENT_DATE}', '{EVENT_LINK}');
-			$arrReplace = array($this->pdh->get('calendar_events', 'name', array($event_id)), $this->pdh->get('calendar_events', 'html_date', array($event_id)).' '.$this->pdh->get('calendar_events', 'html_time_start', array($event_id)), '<a href="'.$this->env->link.'calendar/viewcalraid.php?eventid='.$event_id.'">'.$this->pdh->get('calendar_events', 'html_date', array($event_id)).' '.$this->pdh->get('calendar_events', 'html_time_start', array($event_id)).': '.$this->pdh->get('calendar_events', 'name', array($event_id)).'</a>');
+			$arrReplace = array($this->pdh->get('calendar_events', 'name', array($event_id)), $this->pdh->get('calendar_events', 'html_date', array($event_id)).' '.$this->pdh->get('calendar_events', 'html_time_start', array($event_id)), '<a href="'.$this->env->link.$this->routing->build('calendarevent', $this->pdh->get('calendar_events', 'name', array($event_id)), $event_id, false, true).'">'.$this->pdh->get('calendar_events', 'html_date', array($event_id)).' '.$this->pdh->get('calendar_events', 'html_time_start', array($event_id)).': '.$this->pdh->get('calendar_events', 'name', array($event_id)).'</a>');
 
 			$body = str_replace($arrSearch, $arrReplace, $body);
 			$subject = str_replace($arrSearch, $arrReplace, $subject);
@@ -226,7 +250,7 @@ class Manage_Massmail extends page_generic {
 					'{L_email_receiver}'			=> $strRecipientNames,
 				);
 
-				$this->logs->add('action_massmail_sent', $log_action);
+				$this->logs->add('action_massmail_sent', $log_action, '', $this->in->get('subject', ''));
 
 
 			} else {
@@ -242,14 +266,14 @@ class Manage_Massmail extends page_generic {
 	}
 
 	public function display(){
-		$editor = registry::register('tinyMCE', array($this->root_path));
+		$editor = registry::register('tinyMCE');
 		$editor->editor_normal(array('autoresize' => true, 'relative_urls'	=> false, 'remove_host' => false));
 
 		$bnlEventId = ($this->in->get('event_id', 0) > 0) ? true : false;
 		$eventid = (int)$this->in->get('event_id', 0);
 		$body = $subject = '';
 		if ($bnlEventId){
-			$body .= '<p>&nbsp;</p><p><a href="'.$this->env->link.'calendar/viewcalraid.php?eventid='.$eventid.'">'.$this->pdh->get('calendar_events', 'html_date', array($eventid)).' '.$this->pdh->get('calendar_events', 'html_time_start', array($eventid)).': '.$this->pdh->get('calendar_events', 'name', array($eventid)).'</a></p>';
+			$body .= '<p>&nbsp;</p><p><a href="'.$this->env->link.$this->routing->build('calendarevent', $this->pdh->get('calendar_events', 'name', array($eventid)), $eventid, false, true).'">'.$this->pdh->get('calendar_events', 'html_date', array($eventid)).' '.$this->pdh->get('calendar_events', 'html_time_start', array($eventid)).': '.$this->pdh->get('calendar_events', 'name', array($eventid)).'</a></p>';
 			$this->tpl->assign_vars(array(
 				'DD_STATUS'	=> $this->jquery->MultiSelect('status', $this->user->lang('raidevent_raid_status'), $this->in->getArray('status', 'int'), array('width' => 400)),
 			));
@@ -289,7 +313,7 @@ class Manage_Massmail extends page_generic {
 			'BODY'		=> ($this->in->exists('body')) ? $this->in->get('body', '', 'raw') : $body,
 			'EVENT_ID'	=> ($bnlEventId) ? '&amp;event_id='.$eventid : '',
 			'S_EVENT_ID'=> $bnlEventId,
-			'DD_TEMPLATE' => $this->html->DropDown('templates', $arrTempl, $this->in->get('template', ''), '', 'onchange="window.location=\'manage_massmail.php'.$this->SID.'&event_id='.$eventid.'&template=\'+this.value"'),
+			'DD_TEMPLATE' => new hdropdown('templates', array('options' => $arrTempl, 'value' => $this->in->get('template', ''), 'js' => 'onchange="window.location=\'manage_massmail.php'.$this->SID.'&event_id='.$eventid.'&template=\'+this.value"')),
 		));
 
 		$this->core->set_vars(array(
@@ -299,6 +323,5 @@ class Manage_Massmail extends page_generic {
 		);
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_Manage_Massmail', Manage_Massmail::__shortcuts());
 registry::register('Manage_massmail');
 ?>

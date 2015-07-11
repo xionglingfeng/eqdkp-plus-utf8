@@ -1,6 +1,18 @@
+<!-- IF S_NORMAL_HEADER -->
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li><a href="{EQDKP_ROOT_PATH}admin/manage_adjustments.php{SID}">{L_manadjs_title}</a></li>
+		<li class="current"><a><!-- IF REASON == '' -->{L_add_adjustment}<!-- ELSE -->{L_editing_adj}<!-- ENDIF --></a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+<!-- ENDIF -->
+<!-- IF not S_POINTS_DISABLED -->
 <form method="post" action="{ACTION}" name="post">
 <fieldset class="settings smallsettings">
-	<legend>{L_editing_adj}</legend>
+	<legend><!-- IF REASON == '' -->{L_add_adjustment}<!-- ELSE -->{L_editing_adj}<!-- ENDIF --></legend>
 	<dl>
 		<dt><label>{L_reason}:</label></dt>
 		<dd><input type="text" name="reason" value="{REASON}" class="input" size='60' id="reason" /></dd>
@@ -27,8 +39,18 @@
 	</dl>
 
 </fieldset>
-<input type="submit" name="save" value="{L_save}" class="mainoption bi_ok" />
-<input type="button" name="del" value="{L_delete}" class="liteoption bi_delete" onclick="delete_warning('{GRP_KEY}');" />
-<input type="button" name="" value="{L_cancel}" class="mainoption bi_back" onclick="window.location.href='manage_adjustments.php{SID}'"/>
+<div class="contentFooter">
+	<!-- IF S_COPY -->
+	<input type="hidden" name="copy" value="1" />
+	<!-- ENDIF -->
+	<button class="mainoption" type="submit" name="save"><i class="fa fa-check"></i>{L_save}</button>
+	<button class="liteoption" type="button" name="del" onclick="delete_warning('{GRP_KEY}');"><i class="fa fa-times"></i>{L_delete}</button>
+	<button class="mainoption" type="button" name="" onclick="window.location.href='manage_adjustments.php{SID}'"><i class="fa fa-chevron-left"></i>{L_cancel}</button>
+</div>
 {CSRF_TOKEN}
 </form>
+<!-- ELSE -->
+<div class="infobox infobox-large infobox-red clearfix">
+	<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_disabled_points_info}
+</div>
+<!-- ENDIF -->

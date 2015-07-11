@@ -1,7 +1,20 @@
-<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch">
-	<tr>
-		<th colspan="3"><span style="float:left;">{L_menu_itempools}</span><a href="manage_itempools.php{SID}&amp;upd=true" style="float:right;"><input type="button" name="add" value="{L_add_itempool}" class="mainoption bi_new" /></a></th>
-	</tr>
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li class="current"><a>{L_menu_itempools}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
+<div class="contentHeader">
+	<h1 class="contentTitle">{L_menu_itempools}</h1>
+</div>
+<div class="tableHeader floatRight">
+		<button type="button" name="add" class="mainoption" onclick="window.location='manage_itempools.php{SID}&amp;upd=true'" ><i class="fa fa-plus"></i>{L_add_itempool}</button>
+</div>
+<div class="clear"></div>
+<table  class="table fullwidth colorswitch">
 	<tr>
 		<th width="16">&nbsp;</th>
 		<th width="200">
@@ -9,7 +22,7 @@
 			<a href="manage_itempools.php{SID}&amp;sort=0.1" class="up_arrow_green"></a>
 			{L_name}
 		</th>
-		<th>
+		<th class="hiddenSmartphone">
 			<a href="manage_itempools.php{SID}&amp;sort=1.0" class="down_arrow_green"></a>
 			<a href="manage_itempools.php{SID}&amp;sort=1.1" class="up_arrow_green"></a>
 			{L_description}
@@ -17,9 +30,9 @@
 	</tr>
 	<!-- BEGIN itempools -->
 	<tr>
-		<td width="16"><a href="manage_itempools.php{SID}&amp;upd=true&amp;id={itempools.ID}"><img src="{EQDKP_ROOT_PATH}images/glyphs/edit.png" alt="Edit" width="16" height="16" border="0" /></a></td>
+		<td width="16"><a href="manage_itempools.php{SID}&amp;upd=true&amp;id={itempools.ID}"><i class="fa fa-pencil fa-lg" title="{L_edit}"></i></a></td>
 		<td width="200"><a href="manage_itempools.php{SID}&amp;upd=true&amp;id={itempools.ID}">{itempools.NAME}</a></td>
-		<td>{itempools.DESC}</td>
+		<td class="hiddenSmartphone">{itempools.DESC}</td>
 	</tr>
 	<!-- END itempools -->
 	<tr>

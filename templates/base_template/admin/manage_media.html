@@ -1,0 +1,38 @@
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li class="current"><a>{L_manage_media}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
+<div class="contentHeader">
+	<h1 class="contentTitle">{L_manage_media}</h1>
+</div>
+
+<link rel="stylesheet" type="text/css" media="screen" href="{EQDKP_ROOT_PATH}libraries/elfinder/css/elfinder.min.css">
+<link rel="stylesheet" type="text/css" media="screen" href="{EQDKP_ROOT_PATH}libraries/elfinder/css/theme.css">
+
+<!-- elFinder JS (REQUIRED) -->
+<script type="text/javascript" src="{EQDKP_ROOT_PATH}libraries/elfinder/js/elfinder.min.js"></script>
+
+
+<script type="text/javascript" charset="utf-8">
+	var myCommands = elFinder.prototype._options.commands;
+	var disabled = ['extract', 'archive','mkfile','help','edit'];
+	$.each(disabled, function(i, cmd) {
+		(idx = $.inArray(cmd, myCommands)) !== -1 && myCommands.splice(idx,1);
+	});
+
+	$().ready(function() {
+		var elf = $('#elfinder').elfinder({
+			url : '{EQDKP_ROOT_PATH}libraries/elfinder/php/connector.php',  // connector URL (REQUIRED)
+			// lang: 'ru',             // language (OPTIONAL)
+			commands : myCommands,
+			height: 500
+		}).elfinder('instance');
+	});
+</script>
+
+<div id="elfinder"></div>

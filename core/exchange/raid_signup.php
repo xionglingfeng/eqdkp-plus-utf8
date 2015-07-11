@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if (!defined('EQDKP_INC')){
@@ -22,7 +25,7 @@ if (!defined('EQDKP_INC')){
 
 if (!class_exists('exchange_raid_signup')){
 	class exchange_raid_signup extends gen_class {
-		public static $shortcuts = array('user', 'config', 'pex'=>'plus_exchange', 'pdh', 'time');
+		public static $shortcuts = array('pex'=>'plus_exchange');
 		public $options		= array();
 
 		public function post_raid_signup($params, $body){
@@ -53,7 +56,7 @@ if (!class_exists('exchange_raid_signup')){
 						
 						if (intval($memberid) > 0 && in_array($memberid, $mychars)){
 							// auto confirm if enabled
-							$usergroups		= unserialize($this->config->get('calendar_raid_autoconfirm'));
+							$usergroups		= $this->config->get('calendar_raid_autoconfirm');
 							$signupstatus	= ($xml->status && intval($xml->status) < 5 && intval($xml->status) >0) ? intval($xml->status) : 4;
 							if(is_array($usergroups) && count($usergroups) > 0 && $signupstatus == 1){
 								if($this->user->check_group($usergroups, false)){
@@ -74,6 +77,17 @@ if (!class_exists('exchange_raid_signup')){
 								$mystatus['member_id'],
 								($xml->note) ? filter_var((string)$xml->note, FILTER_SANITIZE_STRING) : '',
 							));
+							
+							//Send Notification to Raidlead, Creator and Admins
+							$raidleaders_chars	= ($eventdata['extension']['raidleader'] > 0) ? $eventdata['extension']['raidleader'] : array();
+							$arrSendTo			= $this->pdh->get('member', 'userid', array($raidleaders_chars));
+							$arrSendTo[] 		= $this->pdh->get('calendar_events', 'creatorid', array($eventid));
+							$arrAdmins 			= $this->pdh->get('user', 'users_with_permission', array('a_cal_revent_conf'));
+							$arrSendTo			= array_merge($arrSendTo, $arrAdmins);
+							$arrSendTo			= array_unique($arrSendTo);
+							$strEventTitle		= sprintf($this->pdh->get('event', 'name', array($eventdata['extension']['raid_eventid'])), $this->user->lang('raidevent_raid_show_title')).', '.$this->time->user_date($eventdata['timestamp_start']).' '.$this->time->user_date($eventdata['timestamp_start'], false, true);
+							if (!in_array($this->user->id, $arrSendTo)) $this->ntfy->add('calendarevent_char_statuschange', $eventid.'_'.$memberid, $this->pdh->get('member', 'name', array($memberid)), $this->routing->build('calendarevent', $this->pdh->get('calendar_events', 'name', array($eventid)), $eventid, true, true), $arrSendTo, $strEventTitle);
+								
 							$this->pdh->process_hook_queue();
 							
 							return array('status'	=> 1);
@@ -91,5 +105,4 @@ if (!class_exists('exchange_raid_signup')){
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_exchange_raid_signup', exchange_raid_signup::$shortcuts);
 ?>

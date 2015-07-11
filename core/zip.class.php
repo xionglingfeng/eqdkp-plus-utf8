@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,8 +24,6 @@ if ( !defined('EQDKP_INC') ){
 }
 if (!class_exists("zip")) {
 	class zip extends gen_class {
-		public static $shortcuts = array('pfh');
-
 		private $zipfile = false;
 		private $objZip = false;
 		private $files = array();
@@ -46,6 +47,10 @@ if (!class_exists("zip")) {
 			if ($this->objZip){
 				@$this->objZip->close();
 			}
+		}
+		
+		public function close(){
+			$this->__destruct();
 		}
 		
 		//Add files that will be written to the archiv when calling create()
@@ -139,7 +144,7 @@ if (!class_exists("zip")) {
 		public function create(){
 			//existing archive
 			if ($this->objZip && $this->objZip->numFiles > 0){
-				$tmpExisting = $this->pfh->FilePath(md5(uniqid().rand()).'.zip', 'tmp');
+				$tmpExisting = $this->pfh->FilePath(md5(generateRandomBytes()).'.zip', 'tmp');
 				//Move archive to temp folder
 				$this->pfh->copy($this->zipfile, $tmpExisting);
 				
@@ -150,7 +155,7 @@ if (!class_exists("zip")) {
 				if ($resZip){
 					if (is_array($this->files['add'])){
 						foreach ($this->files['add'] as $key => $value){
-							if (is_file($value)){						
+							if(is_file($value)){
 								$blnResult = $objZip->addFile($value, $key);
 								if (!$blnResult) return false;
 							}
@@ -172,7 +177,7 @@ if (!class_exists("zip")) {
 				}
 				
 			} else {
-				$strTempArchiv = $this->pfh->FilePath(md5(uniqid().rand()).'.zip', 'tmp');
+				$strTempArchiv = $this->pfh->FilePath(md5(generateRandomBytes()).'.zip', 'tmp');
 				//Create new archive
 				$blnOpen = $this->objZip->open($strTempArchiv, ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE);
 				if ($blnOpen){
@@ -230,5 +235,4 @@ if (!class_exists("zip")) {
 	
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_zip', zip::$shortcuts);
 ?>

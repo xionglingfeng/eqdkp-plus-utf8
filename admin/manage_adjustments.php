@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2010
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 define('EQDKP_INC', true);
 define('IN_ADMIN', true);
@@ -22,31 +25,33 @@ $eqdkp_root_path = './../';
 include_once($eqdkp_root_path.'common.php');
 
 class ManageAdjs extends page_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'jquery', 'core', 'config', 'html', 'time');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 	public function __construct(){
 		$handler = array(
 			'save' => array('process' => 'save', 'check' => 'a_indivadj_add', 'csrf'=>true),
 			'upd'	=> array('process' => 'update', 'csrf'=>false),
+			'copy'		=> array('process' => 'copy', 'check' => 'a_raid_add'),
 		);
 		parent::__construct('a_indivadj_', $handler, array('adjustment', 'reason'), null, 'selected_ids[]', 'a');
 		$this->process();
 	}
+	
+	public function copy(){
+		$this->core->message($this->user->lang('copy_info'), $this->user->lang('copy'));
+		$this->update(false, true);
+	}
 
 	public function save() {
 		$adj = $this->get_post();
-		if($this->in->get('a',0)) {
+		if($this->in->get('a',0) && !$this->in->exists('copy')) {
 			$retu = $this->pdh->put('adjustment', 'update_adjustment', array($this->in->get('a',0), $adj['value'], $adj['reason'], $adj['members'], $adj['event'], $adj['raid_id'], $adj['date'], true));
 		} else {
 			$retu = $this->pdh->put('adjustment', 'add_adjustment', array($adj['value'], $adj['reason'], $adj['members'], $adj['event'], $adj['raid_id'], $adj['date']));
 		}
-		if($retu) {
-			$message = array('title' => $this->user->lang('save_suc'), 'text' => $adj['reason'], 'color' => 'green');
-		} else {
+		if(!$retu) {
 			$message = array('title' => $this->user->lang('save_nosuc'), 'text' => $adj['reason'], 'color' => 'red');
+		} else {
+			$message = array('title' => $this->user->lang('save_suc'), 'text' => $adj['reason'], 'color' => 'green');
 		}
 		$this->display($message);
 	}
@@ -83,7 +88,7 @@ class ManageAdjs extends page_generic {
 		$this->display($messages);
 	}
 
-	public function update($message=false) {
+	public function update($message=false, $copy=false) {
 		//fetch members for select
 		$members = $this->pdh->aget('member', 'name', 0, array($this->pdh->sort($this->pdh->get('member', 'id_list', array(false,true,false)), 'member', 'name', 'asc')));
 		
@@ -136,13 +141,14 @@ class ManageAdjs extends page_generic {
 		$this->confirm_delete($this->user->lang('confirm_delete_adjustment')."<br />".((isset($adj['reason'])) ? $adj['reason'] : ''), '', true);
 		
 		$this->tpl->assign_vars(array(
-			'GRP_KEY'		=> (isset($grp_key)) ? $grp_key : '',
+			'GRP_KEY'		=> (isset($grp_key) && !$copy) ? $grp_key : '',
 			'REASON'		=> (isset($adj['reason'])) ? $adj['reason'] : '',
-			'RAID'			=> $this->html->DropDown('raid_id', $raids, ((isset($adj['raid_id'])) ? $adj['raid_id'] : '')),
+			'RAID'			=> new hdropdown('raid_id', array('options' => $raids, 'value' => ((isset($adj['raid_id'])) ? $adj['raid_id'] : ''))),
 			'MEMBERS'		=> $this->jquery->MultiSelect('members', $members, ((isset($adj['members'])) ? $adj['members'] : ''), array('width' => 350, 'filter' => true)),
 			'DATE'			=> $this->jquery->Calendar('date', $this->time->user_date(((isset($adj['date'])) ? $adj['date'] : $this->time->time), true, false, false, function_exists('date_create_from_format')), '', array('timepicker' => true)),
 			'VALUE'			=> (isset($adj['value'])) ? $adj['value'] : '',
-			'EVENT'			=> $this->html->DropDown('event', $events, ((isset($adj['event'])) ? $adj['event'] : ''))
+			'S_COPY'		=> ($copy) ? true : false,
+			'EVENT'			=> new hdropdown('event', array('options' => $events, 'value' => ((isset($adj['event'])) ? $adj['event'] : ''))),
 		));
 
 		$this->core->set_vars(array(
@@ -205,6 +211,5 @@ class ManageAdjs extends page_generic {
 		return $adj;
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_ManageAdjs', ManageAdjs::__shortcuts());
 registry::register('ManageAdjs');
 ?>

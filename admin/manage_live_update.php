@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 define('EQDKP_INC', true);
@@ -23,14 +26,11 @@ $eqdkp_root_path = './../';
 include_once($eqdkp_root_path . 'common.php');
 
 class Manage_Live_Update extends page_generic {
-		public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'jquery', 'core', 'config', 'pfh', 'repo' => 'repository', 'html', 'encrypt' => 'encrypt');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
+	public static $shortcuts = array('repo' => 'repository');
+	
 	public function __construct(){
 		$this->user->check_auth('a_maintenance');
-		$this->user->check_hostmode();
+
 		$handler = array(
 			'show' 	=> array('process' => 'handle_steps'),
 			'step'	=> array('process' => 'handle_ajax_steps', 'csrf'=>true),
@@ -106,6 +106,11 @@ class Manage_Live_Update extends page_generic {
 
 		$this->tpl->add_js('
 			var totalSteps = '.$last_step.';
+			$(function() {
+				$("#nl_progressbar").progressbar({
+					value: 0
+				});
+			});
 
 			function set_progress_bar_value(recentNumber, labeltext){
 				percent = Math.round((recentNumber / totalSteps) * 100);
@@ -355,10 +360,20 @@ class Manage_Live_Update extends page_generic {
 		$tmp_folder = $this->pfh->FolderPath('update_to_'.$new_version.'/tmp/','live_update');
 		$xmlfile = $tmp_folder.'package.xml';
 		$arrFiles = $this->repo->getFilelistFromPackageFile($xmlfile);
-
+		
+		$strLog = '';
 		foreach($arrFiles as $file){
+			
+			if (file_exists($this->root_path.$file['name'])){
+				$strLog .= 'Replaced File '.$file['name'].'\r\n';
+			} else {
+				$strLog .= 'Added File '.$file['name'].'\r\n';
+			}
+			
 			$this->pfh->copy($tmp_folder.$file['name'],$this->root_path.$file['name']);
 		}
+		
+		if ($strLog != "") register('logs')->add('liveupdate_copied_files', $strLog);
 
 		echo "true";
 
@@ -377,10 +392,7 @@ class Manage_Live_Update extends page_generic {
 
 		foreach($arrFiles as $file){
 			if (($file['type'] == 'changed' || $file['type'] == 'new') && md5_file($this->root_path.$file['name']) != $file['md5']){
-				//Hm, thats bad, the hash in package.xml does not fit the hash of the file delivered
-				if (md5_file($this->root_path.$file['name']) != md5_file($tmp_folder.$file['name'])){
-					$arrMissingFiles[] = $file['name'];
-				}
+				$arrMissingFiles[] = $file['name'];
 			}
 		}
 		
@@ -449,9 +461,15 @@ class Manage_Live_Update extends page_generic {
 		$xmlfile = $tmp_folder.'package.xml';
 		$arrFiles = $this->repo->getFilelistFromPackageFile($xmlfile, 'removed');
 		if (is_array($arrFiles)){
+			$strLog = '';
 			foreach ($arrFiles as $file){
-				$this->pfh->Delete($this->root_path.$file['name']);
+				if (file_exists($this->root_path.$file['name'])){
+					$this->pfh->Delete($this->root_path.$file['name']);
+					$strLog .= 'Deleted File '.$file['name'].'\r\n';
+				}
 			}
+			
+			if ($strLog != "") register('logs')->add('liveupdate_deleted_files', $strLog);
 		}
 
 		echo "true";
@@ -506,6 +524,7 @@ class Manage_Live_Update extends page_generic {
 		$this->tpl->assign_vars(array(
 			'S_START'			=> true,
 			'S_RELEASE_CHANNEL' => ($this->repo->getChannel() != 'stable') ? true : false,
+			'S_UPDATE_BUTTON'	=> ($this->repo->getChannel() != 'stable' || DEBUG > 1),
 			'RECENT_VERSION' 	=> VERSION_EXT,
 			'RELEASE_CHANNEL' 	=> ucfirst($this->repo->getChannel()),
 			'S_REQUIREMENTS'	=> ($updates != NULL && $updates['dep_php'] != '') ? version_compare(PHP_VERSION, $updates['dep_php'], '>=') : true,
@@ -569,7 +588,7 @@ class Manage_Live_Update extends page_generic {
 		$this->tpl->assign_vars(array(
 			'CONTENT'	=> $content,
 			'FILENAME'	=> $strFilename,
-			'RENDERER_DROPDOWN' => $this->html->DropDown('renderer', $arrRenderer, $this->in->get('renderer', 'side_by_side'), '', 'onchange="this.form.submit();"'),
+			'RENDERER_DROPDOWN' => new hdropdown('renderer', array('options' => $arrRenderer, 'value' => $this->in->get('renderer', 'side_by_side'), 'js' => 'onchange="this.form.submit();"', 'tolang' => true)),
 			'ENCODED_FILENAME' => $this->in->get('diff', ''),
 			'S_RENDERER' => $blnRenderer,
 		));
@@ -582,6 +601,5 @@ class Manage_Live_Update extends page_generic {
 		);
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_Manage_Live_Update', Manage_Live_Update::__shortcuts());
 registry::register('Manage_Live_Update');
 ?>

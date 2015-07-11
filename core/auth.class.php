@@ -1,33 +1,31 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
 	header('HTTP/1.0 404 Not Found');exit;
 }
 
-if(!class_exists('user_core')) include_once(registry::get_const('root_path').'/core/user_core.class.php');
+if(!class_exists('user')) include_once(registry::get_const('root_path').'/core/user.class.php');
 
-class auth extends user_core {
-
-	public static function __shortcuts() {
-		$shortcuts = array('config', 'time', 'in', 'db', 'pdh', 'bridge', 'logs', 'env');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
+class auth extends user {
 
 	public static function __dependencies() {
 		$dependencies = array('timekeeper');
@@ -40,14 +38,15 @@ class auth extends user_core {
 	private $current_time 			= 0;
 	//minimum session_length
 	private $session_length			= 3600;
+	public $blnFirstVisit		= false;
 
 	private $settings = array(
 		'session_length'	=> array(
-			'fieldtype'		=> 'text',
-			'name'			=> 'session_length',
-			'size'			=> 7,
-			'not4hmode'		=> true,
-			'default'		=> 3600,
+			'type'		=> 'spinner',
+			'size'		=> 7,
+			'default'	=> 3600,
+			'step'		=> 900,
+			'min'			=> 0,
 		)
 	);
 
@@ -71,13 +70,13 @@ class auth extends user_core {
 		}
 
 		// Remove old sessions and update user information if necessary.
-		if($this->current_time - $this->session_length > $this->config->get('session_last_cleanup')){
+		if(($this->current_time - $this->session_length) > $this->config->get('session_last_cleanup')){
 			$this->cleanup($this->current_time);
 		}
 		//Cookie-Data
 		$arrCookieData = array();
-		$arrCookieData['sid']	= get_cookie('sid');
-		$arrCookieData['data']	= get_cookie('data');
+		$arrCookieData['sid']	= $this->in->getEQdkpCookie('sid');
+		$arrCookieData['data']	= $this->in->getEQdkpCookie('data');
 		$arrCookieData['data']	= ( !empty($arrCookieData['data']) ) ? unserialize(base64_decode(stripslashes($arrCookieData['data']))) : '';
 
 		//Let's get a Session
@@ -90,14 +89,18 @@ class auth extends user_core {
 
 		//Do we have an session? If yes, try to look if it's a valid session and get all information about it
 		if ($this->sid != ''){
-			$query = $this->db->query("SELECT *
+			$arrResult = false;
+			
+			$objQuery = $this->db->prepare("SELECT *
 								FROM __sessions s
 								LEFT JOIN __users u
 								ON u.user_id = s.session_user_id
-								WHERE s.session_id = '".$this->db->escape($this->sid)."'
-								AND session_type = '".$this->db->escape((defined('SESSION_TYPE')) ? SESSION_TYPE : '')."'");
-			$arrResult = $this->db->fetch_record($query);
-			$this->db->free_result($query);
+								WHERE s.session_id = ?
+								AND session_type = ?")->execute($this->sid, ((defined('SESSION_TYPE')) ? SESSION_TYPE : ''));
+			
+			if ($objQuery && $objQuery->numRows){
+				$arrResult = $objQuery->fetchAssoc();
+			}
 
 			$this->data = $arrResult;
 			if (!isset($this->data['user_id'])){
@@ -106,30 +109,40 @@ class auth extends user_core {
 
 			//If the Session is in our Table && is the session_length ok && the IP&Browser fits
 			//prevent too short session_length
-			if ($arrResult && (($arrResult['session_start'] + $this->session_length) > $this->current_time) ){
+			if ($arrResult){
 				//If the IP&Browser fits
 				if (($arrResult['session_ip'] === $this->env->ip) && ($arrResult['session_browser'] === $this->env->useragent)){
-					//We have a valid session
-					$this->data['user_id'] = ($this->data['user_id'] == (int)$arrResult['session_user_id']) ? intval($arrResult['session_user_id']) : $this->data['user_id'];
-					$this->id = $this->data['user_id'];
-					// Only update session DB a minute or so after last update or if page changes
-					if ( ($this->current_time - $arrResult['session_current'] > 60) || ($arrResult['session_page'] != $this->env->current_page) ){
-						$this->db->query("UPDATE __sessions SET :params WHERE session_id = ?", array(
-							'session_current'	=> $this->current_time,
-							'session_page'		=> strlen($this->env->current_page) ? $this->env->current_page : '',
-						), $this->sid);
+					//Check Session length
+					if ((($arrResult['session_start'] + $this->session_length) > $this->current_time)){				
+						//We have a valid session
+						$this->data['user_id'] = ($this->data['user_id'] == (int)$arrResult['session_user_id']) ? intval($arrResult['session_user_id']) : $this->data['user_id'];
+						$this->id = $this->data['user_id'];					
+						
+						// Only update session DB a minute or so after last update or if page changes
+						if ( !register('environment')->is_ajax && (($this->current_time - $arrResult['session_current'] > 60) || ($arrResult['session_page'] != $this->env->current_page) )){
+							$this->db->prepare("UPDATE __sessions :p WHERE session_id = ?")->set(array(
+								'session_current'	=> $this->current_time,
+								'session_page'		=> strlen($this->env->current_page) ? substr(utf8_strtolower($this->env->current_page), 0, 254) : '',
+							))->execute($this->sid);
+						}
+						//The Session is valid, copy the user-data to the data-array and finish the init. You you can work with this data.
+	
+						registry::add_const('SID', "?s=".((!empty($arrCookieData['sid'])) ? '' : $this->sid));
+						return true;
+					} else {
+						$arrSessionKeys = explode(";", $arrResult['session_key']);
+						$arrSessionKeys = array_reverse($arrSessionKeys);
+						$this->data['old_sessionkey'] = $arrSessionKeys[0];
 					}
-					//The Session is valid, copy the user-data to the data-array and finish the init. You you can work with this data.
-
-					registry::add_const('SID', "?s=".((!empty($arrCookieData['sid'])) ? '' : $this->sid));
-					return true;
 				}
 			}
+		} else {			
+			$this->blnFirstVisit = true;
 		}
 		
-		//Reset User ID, because we are still here and have no valid session
 		$this->data['user_id'] = ANONYMOUS;
-
+		
+		
 		//START Autologin
 		$boolSetAutoLogin = false;
 
@@ -139,7 +152,7 @@ class auth extends user_core {
 			if (method_exists($objMethod, 'autologin')){
 				$arrAutologin = $objMethod->autologin($arrCookieData);
 				if ($arrAutologin){
-					$this->data = $arrAutologin;
+					$this->data = array_merge($this->data, $arrAutologin);
 					$boolSetAutoLogin = true;
 					break;
 				}
@@ -150,7 +163,7 @@ class auth extends user_core {
 		if (!$boolSetAutoLogin){
 			$arrAutologin = $this->autologin($arrCookieData);
 			if ($arrAutologin){
-				$this->data = $arrAutologin;
+				$this->data = array_merge($this->data, $arrAutologin);
 				$boolSetAutoLogin = true;
 			}
 		}
@@ -159,14 +172,14 @@ class auth extends user_core {
 		if (!$boolSetAutoLogin && $this->config->get('cmsbridge_active') == 1 && $this->config->get('pk_maintenance_mode') != 1){
 			$arrAutologin = $this->bridge->autologin($arrCookieData);
 			if ($arrAutologin){
-				$this->data = $arrAutologin;
+				$this->data = array_merge($this->data, $arrAutologin);
 				$boolSetAutoLogin = true;
 			}
 		}
 		//END Autologin
 
 		//Let's create a session
-		$this->create($this->data['user_id'], (isset($this->data['user_login_key']) ? $this->data['user_login_key'] : ''), $boolSetAutoLogin);
+		$this->create($this->data['user_id'], (isset($this->data['user_login_key']) ? $this->data['user_login_key'] : ''), $boolSetAutoLogin, ((isset($this->data['old_sessionkey'])) ? $this->data['old_sessionkey'] : false)  );
 		$this->id = $this->data['user_id'];
 		return true;
 	}
@@ -179,10 +192,11 @@ class auth extends user_core {
 	* @var bool $boolSetAutoLogin If the Autologin-Cookie should be set
 	* @return true
 	*/
-	public function create ($user_id, $strAutologinKey, $boolSetAutoLogin = false){
+	public function create ($user_id, $strAutologinKey, $boolSetAutoLogin = false, $strOldSessionKey=false){
 		if (!$user_id) $user_id = ANONYMOUS;
-		$this->sid = substr(md5(rand().uniqid('', true).rand()).md5(rand()), 0, 40);
+		$this->sid = substr(md5(generateRandomBytes(55)).md5(generateRandomBytes()), 0, 40);
 		$strSessionKey = $this->generate_session_key();
+		if ($strOldSessionKey) $strSessionKey = $strOldSessionKey.';'.$strSessionKey;
 		$this->current_time = $this->time->time;
 		$arrData = array(
 				'session_id'			=> $this->sid,
@@ -192,11 +206,11 @@ class auth extends user_core {
 				'session_current'		=> $this->current_time,
 				'session_ip'			=> $this->env->ip,
 				'session_browser'		=> $this->env->useragent,
-				'session_page'			=> ($this->env->current_page) ? $this->env->current_page : '',
+				'session_page'			=> ($this->env->current_page) ? substr(utf8_strtolower($this->env->current_page),0,254) : '',
 				'session_key'			=> $strSessionKey,
 				'session_type'			=> (defined('SESSION_TYPE')) ? SESSION_TYPE : '',
 		);
-		$this->db->query('INSERT INTO __sessions :params', $arrData);
+		$this->db->prepare('INSERT INTO __sessions :p')->set($arrData)->execute();
 
 		//generate cookie-Data
 		$arrCookieData = array();
@@ -215,7 +229,7 @@ class auth extends user_core {
 		// set the cookies
 		set_cookie('data', base64_encode(serialize($arrCookieData)), $this->current_time + 2592000); //30 days
 		set_cookie('sid', $this->sid, 0);
-		$strCookieSID = get_cookie('sid');
+		$strCookieSID = $this->in->getEQdkpCookie('sid');
 		//Check if cookie was set
 
 		registry::add_const('SID', '?s=' . (( empty($strCookieSID) ) ? $this->sid : ''));
@@ -232,10 +246,9 @@ class auth extends user_core {
 	*/
 	public function destroy(){
 		//Update last visit of the user
-		$sql = "UPDATE __users
-				SET user_lastvisit='" . $this->db->escape(intval($this->data['session_current'])) . "'
-				WHERE user_id='" . $this->db->escape($this->data['user_id']) . "'";
-		$this->db->query($sql);
+		$this->db->prepare("UPDATE __users
+				SET user_lastvisit=?
+				WHERE user_id=?")->execute(intval($this->data['session_current']), $this->data['user_id']);
 
 		// Delete existing session
 		$this->destroy_session($this->sid);
@@ -255,13 +268,11 @@ class auth extends user_core {
 	* @return true
 	*/
 	public function destroy_session($strSID, $intUserID = false){
-		$sql = "DELETE FROM __sessions
-						WHERE session_id='" . $this->db->escape($strSID) . "'";
-		if ($intUserID) {
-				$sql .= "AND session_user_id='" . $this->db->escape($intUserID) . "'";
+		if ($intUserID){
+			$this->db->prepare("DELETE FROM __sessions WHERE session_id=? AND session_user_id=?")->execute($strSID, $intUserID);
+		} else {
+			$this->db->prepare("DELETE FROM __sessions WHERE session_id=?")->execute($strSID);
 		}
-
-		$this->db->query($sql);
 
 		return true;
 	}
@@ -274,24 +285,26 @@ class auth extends user_core {
 	* @return true
 	*/
 	public function cleanup($intTime){
-
+		
 		// Get expired sessions
-		$sql =	"SELECT session_page, session_user_id, MAX(session_current) AS recent_time
+		$objQuery = $this->db->prepare("SELECT session_page, session_user_id, MAX(session_current) AS recent_time
 						FROM __sessions
-						WHERE session_start < '" . $this->db->escape($this->time->time - $this->session_length) . "'
-						GROUP BY session_user_id";
-		$result = $this->db->query($sql);
+						WHERE session_start < ?
+						GROUP BY session_user_id")->execute($this->time->time - ($this->session_length*2));
 
-		while($row = $this->db->fetch_record($result)){
-			if ( intval($row['session_user_id']) != ANONYMOUS ){
-				$this->db->query("UPDATE __users SET :params WHERE user_id = '" . $this->db->escape($row['session_user_id']) . "'", array(
-					'user_lastvisit'	=> $row['recent_time'],
-					'user_lastpage'		=> $row['session_page'],
-				));
+		if ($objQuery){
+			while($row = $objQuery->fetchAssoc()){
+				if ( intval($row['session_user_id']) != ANONYMOUS ){
+					$this->db->prepare("UPDATE __users :p WHERE user_id=?")->set(array(
+						'user_lastvisit'	=> $row['recent_time'],
+						'user_lastpage'		=> $row['session_page'],
+					))->execute($row['session_user_id']);
+				}
+				
+				$this->db->prepare("DELETE FROM __sessions
+									WHERE session_user_id = ?
+									AND session_start < ?")->execute($row['session_user_id'], ($this->time->time - $this->session_length));
 			}
-			$this->db->query("DELETE FROM __sessions
-									WHERE session_user_id = '". $this->db->escape($row['session_user_id']) . "'
-									AND session_start < '". $this->db->escape($this->time->time - $this->session_length) ."'");
 		}
 		$this->config->set('session_last_cleanup', $this->time->time);
 		return true;
@@ -304,22 +317,23 @@ class auth extends user_core {
 	* @return $user_id			Returns the User-ID
 	*/
 	public function check_session($sid){
-		$sql =	"SELECT u.*, s.*
+		$objQuery = $this->db->prepare("SELECT u.*, s.*
 				FROM __sessions s, __users u
-				WHERE s.session_id = '".$this->db->escape($sid)."'
-				AND u.user_id = s.session_user_id";
-		$result	= $this->db->query($sql);
-		$data	= $this->db->fetch_record($result);
+				WHERE s.session_id = ?
+				AND u.user_id = s.session_user_id")->execute($sid);	
 
-		$this->db->free_result($result);
-
-		// Did the session exist in the DB?
-		if(isset($data['user_id'])){
-			// Validate IP
-			if($data['session_ip'] == $this->env->ip){
-				return $data['user_id'];
+		if ($objQuery){
+			$data = $objQuery->fetchAssoc();
+			
+			// Did the session exist in the DB?
+			if(isset($data['user_id'])){
+				// Validate IP
+				if($data['session_ip'] == $this->env->ip){
+					return $data['user_id'];
+				}
 			}
 		}
+
 		return ANONYMOUS;
 	}
 
@@ -332,14 +346,14 @@ class auth extends user_core {
 	}
 
 	/**
-	* Session Key
+	* Generates new Session Key for insertion
 	*
 	* @return string
 	*/
 	public function generate_session_key(){
-		return substr(md5(rand().uniqid('', true).rand()), 0, 12);
+		return substr(md5(generateRandomBytes(55)), 0, 12);
 	}
-
+	
 	/**
 	* CSRF GET Token
 	*
@@ -348,7 +362,11 @@ class auth extends user_core {
 	*/
 	public function csrfGetToken($strAction){
 		$strUserPassword = (isset($this->data['user_password_clean'])) ? $this->data['user_password_clean'] : $this->data['session_start'];
-		$strSessionKey = $this->data['session_key'];
+		$strSessionKeys = $this->data['session_key'];
+		$arrSessionKeys = explode(";", $strSessionKeys);
+		$arrSessionKeys = array_reverse($arrSessionKeys);
+		$strSessionKey = $arrSessionKeys[0];
+		
 		return substr(sha1($strUserPassword.$strAction.$strSessionKey), 0, 12);
 	}
 
@@ -361,9 +379,21 @@ class auth extends user_core {
 	*/
 	public function checkCsrfGetToken($strToken, $strAction){
 		$strUserPassword = (isset($this->data['user_password_clean'])) ? $this->data['user_password_clean'] : $this->data['session_start'];
-		$strSessionKey = $this->data['session_key'];
-		$strExpectedToken = substr(sha1($strUserPassword.$strAction.$strSessionKey), 0, 12);
+		$strSessionKeys = $this->data['session_key'];
+		$arrSessionKeys = explode(";", $strSessionKeys);
+		$arrSessionKeys = array_reverse($arrSessionKeys);
+		$strSessionKeyNew = $arrSessionKeys[0];
+		//Check new Token
+		$strExpectedToken = substr(sha1($strUserPassword.$strAction.$strSessionKeyNew), 0, 12);
 		if ($strToken === $strExpectedToken) return true;
+		
+		//Check old Token
+		if (isset($arrSessionKeys[1])){
+			$strSessionKeyOld = $arrSessionKeys[1];
+			$strExpectedToken = substr(sha1($strUserPassword.$strAction.$strSessionKeyOld), 0, 12);
+			if ($strToken === $strExpectedToken) return true;
+		}
+		
 		return false;
 	}
 
@@ -372,8 +402,13 @@ class auth extends user_core {
 	*
 	* @return string
 	*/
-	public function csrfPostToken(){
-		return $this->data['session_key'];
+	public function csrfPostToken($blnReturnOld=false){
+		$strSessionKeys = $this->data['session_key'];
+		$arrSessionKeys = explode(";", $strSessionKeys);
+		$arrSessionKeys = array_reverse($arrSessionKeys);
+		$strSessionKeyNew = $arrSessionKeys[0];
+		if ($blnReturnOld && isset($arrSessionKeys[1])) return $arrSessionKeys[1];
+		return $strSessionKeyNew;
 	}
 
 	/**
@@ -383,8 +418,21 @@ class auth extends user_core {
 	* @return string
 	*/
 	public function checkCsrfPostToken($strToken){
-		$strExpectedToken = $this->data['session_key'];
+		$strSessionKeys = $this->data['session_key'];
+		$arrSessionKeys = explode(";", $strSessionKeys);
+		$arrSessionKeys = array_reverse($arrSessionKeys);
+		$strSessionKeyNew = $arrSessionKeys[0];
+		
+		$strExpectedToken = $strSessionKeyNew;
 		if ($strToken === $strExpectedToken) return true;
+		
+		//Check old Token
+		if (isset($arrSessionKeys[1])){
+			$strSessionKeyOld = $arrSessionKeys[1];
+			$strExpectedToken = $strSessionKeyOld;
+			if ($strToken === $strExpectedToken) return true;
+		}
+		
 		return false;
 	}
 
@@ -394,21 +442,28 @@ class auth extends user_core {
 	* @param $intUserID						User-ID you want to overtake the permissions from
 	*/
 	public function overtake_permissions($intUserID){
-		$this->db->query("UPDATE __sessions SET :params WHERE session_id = '".$this->sid."'", array(
-				'session_perm_id'					=> $intUserID,
-		));
+		$objQuery = $this->db->prepare("UPDATE __sessions :p WHERE session_id=?")->set(array(
+			'session_perm_id' => $intUserID,
+		))->execute($this->sid);
 	}
 
 	/**
 	* Restore your own permissions
 	*/
 	public function restore_permissions(){
-		$this->db->query("UPDATE __sessions SET :params WHERE session_id = '".$this->sid."'", array(
+		$objQuery = $this->db->prepare("UPDATE __sessions :p WHERE session_id=?")->set(array(
 				'session_perm_id'					=> ANONYMOUS,
-		));
+		))->execute($this->sid);
 	}
 
 
+	public function setSessionVar($strVarname, $strValue){
+		$this->data['session_vars'][$strVarname] = $strValue;
+	
+		$objQuery = $this->db->prepare("UPDATE __sessions :p WHERE session_id=?")->set(array(
+				'session_vars' => serialize($this->data['session_vars']),
+		))->execute($this->sid);
+	}
 
 	/**
 	* Attempt to log out a user
@@ -446,19 +501,19 @@ class auth extends user_core {
 	}
 
 	public function get_active_loginmethods(){
-		$arrLoginMethods = unserialize($this->config->get('login_method'));
+		$arrLoginMethods = $this->config->get('login_method');
 		if(!$arrLoginMethods) return array();
 		return $arrLoginMethods;
 	}
 
 	public function get_loginmethod_settings(){
 		$arrLoginMethods = $this->get_active_loginmethods();
-		$settings = false;
+		$settings = array();
 		foreach($arrLoginMethods as $strMethod){
 			include_once($this->root_path . 'core/auth/login/login_'.$strMethod.'.class.php');
 			$objClass = register('login_'.$strMethod);
 			if (method_exists($objClass, 'settings')){
-				$settings['system']['login'] = $objClass->settings();
+				$settings = array_merge($settings, $objClass->settings());
 			}
 		}
 		return $settings;
@@ -467,30 +522,35 @@ class auth extends user_core {
 	public function get_loginmethod_options(){
 		$arrLoginMethods = $this->get_active_loginmethods();
 		$options = array();
+
 		foreach($arrLoginMethods as $strMethod){
 			include_once($this->root_path . 'core/auth/login/login_'.$strMethod.'.class.php');
-			$objClass = register('login_'.$strMethod);
-			if (isset($objClass->options)){
-				$options[$strMethod] = $objClass->options;
+			$strClassname = 'login_'.$strMethod;
+			if (class_exists($strClassname) && isset($strClassname::$options)){
+				$options[$strMethod] = $strClassname::$options;
 			}
 		}
 
 		return $options;
 	}
 
-	public function handle_login_functions($method, $loginMethod=false){
+	public function handle_login_functions($method, $loginMethod=false, $arrOptions=false){
 		$arrLoginMethods = $this->get_active_loginmethods();
 		if ($loginMethod) $arrLoginMethods = array($loginMethod);
 		$arrReturn = array();
-		foreach($arrLoginMethods as $strMethod){
-			include_once($this->root_path . 'core/auth/login/login_'.$strMethod.'.class.php');
-			$objClass = register('login_'.$strMethod);
-			$functions = isset($objClass->functions) ? $objClass->functions : array();
+		if (is_array($arrLoginMethods)){
+			foreach($arrLoginMethods as $strMethod){
+				include_once($this->root_path . 'core/auth/login/login_'.$strMethod.'.class.php');
+				$classname = 'login_'.$strMethod;
+				$functions = (class_exists($classname) && isset($classname::$functions)) ? $classname::$functions : array();
+				
+				if (isset($functions[$method])){
+					$objClass = register('login_'.$strMethod);
+					if (method_exists($objClass, $functions[$method])) $arrReturn[$strMethod] = $objClass->$functions[$method]($arrOptions);
+				}
 
-			if (isset($functions[$method]) && method_exists($objClass, $functions[$method])){
-				$arrReturn[$strMethod] = $objClass->$functions[$method]();
+				if ($loginMethod) return $arrReturn[$strMethod];
 			}
-			if ($loginMethod) return $arrReturn[$strMethod];
 		}
 		return $arrReturn;
 	}
@@ -499,11 +559,13 @@ class auth extends user_core {
 		$arrLoginMethods = $this->get_active_loginmethods();
 		if ($loginMethod) $arrLoginMethods = array($loginMethod);
 		$arrReturn = array();
-		foreach($arrLoginMethods as $strMethod){
-			include_once($this->root_path . 'core/auth/login/login_'.$strMethod.'.class.php');
-			$objClass = register('login_'.$strMethod);
-			$arrReturn[$strMethod] = $objClass;
-			if ($loginMethod) return $arrReturn[$strMethod];
+		if (is_array($arrLoginMethods)){
+			foreach($arrLoginMethods as $strMethod){
+				include_once($this->root_path . 'core/auth/login/login_'.$strMethod.'.class.php');
+				$objClass = register('login_'.$strMethod);
+				$arrReturn[$strMethod] = $objClass;
+				if ($loginMethod) return $arrReturn[$strMethod];
+			}
 		}
 		return $arrReturn;
 	}
@@ -517,7 +579,7 @@ class auth extends user_core {
 			while ( $file = @readdir($dir) ){
 				if ((is_file($this->root_path . 'core/auth/' . $file)) && valid_folder($file)){
 					$name = substr(substr($file, 0, strpos($file, '.')), 5);
-					$auth[$name] = ($this->lang('auth_'.$name)) ? 'auth_'.$name : ucfirst($name);
+					$auth[$name] = ($this->lang('auth_'.$name, false, false)) ? $this->lang('auth_'.$name) : ucfirst($name);
 				}
 			}
 		}
@@ -525,15 +587,8 @@ class auth extends user_core {
 	}
 
 	public function get_authmethod_settings(){
-		if (count($this->settings) > 0){
-			$settings['system']['auth'] = $this->settings;
-			return $settings;
-		}
+		if (count($this->settings) > 0) return $this->settings;
 		return false;
 	}
-
 }
-
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_auth', auth::__shortcuts());
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('dep_auth',auth::__dependencies());
 ?>

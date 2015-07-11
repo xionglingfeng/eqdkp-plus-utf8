@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: myHTML
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date: 2013-02-11 12:20:48 +0100 (Mo, 11 Feb 2013) $
- * -----------------------------------------------------------------------
- * @author		$Author: godmod $
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		libraries:myHTML
- * @version		$Rev: 13048 $
- * 
- * $Id: wbb4.bridge.class.php 13048 2013-02-11 11:20:48Z godmod $
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,12 +25,7 @@ if ( !defined('EQDKP_INC') ){
 
 class wbb4_bridge extends bridge_generic {
 	
-	public static function __shortcuts() {
-		$shortcuts = array('env', 'config', 'user', 'time');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-	
-	public $name = 'WBB 4';
+	public static $name = 'WBB 4';
 	
 	public $data = array(
 		//Data
@@ -56,75 +54,72 @@ class wbb4_bridge extends bridge_generic {
 		),
 	);
 	
-	public $functions = array(
-		'login'	=> array(
-			'callbefore'	=> '',
-			'function' 		=> '',
-			'callafter'		=> 'wbb4_callafter',
-		),
-		'logout' 	=> 'wbb4_logout',
-		'autologin' => 'wbb4_autologin',	
-		'sync'		=> '',
-	);
-	
 	public $settings = array(
 		'cmsbridge_disable_sso'	=> array(
-			'fieldtype'	=> 'checkbox',
-			'name'		=> 'cmsbridge_disable_sso',
+			'type'	=> 'radio',
 		),
 		'cmsbridge_sso_cookiedomain' => array(
-			'fieldtype'	=> 'text',
-			'name'		=> 'cmsbridge_sso_cookiedomain',
+			'type'	=> 'text',
 		),
 		'cmsbridge_sso_cookiepath' => array(
-			'fieldtype'	=> 'text',
-			'name'		=> 'cmsbridge_sso_cookiepath',
+			'type'	=> 'text',
 		),
 	);
 	
 	//Needed function
-	public function check_password($password, $hash, $strSalt = '', $boolUseHash, $strUsername){
+	public function check_password($password, $hash, $strSalt = '', $boolUseHash = false, $strUsername = "", $arrUserdata=array()){
 		$blnResult = $this->__checkPassword($strUsername, $password, $hash);
 
 		if ($blnResult) return true;
 
 		return false;
 	}
-	
-	public function get_groups($blnWithID){
-		$strQuery = "SELECT g.groupID as id, groupName as name, l.languageItemValue as lang FROM ".$this->prefix."user_group g LEFT JOIN ".$this->prefix."language_item l ON l.languageItem = g.groupName";
-		$result = $this->db->fetch_array($strQuery);
-		$groups = false;
-
-		if (is_array($result) && count($result) >0) {
-			foreach ($result as $row){
-				$name = (strpos($row['name'], 'wcf.acp.group') === 0 && $row['lang'] != "") ? $row['lang'] : $row['name'];
-				$groups[$row['id']] = $name.(($blnWithID) ? ' (#'.$row['id'].')': '');
-			}
-		}
-		return $groups;
-	}
 
 	
-	public function wbb4_callafter($strUsername, $strPassword, $boolAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash){
+	public function after_login($strUsername, $strPassword, $boolSetAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash=false){
 		//Is user active?
 		if ($boolLoginResult){
 			if ($arrUserdata['banned'] != '0' || $arrUserdata['activationCode'] != '0') {
 				return false;
 			}
+			
+			//Single Sign On
+			if ($this->config->get('cmsbridge_disable_sso') != '1'){
+				$this->sso($arrUserdata, $boolSetAutoLogin);
+			}
+			
+			return true;
 		}
 		
-		//Single Sign On
-		if ($this->config->get('cmsbridge_disable_sso') != '1'){
-			$this->wbb4_sso($arrUserdata, $boolAutoLogin);
-		}
-		return true;
+		return false;
 	}
 	
-	public function wbb4_sso($arrUserdata, $boolAutoLogin){
+	public function get_groups($blnWithID){
+		$strQuery = "SELECT g.groupID as id, groupName as name, l.languageItemValue as lang FROM ".$this->prefix."user_group g LEFT JOIN ".$this->prefix."language_item l ON l.languageItem = g.groupName";
+		$objQuery = $this->bridgedb->query($strQuery);
+		$groups = false;
+		
+		if ($objQuery){
+			$arrResult = $objQuery->fetchAllAssoc();
+			$groups = false;
+			
+			if (is_array($arrResult) && count($arrResult) > 0) {
+				foreach ($arrResult as $row){
+					$name = (strpos($row['name'], 'wcf.acp.group') === 0 && $row['lang'] != "") ? $row['lang'] : $row['name'];
+					$groups[$row['id']] = $name.(($blnWithID) ? ' (#'.$row['id'].')': '');
+				}
+			}
+			
+			return $groups;
+		}
+
+		return false;
+	}
+	
+	private function sso($arrUserdata, $boolAutoLogin){
 		$user_id = intval($arrUserdata['id']);
-		$strSessionID = md5(rand().rand()).'a7w8er45';
-		$this->db->query("DELETE FROM ".$this->prefix."session WHERE userID='".$this->db->escape($user_id)."'");
+		$strSessionID = substr(md5(generateRandomBytes(55)).md5(generateRandomBytes(55)), 0, 40);
+		//$this->bridgedb->prepare("DELETE FROM ".$this->prefix."session WHERE userID=?")->execute($user_id);
 			
 		//PW is true, logg the user into our Forum
 		$arrSet = array(
@@ -135,17 +130,19 @@ class wbb4_bridge extends bridge_generic {
 			'lastActivityTime'			=> (int) $this->time->time,
 			'requestURI'				=> '',
 			'requestMethod'				=> 'GET',
-			'sessionVariables'			=> 'a:1:{s:16:"__SECURITY_TOKEN";s:40:".'.md5(rand().rand()).'a7w8er45'.'.";}',
+			'sessionVariables'			=> 'a:1:{s:16:"__SECURITY_TOKEN";s:40:".'.md5(generateRandomBytes()).'a7w8er45'.'.";}',
 		);
-			
-		$this->db->query("INSERT INTO ".$this->prefix."session :params", $arrSet);
+		$this->bridgedb->prepare("INSERT INTO ".$this->prefix."session :p")->set($arrSet)->execute();
 			
 		$config = array();
-		$result = $this->db->fetch_array("SELECT * FROM ".$this->prefix."option WHERE optionName = 'cookie_prefix'");
-		if (is_array($result)){
-			foreach ($result as $value){
-				$config[$value['optionName']] = $value['optionValue'];
-			}
+		$objQuery =  $this->bridgedb->query("SELECT * FROM ".$this->prefix."option WHERE optionName = 'cookie_prefix'");
+		if($objQuery){
+			$result = $objQuery->fetchAllAssoc();
+			if (is_array($result)){
+				foreach ($result as $value){
+					$config[$value['optionName']] = $value['optionValue'];
+				}
+			}		
 		}
 			
 		$expire = $this->time->time + 31536000;
@@ -160,7 +157,7 @@ class wbb4_bridge extends bridge_generic {
 			}
 		} else $config['cookie_domain'] = $this->config->get('cmsbridge_sso_cookiedomain');
 		
-		$config['cookie_path'] = (strlen($this->config->get('cmsbridge_sso_cookiepath'))) ? $this->config->get('cmsbridge_sso_cookiedomain') : '/';
+		$config['cookie_path'] = (strlen($this->config->get('cmsbridge_sso_cookiepath'))) ? $this->config->get('cmsbridge_sso_cookiepath') : '/';
 
 		//SID Cookie
 		setcookie($config['cookie_prefix'].'cookieHash', $strSessionID, $expire, $config['cookie_path'], $config['cookie_domain'], $this->env->ssl);
@@ -169,13 +166,16 @@ class wbb4_bridge extends bridge_generic {
 		return true;
 	}
 	
-	public function wbb4_autologin(){
-		$config = array();
-		$result = $this->db->fetch_array("SELECT * FROM ".$this->prefix."option WHERE optionName = 'cookie_prefix'");
-		if (is_array($result)){
-			foreach ($result as $value){
-				$config[$value['optionName']] = $value['optionValue'];
-			}
+	public function autologin($arrCookieData){
+	$config = array();
+		$objQuery =  $this->bridgedb->query("SELECT * FROM ".$this->prefix."option WHERE optionName = 'cookie_prefix'");
+		if($objQuery){
+			$result = $objQuery->fetchAllAssoc();
+			if (is_array($result)){
+				foreach ($result as $value){
+					$config[$value['optionName']] = $value['optionValue'];
+				}
+			}		
 		}
 		
 		$userID = $_COOKIE[$config['cookie_prefix'].'userID'];
@@ -183,34 +183,43 @@ class wbb4_bridge extends bridge_generic {
 		
 		if ($cookieHash == NULL || $cookieHash == "") return false;
 		
-		$result = $this->db->query("SELECT * FROM ".$this->prefix."session WHERE userID = '".$this->db->escape($userID)."' and sessionID='".$this->db->escape($cookieHash)."'");
-		$row = $this->db->fetch_row($result);
-		if ($row){
-			if ($row['ipAddress'] == self::getIpAddress() && $row['userAgent'] == $this->env->useragent){
-				$result2 = $this->db->query("SELECT * FROM ".$this->prefix."user WHERE userID='".$this->db->escape($userID)."'");
-				$row2 = $this->db->fetch_row($result2);
-				if($row2){
-					$strUsername = utf8_strtolower($row2['username']);
-					$user_id = $this->pdh->get('user', 'userid', array($strUsername));
-					$data = $this->pdh->get('user', 'data', array($user_id));
-					return $data;
+		$result = $this->bridgedb->prepare("SELECT * FROM ".$this->prefix."session WHERE userID = ? and sessionID=?")->execute($userID, $cookieHash);
+		if ($result){
+			$row = $result->fetchRow();
+			if ($row){
+				if ($row['ipAddress'] == self::getIpAddress() && $row['userAgent'] == $this->env->useragent){
+					$result2 = $this->bridgedb->prepare("SELECT * FROM ".$this->prefix."user WHERE userID=?")->execute($userID);
+					if ($result2){
+						$row2 = $result2->fetchRow();
+						if($row2){
+							$strUsername = utf8_strtolower($row2['username']);
+							$user_id = $this->pdh->get('user', 'userid', array($strUsername));
+							$data = $this->pdh->get('user', 'data', array($user_id));
+							return $data;
+						}					
+					}		
 				}	
-			}	
+			}
 		}
+
 		return false;
 	}
 	
-	public function wbb4_logout(){
-		$arrUserdata = $this->get_userdata($this->user->data['username']);
+	public function logout(){
+		$arrUserdata = $this->bridge->get_userdata($this->user->data['username']);
 		if (isset($arrUserdata['id'])){
-			$this->db->query("DELETE FROM ".$this->prefix."session WHERE userID='".$this->db->escape($arrUserdata['id'])."'");
+			$this->bridgedb->prepare("DELETE FROM ".$this->prefix."session WHERE userID=?")->execute($arrUserdata['id']);
 		}
+		
 		$config = array();
-		$result = $this->db->fetch_array("SELECT * FROM ".$this->prefix."option WHERE optionName = 'cookie_prefix'");
-		if (is_array($result)){
-			foreach ($result as $value){
-				$config[$value['optionName']] = $value['optionValue'];
-			}
+		$objQuery =  $this->bridgedb->query("SELECT * FROM ".$this->prefix."option WHERE optionName = 'cookie_prefix'");
+		if($objQuery){
+			$result = $objQuery->fetchAllAssoc();
+			if (is_array($result)){
+				foreach ($result as $value){
+					$config[$value['optionName']] = $value['optionValue'];
+				}
+			}		
 		}
 		
 		if($this->config->get('cmsbridge_sso_cookiedomain') == '') {
@@ -223,14 +232,14 @@ class wbb4_bridge extends bridge_generic {
 			}
 		} else $config['cookie_domain'] = $this->config->get('cmsbridge_sso_cookiedomain');
 		
-		$config['cookie_path'] = (strlen($this->config->get('cmsbridge_sso_cookiepath'))) ? $this->config->get('cmsbridge_sso_cookiedomain') : '/';
+		$config['cookie_path'] = (strlen($this->config->get('cmsbridge_sso_cookiepath'))) ? $this->config->get('cmsbridge_sso_cookiepath') : '/';
 		
 		setcookie($config['cookie_prefix'].'cookieHash', '', 0, $config['cookie_path'], $config['cookie_domain'], $this->env->ssl);
 		setcookie($config['cookie_prefix'].'userID', '', 0, $config['cookie_path'], $config['cookie_domain'], $this->env->ssl);
 		setcookie($config['cookie_prefix'].'password', '', 0, $config['cookie_path'], $config['cookie_domain'], $this->env->ssl);
 	}
 	
-	public function __checkPassword($username, $password, $hash) {
+	private function __checkPassword($username, $password, $hash) {
 		$isValid = false;
 		
 		// check if password is a valid bcrypt hash
@@ -256,7 +265,7 @@ class wbb4_bridge extends bridge_generic {
 	 * 
 	 * @return	string
 	 */
-	public static function getIpAddress() {
+	private static function getIpAddress() {
 		$REMOTE_ADDR = '';
 		if (isset($_SERVER['REMOTE_ADDR'])) $REMOTE_ADDR = $_SERVER['REMOTE_ADDR'];
 		
@@ -276,7 +285,7 @@ class wbb4_bridge extends bridge_generic {
 	 * @param	string		$ip
 	 * @return	string
 	 */
-	public static function convertIPv4To6($ip) {
+	private static function convertIPv4To6($ip) {
 		if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false) {
 			// given ip is already ipv6
 			return $ip;
@@ -700,5 +709,4 @@ class wbb4_bridge extends bridge_generic {
 	}
 
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_wbb4_bridge',wbb4_bridge::__shortcuts());
 ?>

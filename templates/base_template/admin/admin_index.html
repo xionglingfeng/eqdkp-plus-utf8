@@ -1,21 +1,26 @@
-<!-- IF SHOW_PHP_WARNING -->
-<div class="errorbox roundbox">
-	<div class="icon_false">{L_php_warning}</div>
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li class="current"><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+	</ul>
+	<div class="clear"></div>
 </div>
-<br />
+
+<!-- IF SHOW_PHP_WARNING -->
+<div class="infobox infobox-large infobox-red clearfix">
+	<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_php_warning}
+</div>
 <!-- ENDIF -->
 <!-- IF SHOW_BETA_WARNING -->
-<div class="errorbox roundbox">
-	<div class="icon_false">{L_beta_warning}</div>
+<div class="infobox infobox-large infobox-red clearfix">
+	<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {L_beta_warning}
 </div>
-<br />
 <!-- ENDIF -->
 <!-- IF SHOW_LIMITED_FUNCS -->
 <!-- BEGIN lim_funcs -->
-<div class="errorbox roundbox">
-	<div class="icon_false">{lim_funcs.TEXT}</div>
+<div class="infobox infobox-large infobox-red clearfix">
+	<i class="fa fa-exclamation-triangle fa-4x pull-left"></i> {lim_funcs.TEXT}
 </div>
-<br />
 <!-- END -->
 <!-- ENDIF -->
 
@@ -28,41 +33,30 @@
   </ul>
 
   <div id="fragment-1">
-    <table width="100%" align="center"  border="0" cellspacing="0" cellpadding="0">
-      <tr>
-        <td width="50%">
-          <table width="100%">
-            <tr>
-              <th>{L_rssadmin_head1}</th>
-            </tr>
-            <tr>
-              <td style="width:100%;"><div id="rss"><div id="notifications"></div></div></td>
-            </tr>
-          </table>
-        </td>
-        <td width="20"> </td>
-        <td width="50%">
-          <table width="100%">
-            <tr>
-              <th>{L_rssadmin_head2} <a href="https://twitter.com/EQdkpPlus" target="new" ><img src='../images/logos/twitter_icon_16.png' alt='twitter' /></a>
-				<a href="https://facebook.com/EQdkpPlus" target="new" ><img src='../images/logos/facebook_icon_16.png' alt='facebook' /></a>
-				<a href="https://google.com/+Eqdkp-plusEu" target="new" ><img src='../images/logos/google_plus_16.png' alt='Google+' /></a>
-				</th>
-            </tr>
-            <tr>
-              <td><div id="twitterfeed"></div></td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
+  	<div class="grid">
+  		<div class="onerow">
+  			<div class="col6">
+  				<h2>{L_rssadmin_head1}</h2>
+				<div id="notifications"></div>
+  			</div>
+  			<div class="col6 last">
+  				<h2>{L_rssadmin_head2} <a href="https://twitter.com/EQdkpPlus" target="new" ><i class="fa fa-twitter-square fa-lg"></i></a>
+					<a href="https://facebook.com/EQdkpPlus" target="new" ><i class="fa fa-facebook-square fa-lg"></i></a>
+					<a href="https://google.com/+Eqdkp-plusEu" target="new" ><i class="fa fa-google-plus-square fa-lg"></i></a>
+				</h2>
+				<div id="twitterfeed"></div>
+  			</div>
+  			
+  		</div>
+  	</div>
+
   </div>
 
   <div id="fragment-2">
-    <table width="100%" border="0" cellspacing="1" cellpadding="2">
-      <tr>
-        <th align="center" colspan="4">{L_statistics}</th>
-      </tr>
+	<div class="tableHeader">
+		<h2>{L_statistics}</h2>
+	</div>
+    <table class="table fullwidth scrollable-x">
       <tr>
         <td class="row2" width="25%">{L_liveupdate_installed_version}:</td>
         <td class="row1" width="25%">{EQDKP_VERSION}</td>
@@ -99,66 +93,60 @@
         <td class="row2" width="25%">{L_number_of_logs}:</td>
         <td class="row1" width="25%">{NUMBER_OF_LOGS}</td>
       </tr>
-      <tr>
-        <th align="center" colspan="4">&nbsp;</th>
-      </tr>
     </table>
   </div>
 
   <div id="fragment-3">
-    <table width="100%" border="0">
+    <table class="table fullwidth scrollable-x colorswitch">
      <tr>
           <th>{L_adminc_phpname}</th>
           <th>{L_adminc_phpvalue}</th>
         </tr>
-        <tr class="row1">
+        <tr>
           <td>PHP Safe Mode</td>
           <td>{SERVERINFO_SAFEMODE}</td>
         </tr>
-        <tr class="row2">
+        <tr>
           <td>Register Globals</td>
           <td>{SERVERINFO_REGGLOBAL}</td>
         </tr>
-         <tr class="row1">
+         <tr>
           <td>CURL</td>
           <td>{SERVERINFO_CURL}</td>
         </tr>
-         <tr class="row2">
+         <tr>
           <td>Fopen</td>
           <td>{SERVERINFO_FOPEN}</td>
         </tr>
-         <tr class="row1">
+         <tr>
           <td>PHP Version</td>
           <td>{SERVERINFO_PHP} <em>(<a href="info_php.php{SID}">{L_adminc_server}</a>)</em></td>
         </tr>
-        <tr class="row2">
+        <tr>
           <td>Mysql Version</td>
           <td>{SERVERINFO_MYSQL}</td>
         </tr>
-        <tr>
-        <td></td><td></td>
-        </tr>
-			</table>
+		</table>
   </div>
 
   <div id="fragment-4">
     {L_adminc_support_intro}<br/><br/>
-    <table width="100%" border="0">
+    <table class="table fullwidth">
 
       <tr>
-      	<td><img src="../images/admin/admin_index/support_tour.png" alt="Tour" /></td>
+      	<td><span class="fa-stack fa-3x"><i class="fa fa-square fa-stack-2x"></i><i class="fa fa-tachometer fa-stack-1x fa-inverse"></i></span></td>
       	<td>{L_adminc_support_tour}</td>
      	</tr>
       <tr>
-        <td><img src="../images/admin/admin_index/support_wiki.png" alt="WIKI" /></td>
+        <td><span class="fa-stack fa-3x"><i class="fa fa-square fa-stack-2x"></i><i class="fa fa-globe fa-stack-1x fa-inverse"></i></span></td>
         <td>{L_adminc_support_wiki}</td>
       </tr>
        <tr>
-        <td><img src="../images/admin/admin_index/support_bug.png" alt="Bugtracker" /></td>
+        <td><span class="fa-stack fa-3x"><i class="fa fa-square fa-stack-2x"></i><i class="fa fa-bug fa-stack-1x fa-inverse"></i></span></td>
         <td>{L_adminc_support_bugtracker}</td>
       </tr>
       <tr>
-        <td><img src="../images/admin/admin_index/support_community.png" alt="Community" /></td>
+        <td><span class="fa-stack fa-3x"><i class="fa fa-square fa-stack-2x"></i><i class="fa fa-users fa-stack-1x fa-inverse"></i></span></td>
         <td>{L_adminc_support_forums}</td>
       </tr>
     </table>
@@ -166,26 +154,24 @@
 </div>
 <br/>
 <!-- IF S_WHO_IS_ONLINE -->
-<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch">
-    <tr>
-      <th align="center" colspan="6">{L_who_online}</th>
-    </tr>
+<h2>{L_who_online}</h2>
+<table  class="table fullwidth colorswitch">
     <tr>
       <th align="left" width="20%" class="nowrap">{L_username}</th>
-      <th align="left" width="20%" class="nowrap">{L_logged_in}</th>
-      <th align="left" width="20%" class="nowrap">{L_last_update}</th>
-      <th align="left" width="20%" class="nowrap">{L_location}</th>
-      <th align="left" width="20%" class="nowrap">{L_ip_address}</th>
-      <th align="left" width="20%" class="nowrap">{L_browser}</th>
+      <th align="left" width="20%" class="hiddenSmartphone">{L_logged_in}</th>
+      <th align="left" width="20%">{L_last_update}</th>
+      <th align="left" width="20%">{L_location}</th>
+      <th align="left" width="20%" class="hiddenSmartphone">{L_ip_address}</th>
+      <th align="left" width="20%" class="hiddenSmartphone">{L_browser}</th>
     </tr>
     <!-- BEGIN online_row -->
     <tr>
       <td width="20%" class="nowrap">{online_row.USERNAME}</td>
-      <td width="20%" class="nowrap">{online_row.LOGIN}</td>
-      <td width="20%" class="nowrap">{online_row.LAST_UPDATE}</td>
-      <td width="20%" class="nowrap">{online_row.LOCATION}</td>
-      <td width="20%" class="nowrap"><span class="ip_resolver" title="{online_row.IP_ADDRESS}">{online_row.IP_ADDRESS}</span></td>
-      <td width="20%" align="center" class="nowrap">{online_row.BROWSER}</td>
+      <td width="20%" class="hiddenSmartphone">{online_row.LOGIN}</td>
+      <td width="20%">{online_row.LAST_UPDATE}</td>
+      <td width="20%">{online_row.LOCATION}</td>
+      <td width="20%" class="hiddenSmartphone"><span class="ip_resolver" title="{online_row.IP_ADDRESS}">{online_row.IP_ADDRESS}</span></td>
+      <td width="20%" align="center" class="hiddenSmartphone">{online_row.BROWSER}</td>
     </tr>
     <!-- END online_row -->
     <tr>
@@ -195,10 +181,8 @@
 <!-- ENDIF -->
 <!-- IF S_LOGS -->
 <br />
-<table width="100%" border="0" cellspacing="1" cellpadding="2" class="colorswitch">
-  <tr>
-    <th align="center" colspan="6">{L_new_actions}</th>
-  </tr>
+<h2>{L_new_actions}</h2>
+<table  class="table fullwidth colorswitch">
   {LOGS_TABLE}  
 </table>
 <!-- ENDIF -->

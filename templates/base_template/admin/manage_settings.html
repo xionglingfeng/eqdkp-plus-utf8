@@ -1,33 +1,41 @@
-<form method="post" action="{ACTION}" name="settings">
-	<div id='plus_sett_tabs'>
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li class="current"><a>{L_settings}</a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+<form method="post" action="{ACTION}" name="{FORM_ID}" id="{FORM_ID}">
+	<div id='core_sett_tabs'>
 		<ul>
 			<!-- BEGIN tabs --> <li><a href='#fragment-{tabs.ID}'><span>{tabs.NAME}</span></a></li><!-- END tabs -->
 		</ul>
 
 		<!-- BEGIN tabs -->
 		<div id="fragment-{tabs.ID}">
-			<!-- BEGIN fieldset -->
-			<!-- IF tabs.fieldset.INFO -->
-			<div class="bluebox roundbox">
-				<div class="icon_info">{tabs.fieldset.INFO}</div>
+			<!-- BEGIN fieldsets -->
+			<!-- IF tabs.fieldsets.INFO -->
+			<div class="infobox infobox-large infobox-blue clearfix">
+				<i class="fa fa-info-circle fa-4x pull-left"></i> {tabs.fieldsets.INFO}
 			</div>
 			<!-- ENDIF -->
 			<fieldset class="settings">
-				<legend>{tabs.fieldset.NAME}</legend>
-				<!-- BEGIN field -->
+				<legend>{tabs.fieldsets.NAME}</legend>
+				<!-- BEGIN fields -->
 				<dl>
-					<dt><label>{tabs.fieldset.field.NAME}</label><br /><span>{tabs.fieldset.field.HELP}</span></dt>
-					<dd>{tabs.fieldset.field.FIELD}</dd>
+					<dt><label>{tabs.fieldsets.fields.NAME}</label><br /><span>{tabs.fieldsets.fields.HELP}</span></dt>
+					<dd>{tabs.fieldsets.fields.FIELD}</dd>
 				</dl>
-				<!-- END field -->
+				<!-- END fields -->
 			</fieldset>
-			<!-- END fieldset -->
+			<!-- END fieldsets -->
 		</div>
 		<!-- END tabs -->
 
 		<div align='center'>
-			<input name="save_plus" type="submit" class="mainoption bi_ok" id="save" value="{L_save}" />
-			<input type="button" name="reset" value="{L_reset}" class="liteoption bi_reset" onclick="window.location='manage_settings.php{SID}'"/>
+			<button  name="save_plus" type="submit" class="mainoption" id="save"><i class="fa fa-check"></i>{L_save}</button>
+			<button type="button" name="reset" class="liteoption" onclick="window.location='manage_settings.php{SID}'"><i class="fa fa-trash-o"></i>{L_reset}</button>
 		</div>
 	</div>
 {CSRF_TOKEN}

@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2010
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if(!defined('EQDKP_INC')) {
 	die('Do not access this file directly.');
@@ -22,39 +25,43 @@ if(!defined('EQDKP_INC')) {
 
 if(!class_exists('pdh_w_logs')) {
 	class pdh_w_logs extends pdh_w_generic {
-		public static function __shortcuts() {
-		$shortcuts = array('pdh', 'db', 'user', 'env');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
-		public function __construct() {
-			parent::__construct();
-		}
 
 		public function clean_log($timestamp){
 			$log_date = time()-($timestamp*24*60*60);
-			$sql = 'DELETE FROM __logs WHERE log_date < '.$log_date;
-			$this->db->query($sql);
+			$objQuery = $this->db->prepare('DELETE FROM __logs WHERE log_date < ?')->execute($log_date);
 			$this->pdh->enqueue_hook('logs_update');
-			return $this->db->affected_rows();
+			return $objQuery->affectedRows;
+		}
+		
+		public function delete_ids($arrIDs){
+			$this->db->prepare("DELETE FROM __logs WHERE log_id :in")->in($arrIDs)->execute();
+			
+			$this->pdh->enqueue_hook('logs_update');
+			return count($arrIDs);
 		}
 
 		public function truncate_log(){
+			$arrResult = $this->db->query("SELECT count(*) as count FROM __logs", true);
+			$count = $arrResult['count'];
+			
 			$this->db->query("TRUNCATE TABLE __logs");
 			$this->pdh->enqueue_hook('logs_update');
-			return $this->db->affected_rows();
+			return intval($count);
 		}
 
 		public function delete_log($log_id){
-			$this->db->query("DELETE FROM __logs WHERE log_id = ".$this->db->escape($log_id));
-			$this->pdh->enqueue_hook('logs_update', array($log_id));
-			return $this->db->affected_rows();
+			$objQuery = $this->db->prepare("DELETE FROM __logs WHERE log_id=?")->execute($log_id);
+			if ($objQuery) {
+				$this->pdh->enqueue_hook('logs_update', array($log_id));
+				return $objQuery->affectedRows;
+			}
+			return false;
 		}
 
-		public function add_log($tag, $value, $admin_action=true, $plugin='', $result=1, $userid = false) {
+		public function add_log($tag, $value, $recordid=0, $record='',$admin_action=true, $plugin='', $result=1, $userid = false) {
 			$userid = ($userid) ? $userid : $this->user->id;
 			
-			$this->db->query('INSERT INTO __logs :params', array(
+			$objQuery = $this->db->prepare('INSERT INTO __logs :p')->set(array(
 				'log_value'			=> serialize($value),
 				'log_result'		=> $result,
 				'log_tag'			=> $tag,
@@ -65,10 +72,16 @@ if(!class_exists('pdh_w_logs')) {
 				'username'			=> $this->pdh->get('user', 'name', array($userid)),
 				'log_plugin'		=> $plugin,
 				'log_flag'			=> ($admin_action) ? 1 : 0,
-			));
-			$this->pdh->enqueue_hook('logs_update', array($this->db->insert_id()));
+				'log_record'		=> $record,
+				'log_record_id'		=> $recordid,
+			))->execute();
+			
+			if ($objQuery){
+				$id = $objQuery->insertId;
+				$this->pdh->enqueue_hook('logs_update', array($id));
+			}
+			
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_w_logs', pdh_w_logs::__shortcuts());
 ?>

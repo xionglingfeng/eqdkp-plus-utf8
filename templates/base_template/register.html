@@ -1,14 +1,16 @@
 <!-- IF S_LICENCE -->
-<form action="{FORM_ACTION}" method="post">
+<form action="{ACTION}" method="post">
 	<div class="content">
 		<div class="contentHead">
-			{HEADER}
+			<h2 class="pageTitle">{HEADER}</h2>
 		</div>
 		<div class="contentInner row1">
 			{TEXT}
 		</div>
+		<br />
 		<div class="contentFooter">
-			<input type="submit" name="{SUBMIT_BUTTON}" value="{L_accept}" class="mainoption bi_ok" /> <input type="submit" name="deny" value="{L_deny}" class="liteoption bi_delete" />
+			<button class="mainoption" type="submit" name="{SUBMIT_BUTTON}"><i class="fa fa-check"></i>{L_accept}</button>
+			<button class="liteoption" type="submit" name="deny"><i class="fa fa-times"></i>{L_deny}</button>
 		</div>
 	</div>
 {CSRF_TOKEN}
@@ -16,93 +18,75 @@
 <!-- ELSE -->
 <script language="JavaScript" type="text/javascript">
 //<![CDATA[
-$(document).ready(function(){
-	$("#register").validate({
-		rules: {
-			username: {
-				required: true,
-				minlength: 2,
-				remote: {
-					type: "POST",
-					url: "{VALIDTAELNK_PREFIX}register.php{SID}&ajax=1{AJAXEXTENSION_USER}"
+$(document).ready(function() { 
+	$('#username').change(function() {
+		var username = $(this).val();
+		if(username.length > 0){
+			$.post("{EQDKP_CONTROLLER_PATH}Register/{SID}&ajax=1{AJAXEXTENSION_USER}", { username: username }, function(result){
+				if(result == 'true'){
+					$("#error_username").hide();
+					$("#tick_username").show();
+				}else{
+					errortext	= $("#error_username").html();
+					$('#error_username').html(errortext.replace(new RegExp("\\{0\\}", "g"), username));
+					$("#tick_username").hide();
+					$("#error_username").show();
 				}
-			},
-			user_email: {
-				required: true,
-				email: true,
-				minlength: 2,
-				remote: {
-					type: "POST",
-					url: "{VALIDTAELNK_PREFIX}register.php{SID}&ajax=1{AJAXEXTENSION_MAIL}"
-				}
-			},<!-- IF S_DISPLAY_CATPCHA -->recaptcha_response_field: { required: true},<!-- ENDIF -->
-			new_user_password1: {
-				required: true
-			},
-			new_user_password2: {
-				required: true, equalTo: "#password1"
-			},
-			user_email2: {
-				required: true,
-				email: true,
-				equalTo: "#useremail"
-			}
-		},
-		onkeyup: false,
-		messages: {
-			username: {
-				required: "{L_fv_required_username}",
-				minlength: jQuery.format("{L_fv_username_toshort}"),
-				remote: jQuery.format("{L_fv_username_alreadyuse}")
-			},
-			user_email: {
-				required: "{L_fv_required_email}",
-				minlength: "{L_fv_email_notvalid}",
-				remote: jQuery.format("{L_fv_email_alreadyuse}")
-			},
-			new_user_password1: '{L_fv_required_password}',
-			new_user_password2: '{L_fv_required_password_repeat}',
-			recaptcha_response_field: '{L_fv_recaptcha}',
-			user_email2: '{L_fv_required_email2}'
-		},
-		ignore: ".ignore_validation",
-		success: function(label) {
-			if(label.attr('for') == 'username'){
-				$("#tick_username").show();
-			}
-			if(label.attr('for') == 'useremail'){
-				$("#tick_mail").show();
-			}
-			label.remove();
+			});
+		}else{
+			$("#tick_username").hide();
+			$("#error_username").hide();
 		}
 	});
 
-	// possible fix for double-click problem
-	// http://forum.jquery.com/topic/validate-plugin-and-remote-have-to-submit-twice
-	$.ajaxSetup ({
-		async: false
+	$('#useremail').change(function() {
+		var user_email = $(this).val();
+		if(user_email.length > 0){
+			$.post("{EQDKP_CONTROLLER_PATH}Register/{SID}&ajax=1{AJAXEXTENSION_USER}", { user_email: user_email }, function(result){
+				if(result == 'true'){
+					$("#error_email").hide();
+					$("#tick_mail").show();
+				}else{
+					errortext	= $("#error_email").html();
+					$('#error_email').html(errortext.replace(new RegExp("\\{0\\}", "g"), user_email));
+					$("#tick_mail").hide();
+					$("#error_email").show();
+				}
+			});
+		}else{
+			$("#tick_mail").hide();
+			$("#error_email").hide();
+		}
 	});
 });
 //]]>
 </script>
-<form method="post" action="{ACTION}" name="register" id="register">
+<form method="post" action="{ACTION}" name="register" id="register" class="{FORMCLASS}">
 	<div class="content">
 
 		<input type="hidden" name="old_username" value="{USERNAME}" />
-		<input type="hidden" name="user_id[]" value="{USER_ID}" />
 
 		<div id="account">
+			<!-- IF AUTH_REGISTER_BUTTON != "" -->
 			<fieldset class="settings">
-				<legend>{L_adduser_tab_registration_information}</legend>
-				<img src="{EQDKP_ROOT_PATH}images/global/info.png" class="absmiddle" alt="Info" /> {L_required_field_note}
+				<legend>{L_register_use_authmethods}</legend>
+				{AUTH_REGISTER_BUTTON}
+			</fieldset>
+			<br />
+			<!-- ENDIF -->
+		
+			<fieldset class="settings">
+				<legend>{L_user_sett_tab_registration_info}</legend>
+				<i class="fa fa-info-circle fa-lg"></i> {L_required_field_note}<br/><br/>
 
 				<dl>
 					<dt>
 						<label>* {L_username}</label><br /><span>{L_register_help_username}</span>
 					</dt>
 					<dd>
-						<input type="text" name="username" id="username" size="40" maxlength="30" value="{USERNAME}" class="input" />
-						<img id="tick_username" src="{EQDKP_ROOT_PATH}images/register/tick.png" style="display:none;" width="16" height="16" alt="" />
+						<input type="text" name="username" id="username" size="40" maxlength="30" value="{USERNAME}" class="input" required />
+						<i class="fa fa-check fa-lg icon-color-green" id="tick_username" style="display:none;"></i>
+						<span id="error_username" class="error-message-red" style="display:none;"><i class="fa fa-exclamation-triangle fa-lg"></i> {L_fv_username_alreadyuse}</span>
 					</dd>
 				</dl>
 				<dl>
@@ -110,8 +94,9 @@ $(document).ready(function(){
 						<label>* {L_email_address}</label><br /><span>{L_register_help_email}<br/>{VALID_EMAIL_INFO}</span>
 					</dt>
 					<dd>
-						<input type="text" name="user_email" size="40" maxlength="100" value="{USER_EMAIL}" id="useremail" class="input" />
-						<img id="tick_mail" src="{EQDKP_ROOT_PATH}images/register/tick.png" style="display:none;" width="16" height="16" alt="" />
+						<input type="text" name="user_email" size="40" maxlength="100" value="{USER_EMAIL}" id="useremail" class="input" required />
+						<i class="fa fa-check fa-lg icon-color-green" id="tick_mail" style="display:none;" ></i>
+						<span id="error_email" class="error-message-red" style="display:none;"><i class="fa fa-exclamation-triangle fa-lg"></i> {L_fv_email_alreadyuse}</span>
 					</dd>
 				</dl>
 				<dl>
@@ -119,12 +104,13 @@ $(document).ready(function(){
 						<label>* {L_email_confirm}</label><br /><span>{L_register_help_email_confirm}</span>
 					</dt>
 					<dd>
-						<input name="user_email2" type="text" class="input" id="user_email2" value="{USER_EMAIL2}" size="40" maxlength="100" />
+						<input name="user_email2" type="text" class="input equalto" id="user_email2" value="{USER_EMAIL2}" size="40" maxlength="100" data-equalto="useremail" />
+						<span class="errormessage error-message-red" style="display:none;"><i class="fa fa-exclamation-triangle fa-lg"></i> {L_fv_email_not_match}</span>
 					</dd>
 				</dl>
 				<dl>
 					<dt>
-						<label>{L_password}</label><br /><span></span>
+						<label>* {L_password}</label><br /><span></span>
 					</dt>
 					<dd>
 						<input type="password" id="password1" name="new_user_password1" size="40" maxlength="100" value="" class="input" />
@@ -137,16 +123,31 @@ $(document).ready(function(){
 						<span>{L_confirm_password_repeat_note}</span>
 					</dt>
 					<dd>
-						<input type="password" id="password2" name="new_user_password2" size="40" maxlength="100" value="" class="input" />
+						<input type="password" id="password2" name="new_user_password2" size="40" maxlength="100" value="" class="input equalto" data-equalto="password1"/>
+						<span class="errormessage error-message-red" style="display:none;"><i class="fa fa-exclamation-triangle fa-lg"></i> {L_fv_required_password_repeat}</span>
 					</dd>
 				</dl>
 			</fieldset>
 
 		</div>
-
+		
+		<!-- IF S_PROFILEFIELDS -->
+		<div id="profilefields">
+			<fieldset class="settings">
+				<legend>{L_user_sett_fs_profile}</legend>
+				<!-- BEGIN fields -->
+				<dl>
+					<dt><label><!-- IF fields.S_REQUIRED -->* <!-- ENDIF -->{fields.NAME}</label><br /><span>{fields.HELP}</span></dt>
+					<dd>{fields.FIELD}</dd>
+				</dl>
+				<!-- END fields -->
+			</fieldset>
+		</div>
+		<!-- ENDIF -->
+		
 		<div id="view">
 			<fieldset class="settings">
-				<legend>{L_adduser_tab_view_options}</legend>
+				<legend>{L_user_sett_tab_view_options}</legend>
 				<dl>
 					<dt>
 						<label>{L_language}</label><br /><span>{L_register_help_language}</span>
@@ -157,7 +158,7 @@ $(document).ready(function(){
 					<dt>
 						<label>{L_user_timezones}</label><br /><span>{HELP_TIMEZONES}</span>
 					</dt>
-					<dd>{DD_TIMEZONES}</dd>
+					<dd>{DD_TIMEZONES}<input type="text" name="{HONEYPOT_VALUE}" size="30" maxlength="30" class="userpass" autocomplete="off" /></dd>
 				</dl>
 			</fieldset>
 		</div>
@@ -167,19 +168,17 @@ $(document).ready(function(){
 			<legend>{L_lib_captcha_head}</legend>
 			<dl>
 				<dt>
-					<label>{L_lib_captcha_head}</label><br /><span>{L_lib_captcha_insertword}</span>
+					<label>{L_lib_captcha_head}</label>
 				</dt>
-				<dd><div id="recaptcha_image" style="float:left; cursor:pointer;" onclick="javascript:Recaptcha.reload();" title="{L_lib_captcha_reload}"></div><img src="{EQDKP_ROOT_PATH}images/global/update.png" onclick="javascript:Recaptcha.reload();" title="{L_lib_captcha_reload}" alt="{L_lib_captcha_reload}" style="cursor:pointer; padding-top:20px;" /><div style="clear:both;"></div>
-				<input name="recaptcha_response_field" type="text" id="recaptcha_response_field" style="width:300px; margin-top:5px;" class="input"/>
-				{FV_CAPTCHA}
+				<dd>{FV_CAPTCHA}
 				{CAPTCHA}</dd>
 			</dl>
 		</fieldset>
 	</div>
 	<!-- ENDIF -->
 		<div class="contentFooter">
-					<input type="submit" name="submit" value="{L_submit}" class="mainoption bi_ok" /> {AUTH_REGISTER_BUTTON}
-					<input type="reset" name="reset" value="{L_reset}" class="liteoption bi_reset" onclick="reset_validator_register();"/>
+			<button class="" type="submit" name="submit"><i class="fa fa-check"></i>{L_submit}</button>
+			<button class="" type="reset" name="reset"><i class="fa fa-trash-o" onclick="reset_validator_register();"></i>{L_reset}</button>
 		</div>
 	</div>
 	{HIDDEN_FIELDS}

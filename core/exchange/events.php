@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date: 2011-11-29 17:10:46 +0100 (Di, 29 Nov 2011) $
- * -----------------------------------------------------------------------
- * @author		$Author: Godmod $
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev: 11470 $
- * 
- * $Id: events.php 11470 2011-11-29 16:10:46Z Godmod $
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if (!defined('EQDKP_INC')){
@@ -27,7 +30,7 @@ if (!class_exists('exchange_events')){
 		
 
 		public function get_events($params, $body){
-			if ($this->user->check_auth('u_event_view', false)){
+			if($this->user->check_pageobjects(array('events'), 'AND', false)){
 				$arrEvents = $this->pdh->get('event', 'id_list');
 				$out = array();
 				foreach($arrEvents as $eventid){
@@ -35,7 +38,7 @@ if (!class_exists('exchange_events')){
 						'id'	=> $eventid,
 						'name'	=> unsanitize($this->pdh->get('event', 'name', array($eventid))),
 						'value'	=> $this->pdh->get('event', 'value', array($eventid)),
-						'icon'  => str_replace("{ROOT_PATH}", $this->env->link, $this->pdh->get('event', 'icon', array($eventid, true, false, true))),
+						'icon'  => $this->env->link.$this->pdh->get('event', 'icon', array($eventid, true)),
 					);
 					$arrMultidkpPools = $this->pdh->get('event', 'multidkppools', array($eventid));
 					foreach($arrMultidkpPools as $mdkp){
@@ -64,5 +67,4 @@ if (!class_exists('exchange_events')){
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_exchange_events', exchange_events::$shortcuts);
 ?>

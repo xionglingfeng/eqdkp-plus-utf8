@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 // EQdkp required files/vars
@@ -24,10 +27,6 @@ $eqdkp_root_path = './../';
 include_once ($eqdkp_root_path . 'common.php');
 
 class manage_cache extends page_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'core', 'config', 'pdc');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 	//private $pdc_cache_types =		array('none', 'file', 'xcache', 'memcache', 'apc');
 	private $pdc_cache_types =		array('none', 'file', 'xcache', 'apc'); // removed memcache for now, as it does not work
@@ -120,8 +119,6 @@ class manage_cache extends page_generic {
 		
 		$this->tpl->add_js("
 			$('#cache_select').change(function(){
-				console.log('bla');
-				console.log($(this).val());
 				$('#all_cache_divs > div').each(function(){
 					$(this).css('display', 'none');
 				});
@@ -131,13 +128,15 @@ class manage_cache extends page_generic {
 		$cache_list = $this->pdc->listing();
 		$total = 0;
 		$ctime = time();
-
+		
 		foreach($cache_list as $global_prefix => $keys){
 			foreach($keys as $key => $expiry_date){
+				$expiry_date = $expiry_date['exp_date'];
 				$this->tpl->assign_block_vars('cache_entity_list_row', array (
 					'GLOBAL_PREFIX'		=> $global_prefix,
 					'KEY'				=> $key,
-					'EXPIRED'			=> ($expiry_date < $ctime) ? '<span class="negative">'.$this->user->lang('pdc_entity_expired').'</span>':'<span class="positive">'.$this->user->lang('pdc_entity_valid').'</span>'
+					'EXPIRED'			=> ($expiry_date < $ctime) ? '<span class="negative">'.$this->user->lang('pdc_entity_expired').'</span>':'<span class="positive">'.$this->user->lang('pdc_entity_valid').'</span>',
+					'EXPIRY_DATE'		=> $this->time->date("Y-m-d H:i:s", $expiry_date),
 				));
 			}
 		}
@@ -155,6 +154,5 @@ class manage_cache extends page_generic {
 		));
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_manage_cache', manage_cache::__shortcuts());
 registry::register('manage_cache');
 ?>

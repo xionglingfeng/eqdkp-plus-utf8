@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2010
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 // EQdkp required files/vars
@@ -34,11 +37,8 @@ function dummy(){
 //d(uniqid("hallo_", false));
 */
 class ManageAutoPoints extends page_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('user', 'tpl', 'in', 'pdh', 'jquery', 'core', 'config', 'time', 'html', 'pdc', 'env', 'apa'=>'auto_point_adjustments');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
+	public static $shortcuts = array('apa' => 'auto_point_adjustments');
+	
 	public function __construct(){
 		$this->user->check_auth('a_config_man');
 		
@@ -65,12 +65,10 @@ class ManageAutoPoints extends page_generic {
 			$options = $this->apa->get_apa_add_form($this->in->get('type'));
 		}
 		$result = false;
+		registry::load('form');
 		if (is_array($options) && $this->in->get('name') != ''){
-			foreach ($options as $option){
-				$options_array[$option['name']] = $this->in->get($option['name']);
-				if($option['name'] == 'start_date') $options_array['start_date'] = $this->time->fromformat($options_array['start_date'], 1);
-				if($option['name'] == 'pools') $options_array['pools'] = $this->in->getArray('pools', 'int');
-				if($option['name'] == 'exectime') $options_array['exectime'] = $this->time->fromformat('01.01.70 '.$options_array['exectime'], 'd.m.y H:i');
+			foreach ($options as $name => $option){
+				$options_array[$name] = form::value($name, $option);
 			}
 			if($this->in->exists('id')) {
 				$result = $this->apa->update_apa($this->in->get('id'), $options_array);
@@ -79,17 +77,19 @@ class ManageAutoPoints extends page_generic {
 			}
 		}
 		$message = NULL;
-		$this->tpl->add_js("jQuery.FrameDialog.closeDialog();");
+
 		if(!$result) {
 			$message = array('text' => $this->user->lang('apa_save_nosuc').'<br />'.$this->user->lang('apa_all_necessary'), 'title' => $this->user->lang('error'), 'color' => 'red', 'parent' => true);
 		} else {
-			$this->tpl->add_js("parent.location.href='manage_auto_points.php".$this->SID."'", 'docready');
+			$this->tpl->add_js("jQuery.FrameDialog.closeDialog();");
 		}
 		$this->display($message);
 	}
 
 	public function recalculate(){
-		$this->pdc->flush(); //maybe there will be more necessary if we support different types of apas
+		$this->apa->recalculate_apa($this->in->get('id'));
+		$this->pdh->process_hook_queue();
+		$this->pdc->flush();
 		$this->display(array('text' => $this->user->lang('apa_recalc_suc'), 'title' => $this->user->lang('success'), 'color' => 'green'));
 	}
 	
@@ -137,7 +137,6 @@ class ManageAutoPoints extends page_generic {
 		$expr = str_replace(array_values($re_ar), array_keys($re_ar), $expr);
 		//remove all not allowed symbols (note: also letters not allowed here, thats why we replaced them in the line above)
 		$regex = '~\s*[^\d\~\.'.preg_quote(implode('', $syms)).']*\s*~';
-		if(version_compare(PHP_VERSION, '5.3.0', '<')) $regex = str_replace('-', '\-', $regex);
 		$expr = preg_replace($regex, '', $expr);
 		//rereplace the "allowed" words
 		$expr = str_replace(array_keys($re_ar), array_values($re_ar), $expr);
@@ -187,12 +186,13 @@ class ManageAutoPoints extends page_generic {
 			'no_sel'	=> $this->user->lang('apa_func_example_choose'),
 			1			=> $this->user->lang('apa_func_example_1'),
 			2			=> $this->user->lang('apa_func_example_2'),
+			3			=> $this->user->lang('apa_func_example_3'),
 		);
 		
 		$this->tpl->assign_vars(array(
 			'FUNC_NAME'			=> str_replace('func_','',$this->in->get('func')),
-			'EXAMPLE_FUNCS'		=> $this->html->DropDown('func_example', $examples, 'no_sel'),
-			'AVAILABLE_ARGS'	=> $this->html->DropDown('func_args', $this->apa->get_calc_args(true), 'no_sel', '', '', 'input', '', array('no_sel')),
+			'EXAMPLE_FUNCS'		=> new hdropdown('func_example', array('options' => $examples, 'value' => 'no_sel')),
+			'AVAILABLE_ARGS'	=> new hdropdown('func_args', array('options' => $this->apa->get_calc_args(true), 'value' => 'no_sel')),
 			'VALID_SYMBOLS'		=> implode("&nbsp;&nbsp;", $this->apa->get_func_valid_symbols()),
 		));
 		$this->tpl->add_js("
@@ -200,6 +200,7 @@ class ManageAutoPoints extends page_generic {
 			func_examples['no_sel'] = '';
 			func_examples[1] = \"value * 0.95\";
 			func_examples[2] = \"value - 20\";
+			func_examples[3] = \"( value > 10000) ? 10000 : value\";	
 			
 			$('#add_expr').click(function(){
 				var row = $('#exprs_block > dl:last').clone();
@@ -251,46 +252,37 @@ class ManageAutoPoints extends page_generic {
 		$options = ($foptions) ? $foptions : $options;
 		$type = ($ftype) ? $ftype : $type;
 		if(!$options || !is_array($options)) $this->display();
-		foreach ($options as $option){
-			if($option['name'] == 'pools') {
+		registry::load('form');
+		foreach ($options as $name => $option){
+			if($name == 'pools') {
 				$option['options'] = $this->pdh->aget('multidkp', 'name', 0, array($this->pdh->get('multidkp', 'id_list')));
 				if(!$this->in->exists('id')) {
 					$used = $this->apa->get_pools_used($type);
 					foreach($used as $dkpid) {
-						if(!in_array($dkpid, $option['selected'])) unset($option['options'][$dkpid]);
+						if(!in_array($dkpid, $option['value'])) unset($option['options'][$dkpid]);
 					}
 				}
 			}
-			if($option['type'] == 'dropdown' || $option['type'] == 'jq_multiselect') $option['selected'] = $option['value'];
-			if($option['type'] == 'checkbox' && $option['value']) $option['selected'] = true;
-			if($option['name'] == 'start_date') $option['value'] = $this->time->user_date($option['value'], true, false, false, function_exists('date_create_from_format'));
-			if($option['name'] == 'exectime') $option['value'] = $this->time->date('H:i', $option['value']);
-			$ccfield = $this->html->widget($option);
-			$name = ($this->user->lang('apa_'.$type.'_'.$option['name'], false, false)) ? $this->user->lang('apa_'.$type.'_'.$option['name']) : '';
-			$help = ($this->user->lang('apa_'.$type.'_'.$option['name'].'_help', false, false)) ? $this->user->lang('apa_'.$type.'_'.$option['name'].'_help') : '';
+			$lang = ($this->user->lang('apa_'.$type.'_'.$name, false, false)) ? $this->user->lang('apa_'.$type.'_'.$name) : '';
+			$help = ($this->user->lang('apa_'.$type.'_'.$name.'_help', false, false)) ? $this->user->lang('apa_'.$type.'_'.$name.'_help') : '';
 			$this->tpl->assign_block_vars('input', array(
-				'NAME'		=> $name ? $name : $this->user->lang('apa_'.$option['name'], true, false),
-				'HELP'		=> $help ? $help : $this->user->lang('apa_'.$option['name'].'_help', false, false),
-				'FIELD'		=> $ccfield,
-				'FUNC'		=> ($option['name'] == 'calc_func') ? true : false,
+				'NAME'		=> $lang ? $lang : $this->user->lang('apa_'.$name, true, false),
+				'HELP'		=> $help ? $help : $this->user->lang('apa_'.$name.'_help', false, false),
+				'FIELD'		=> form::field($name, $option),
+				'FUNC'		=> ($name == 'calc_func') ? true : false,
 			));
-			$name = $help = '';
+			$lang = $help = '';
 		}
 		$job_list = $this->apa->list_apas();
 		
 		//Add function button
-		$beforeclose = "$('#calc_func').append('<option value=\"'+$('body').data('func_name')+'\">'+$('body').data('func_name')+'<option>');";
+		$beforeclose = "$('#calc_func').append('<option value=\"func_'+$('body').data('func_name')+'\">func_'+$('body').data('func_name')+'<option>');";
 		$this->jquery->dialog('edit_function', $this->user->lang('apa_edit_function'), array('url' => "manage_auto_points.php".$this->SID."&simple_head=true&edit_func=true", 'width' =>'650', 'height' =>'600', 'beforeclose' => $beforeclose));
 		$this->tpl->add_js("
 			$('#add_func').click(function(){
 				edit_function();
 			});", 'docready');
 
-		$this->jquery->Validate('apa_post', array(
-			array('name' => 'name', 'value'=> $this->user->lang('apa_fv_name')),
-			array('name' => 'calc_func', 'value'=> $this->user->lang('apa_fv_calc_func')),
-			array('name' => 'exectime', 'value'=> $this->user->lang('apa_fv_exectime'))
-		));
 		//fetch events
 		$events_dd = $this->pdh->aget('event', 'name', 0, array($this->pdh->get('event', 'id_list')));
 		asort($events_dd);
@@ -337,7 +329,7 @@ class ManageAutoPoints extends page_generic {
 				$this->tpl->assign_block_vars('func_row', array(
 					'NAME'	=> $name,
 					'USED'	=> (isset($used_funcs[$name])) ? implode(', ', $used_funcs[$name]) : '',
-					'EXPL'	=> $this->apa->run_calc_func($name, array(50, $this->time->time, ($this->time->time-24*7*2*3600),100)),
+					'EXPL'	=> $this->apa->run_calc_func($name, array(50, $this->time->time, $this->time->time-24*7*2*3600, 100)),
 					'NODEL'	=> (isset($used_funcs[$name])) ? true : false,
 				));
 			}
@@ -354,13 +346,15 @@ class ManageAutoPoints extends page_generic {
 			'url' => "manage_auto_points.php".$this->SID."&simple_head=true&edit=true&id='+content+'",
 			'width' =>'700',
 			'height' =>'550',
-			'withid' => 'content'
+			'withid' => 'content',
+			'onclose' =>$this->env->link."admin/manage_auto_points.php".$this->SID
 		));
 		$this->jquery->dialog('apa_new', sprintf($this->user->lang('apa_new'), ''), array(
 			'url' => "manage_auto_points.php".$this->SID."&simple_head=true&edit=true&type='+content+'",
 			'width' =>'700',
 			'height' =>'550',
-			'withid' => 'content'
+			'withid' => 'content',
+			'onclose' =>$this->env->link."admin/manage_auto_points.php".$this->SID
 		));
 		$this->jquery->dialog('func_edit', $this->user->lang('apa_edit_function'), array(
 			'url' => "manage_auto_points.php".$this->SID."&simple_head=true&edit_func=true&func='+content+'",
@@ -391,7 +385,6 @@ class ManageAutoPoints extends page_generic {
 				func_new($('#apa_type').val());
 			});
 			$('.func_edit').click(function(){
-				console.log($(this).attr('alt'));
 				func_edit($(this).attr('alt'));
 			});
 			$('.func_del').click(function(){
@@ -400,7 +393,7 @@ class ManageAutoPoints extends page_generic {
 		
 		$this->tpl->assign_vars(array (
 			'L_APA_ADD'			=> sprintf($this->user->lang('apa_add'), ''),
-			'TYPE_DD'			=> $this->html->DropDown('apa_type', $type_dd, false),
+			'TYPE_DD'			=> new hdropdown('apa_type', array('options' => $type_dd)),
 		));
 
 		$this->core->set_vars(array (
@@ -418,6 +411,5 @@ class ManageAutoPoints extends page_generic {
 		exit;
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_ManageAutoPoints', ManageAutoPoints::__shortcuts());
 registry::register('ManageAutoPoints');
 ?>

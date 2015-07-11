@@ -1,3 +1,44 @@
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li><a href="{EQDKP_ROOT_PATH}admin/manage_multidkp.php{SID}">{L_manmdkp_title}</a></li>
+		<li class="current"><a><!-- IF MDKP_ID -->{NAME}<!-- ELSE -->{L_Multi_addkonto}<!-- ENDIF --></a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
+
+<script>
+$(document).ready(function(){
+	$("#dw_events").multiselect().bind("multiselectclick multiselectcheckall multiselectuncheckall", function( event, ui ){
+		var checkedValues = $.map($(this).multiselect("getChecked"), function( input ){
+			return input.value;
+		});
+		
+		var checkedValuesNA = $.map($("#dw_no_atts").multiselect("getChecked"), function( input ){
+			return input.value;
+		});
+		
+		$("#dw_no_atts").html("");
+		
+		$.each(checkedValues, function(index, value) {
+			var text = $("#dw_events option[value='"+value+"']").text();
+			
+			
+			$("#dw_no_atts").append(
+			    $('<option></option>').val(value).html(text)
+			);
+		});
+		
+		$.each(checkedValuesNA, function(index, value) {
+			$("#dw_no_atts option[value='"+value+"']").prop("selected", true);
+		});
+		
+		$("#dw_no_atts").multiselect("refresh");
+	});
+});
+</script>
+
 <form method="post" action="{ACTION}" name="post">
 	<fieldset class="settings">
 		<legend>{L_Multi_addkonto}</legend>
@@ -22,12 +63,11 @@
 			<dd><input type="text" name="desc" size="55" maxlength="250" value="{DESC}" class="input" /></dd>
 		</dl>
 	</fieldset>
-
-	<input type="submit" name="save" value="{L_save}" class="mainoption bi_ok" />
+	<button class="mainoption" type="submit" name="save"><i class="fa fa-check"></i>{L_save}</button>
 	<!-- IF MDKP_ID -->
 	<input type="hidden" name="mdkp_id" value="{MDKP_ID}" />
-	<input type="button" name="del" value="{L_delete}" class="mainoption bi_delete" onclick="delete_warning();" />
+	<button class="mainoption" type="button" name="del" onclick="delete_warning();"><i class="fa fa-times"></i>{L_delete}</button>
 	<!-- ENDIF -->
-	<input type="submit" name="cancel" value="{L_cancel}" class="liteoption bi_back" />
+	<button class="mainoption" type="submit" name="cancel"><i class="fa fa-chevron-left"></i>{L_cancel}</button>
 {CSRF_TOKEN}
 </form>

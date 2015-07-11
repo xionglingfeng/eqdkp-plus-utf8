@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2007
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if(!defined('EQDKP_INC')) {
 	die('Do not access this file directly.');
@@ -22,23 +25,18 @@ if(!defined('EQDKP_INC')) {
 
 if(!class_exists('pdh_w_itempool')) {
 	class pdh_w_itempool extends pdh_w_generic {
-		public static function __shortcuts() {
-		$shortcuts = array('pdh', 'db'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
-		public function __construct() {
-			parent::__construct();
-		}
 
 		public function add_itempool($name, $desc) {
 			$arrSet = array(
 				'itempool_name' => $name,
 				'itempool_desc' => $desc,
 			);
-			if($this->db->query("INSERT INTO __itempool :params", $arrSet)) {
-				$id = $this->db->insert_id();
-					$this->pdh->enqueue_hook('itempool_update', array($id));
+			
+			$objQuery = $this->db->prepare("INSERT INTO __itempool :p")->set($arrSet)->execute();
+			
+			if($objQuery) {
+				$id = $objQuery->insertId;
+				$this->pdh->enqueue_hook('itempool_update', array($id));
 				return $id;
 			}
 			return false;
@@ -52,7 +50,9 @@ if(!class_exists('pdh_w_itempool')) {
 				'itempool_desc' => $desc,
 			);
 
-			if($this->db->query("UPDATE __itempool SET :params WHERE itempool_id=?", $arrSet, $id)) {
+			$objQuery = $this->db->prepare("UPDATE __itempool :p WHERE itempool_id=?")->set($arrSet)->execute($id);
+			
+			if($objQuery) {
 				$this->pdh->enqueue_hook('itempool_update', array($id));
 				return true;
 			}
@@ -64,20 +64,21 @@ if(!class_exists('pdh_w_itempool')) {
 			if($id == 1) {
 				return false;
 			}
-
-			$this->db->query("START TRANSACTION;");
-			if($this->db->query("DELETE FROM __itempool WHERE itempool_id = ?;", false, $id)) {
-				if($this->db->query("DELETE FROM __multidkp2itempool WHERE multidkp2itempool_itempool_id =?", false, $id)) {
-					if($this->db->query("UPDATE __items SET itempool_id = '1' WHERE itempool_id = ?", false, $id)) {
+			
+			$this->db->beginTransaction();
+			if($this->db->prepare("DELETE FROM __itempool WHERE itempool_id = ?;")->execute($id)) {
+				
+				if($this->db->prepare("DELETE FROM __multidkp2itempool WHERE multidkp2itempool_itempool_id =?")->execute($id)) {
+					if($this->db->prepare("UPDATE __items SET itempool_id = '1' WHERE itempool_id = ?")->execute($id)) {
 						$this->pdh->enqueue_hook('itempool_update', array($id));
 						$items = $this->pdh->get('item', 'item_ids_of_itempool', array($id));
 						$this->pdh->enqueue_hook('item_update', array($items));
-						$this->db->query("COMMIT;");
+						$this->db->commitTransaction();
 						return true;
 					}
 				}
 			}
-			$this->db->query("ROLLBACK;");
+			$this->db->rollbackTransaction();
 			return false;
 		}
 		
@@ -88,5 +89,4 @@ if(!class_exists('pdh_w_itempool')) {
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_w_itempool', pdh_w_itempool::__shortcuts());
 ?>

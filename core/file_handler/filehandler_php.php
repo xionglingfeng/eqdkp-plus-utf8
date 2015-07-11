@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -62,7 +65,7 @@ if (!class_exists("filehandler_php")) {
 			return $this->FilePath($path.'/index.html', $plugin);
 		}
 
-		private function mkdir_r($name, $chmod=0777){
+		private function mkdir_r($name, $chmod=0775){
 			$dirs = explode('/', $name);
 			$dir	= $part = '';
 			foreach ($dirs as $part) {
@@ -79,8 +82,6 @@ if (!class_exists("filehandler_php")) {
 			$this->make_index($folder, $plugin);
 			//Create a .htaccess
 			if($deny_all){
-			
-				if (is_file($folder.'/.htaccess')) return true;
 				$htaccess = $this->FilePath($folder.'/.htaccess', $plugin, true);
 				$blnWritten = $this->putContent($htaccess, "<Files *>\nOrder Allow,Deny\nDeny from All\n</Files>\n");
 				return $blnWritten;
@@ -90,9 +91,19 @@ if (!class_exists("filehandler_php")) {
 		}
 
 		public function putContent($filename, $data){
-			$intBits = @file_put_contents($filename, $data);
-			@chmod($filename, 0777);
+			$intBits = file_put_contents($filename, $data);
+			if(!$this->on_iis()) @chmod($filename, $this->get_chmod());
 			return ($intBits !== false) ? true : false;
+		}
+		
+		public function addContent($filename, $data){
+			$tmpHandle = fopen($filename, 'a');
+			if ($tmpHandle){
+				$intBits = fwrite($tmpHandle, $data);
+				fclose($tmpHandle);
+				return ($intBits !== false) ? true : false;
+			}
+			return false;
 		}
 
 		/**
@@ -185,7 +196,7 @@ if (!class_exists("filehandler_php")) {
 
 			if(!is_dir($path)){
 				$old = umask(0); 
-				$this->mkdir_r($path, 0777);
+				$this->mkdir_r($path, $this->get_chmod(true));
 				umask($old);
 			}
 			return (is_dir($path)) ? true : false;
@@ -221,7 +232,7 @@ if (!class_exists("filehandler_php")) {
 				}
 			}
 			if(is_file($path)){
-				@chmod($path, 0777);
+				if(!$this->on_iis()) @chmod($path, $this->get_chmod());
 				return true;
 			}
 			
@@ -290,9 +301,9 @@ if (!class_exists("filehandler_php")) {
 		* If you want to move a file..
 		*/
 		public function FileMove($filename, $tofile, $tmpmove=false) {
-			$blnResult = $this->copy($filename, $tofile);
-			unlink ($filename);
-			@chmod($tofile, 0777);
+			$blnResult = $this->rename($filename, $tofile);
+			#unlink($filename);
+			if(!$this->on_iis()) @chmod($tofile, $this->get_chmod());
 			
 			return $blnResult;
 		}
@@ -347,8 +358,29 @@ if (!class_exists("filehandler_php")) {
 					case 2:	ImageJPEG($img,	$thumbfolder.$filename, 95);	break;	// JPG
 					case 3:	ImagePNG($img,	$thumbfolder.$filename, 0);	break;	// PNG
 				}
+			} else {
+				$this->copy($image, $thumbfolder.$filename);
 			}
-			@chmod($thumbfolder.$filename, 0777);
+			
+			
+			if(!$this->on_iis()) @chmod($thumbfolder.$filename, $this->get_chmod());
+		}
+		
+
+		//These methods here have been defined somewhere else. But the pfh is called so early in super registry, that they are not available when pfh needs it.
+		//Therefore they have been redeclared here.
+		
+		private function on_iis() {
+			$sSoftware = strtolower( $_SERVER["SERVER_SOFTWARE"] );
+			if ( strpos($sSoftware, "microsoft-iis") !== false )
+				return true;
+			else
+				return false;
+		}
+		
+		private function get_chmod(){
+			if(defined('CHMOD')) return CHMOD;
+			return 0775;
 		}
 	}
 }

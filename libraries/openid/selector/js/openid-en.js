@@ -6,19 +6,16 @@
 */
 
 var providers_large = {
+	/*
 	google : {
 		name : 'Google',
 		url : 'https://www.google.com/accounts/o8/id'
 	},
-	yahoo : {
-		name : 'Yahoo',
-		url : 'http://me.yahoo.com/'
-	},
-	aol : {
-		name : 'AOL',
-		label : 'Enter your AOL screenname.',
-		url : 'http://openid.aol.com/{username}'
-	},
+	*/
+	steam : {
+		name : 'Steam',
+		url : 'https://steamcommunity.com/openid'
+	},	
 	myopenid : {
 		name : 'MyOpenID',
 		label : 'Enter your MyOpenID username.',
@@ -28,7 +25,11 @@ var providers_large = {
 		name : 'OpenID',
 		label : 'Enter your OpenID.',
 		url : null
-	}
+	},
+	yahoo : {
+		name : 'Yahoo',
+		url : 'http://me.yahoo.com/'
+	},
 };
 
 var providers_small = {
@@ -82,11 +83,18 @@ var providers_small = {
 		label : 'Enter your ClickPass username',
 		url : 'http://clickpass.com/public/{username}'
 	},
+	/*
 	google_profile : {
 		name : 'Google Profile',
 		label : 'Enter your Google Profile username',
 		url : 'http://www.google.com/profiles/{username}'
-	}
+	},
+	*/
+	aol : {
+		name : 'AOL',
+		label : 'Enter your AOL screenname.',
+		url : 'http://openid.aol.com/{username}'
+	},
 };
 
 openid.locale = 'en';
@@ -94,3 +102,4 @@ openid.sprite = 'en'; // reused in german& japan localization
 openid.demo_text = 'In client demo mode. Normally would have submitted OpenID:';
 openid.signin_text = 'Sign-In';
 openid.image_title = 'log in with {provider}';
+openid.no_sprite = true;

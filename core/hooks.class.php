@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2009
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -26,6 +29,7 @@ class hooks extends gen_class {
 	public static $dependencies = array('pm');
 	
 	private $hooks = array();
+	private $blnScanned = false;
 	
 	/*
 	 * Register Hook
@@ -35,11 +39,11 @@ class hooks extends gen_class {
 	 * @string				$strCallpath	Path to the $strClassname, without eqdkp_root_path
 	 * return @array
 	 */
-	public function register($strHook, $strClassname, $strMethodname, $strClasspath){
+	public function register($strHook, $strClassname, $strMethodname, $strClasspath, $arrClassparams=array()){
 		if (!isset($this->hooks[$strHook])) $this->hooks[$strHook] = array();
-		$strHookHash = md5($strClassname.$strMethodname.$strClasspath);
+		$strHookHash = md5($strClassname.$strMethodname.$strClasspath.serialize($arrClassparams));
 		if (!isset($this->hooks[$strHook][$strHookHash])) {
-			$this->hooks[$strHook][$strHookHash] = array('class'=> $strClassname, 'method'=> $strMethodname, 'classpath'=>$strClasspath);
+			$this->hooks[$strHook][$strHookHash] = array('class'=> $strClassname, 'method'=> $strMethodname, 'classpath'=>$strClasspath, 'class_params'=>$arrClassparams);
 		}
 	}
 	
@@ -51,29 +55,39 @@ class hooks extends gen_class {
 	 * return @array
 	 */
 	public function process($strHook, $arrParams=array(), $blnRecursive=false){
-		//Init Plugins and Portal modules for registering hooks
-		register('pm');
-		register('portal');
-		//Register global hooks
-		$this->scanGlobalHookFolder();
-		
 		if (!isset($this->hooks[$strHook])) return ($blnRecursive) ? $arrParams : array();
 		
 		$arrOutput = ($blnRecursive) ? $arrParams : array();
-		foreach($this->hooks[$strHook] as $hook){
+		foreach($this->hooks[$strHook] as $hook_data){
 			
-			include_once($this->root_path.$hook['classpath'].'/'.$hook['class'].'.class.php');
-			$objHookClass = register($hook['class']);
+			include_once($this->root_path.$hook_data['classpath'].'/'.$hook_data['class'].'.class.php');
+			if(empty($hook_data['class_params'])) $hook_data['class_params'] = array();
+			$objHookClass = register($hook_data['class'], $hook_data['class_params']);
 			if ($objHookClass) {
-				$strMethodname = $hook['method'];
+				$strMethodname = $hook_data['method'];
 				if ($blnRecursive){
 					$arrOutput = $objHookClass->$strMethodname($arrOutput);
 				} else {
-					$arrOutput[$hook['class']] = $objHookClass->$strMethodname($arrParams);
+					$arrOutput[$hook_data['class']] = $objHookClass->$strMethodname($arrParams);
 				}
 			}
 		}
 		return $arrOutput;
+	}
+	
+	public function isRegistered($strHookname){
+		if (!$this->blnScanned){
+			//Init Plugins and Portal modules for registering hooks
+			register('pm');
+			register('portal');
+			//Register global hooks
+			$this->scanGlobalHookFolder();
+			$this->blnScanned = true;
+		}
+		
+		if (isset($this->hooks[$strHookname])) return true;
+		
+		return false;
 	}
 	
 	private function scanGlobalHookFolder(){
@@ -83,8 +97,10 @@ class hooks extends gen_class {
 					$path_parts = pathinfo($file);
 					$filename = str_replace("_hook", "", $path_parts['filename']);
 					$filename= str_replace(".class", "", $filename);
+					$start = strpos($filename, '_');
 					
-					$strHook = substr($filename, strrpos($filename, '_')+1);
+					
+					$strHook = substr($filename, $start+1);
 					$strClassname = str_replace(".class", "", $path_parts['filename']);
 					$strMethodname = $strHook;
 					$strClasspath ='core/hooks';
@@ -95,6 +111,4 @@ class hooks extends gen_class {
 	}
 	
 }
-
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_hooks', hooks::$shortcuts);
 ?>

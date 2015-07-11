@@ -1,79 +1,259 @@
-<form action='manage_raids.php{SID}&r={RAID_ID}' method='post' name='post'>
-<fieldset class="settings smallsettings">
-<legend><!-- IF S_RAID_UPD -->{L_editing_raid} <!-- ELSE -->{L_addraid_title}<!-- ENDIF --></legend>
-<!-- IF not S_RAID_UPD -->
-			<dl>
-				<dt><label>{L_select_raid_draft}:</label></dt>
-				<dd>{RAID_DROPDOWN}</dd>
-			</dl>
+<!-- IF S_NORMAL_HEADER -->
+<div class="breadcrumb-container">
+	<ul class="breamcrumb">
+		<li><a href="{EQDKP_CONTROLLER_PATH}{SID}" title="{L_home}"><i class="fa fa-home"></i></a></li>
+		<li><a href="{EQDKP_ROOT_PATH}admin/{SID}">{L_menu_admin_panel}</a>
+		<li><a href="{EQDKP_ROOT_PATH}admin/manage_raids.php{SID}">{L_manraid_title}</a>
+		<li class="current"><a><!-- IF S_RAID_UPD -->{RAID_EVENT}, {RAID_DATE}<!-- ELSE -->{L_addraid_title}<!-- ENDIF --></a></li>
+	</ul>
+	<div class="clear"></div>
+</div>
 <!-- ENDIF -->
-			<dl>
-				<dt><label>{L_date}:</label></dt>
-				<dd>{DATE}</dd>
-			</dl>
-			<dl>
-				<dt><label>{L_note}:</label></dt>
-				<dd><input type="text" name="rnote" value="{NOTE}" class="input" size="55" id="note" /></dd>
-			</dl>
-			<dl>
-				<dt><label>{L_event}:</label></dt>
-				<dd>{EVENT}
-			<input type="button" name="addevent" class="liteoption bi_new" id="r_add_event" value="{L_add_event}" /></dd>
-			</dl>
-			<dl>
-				<dt><label>{L_value}:</label></dt>
-				<dd><input type="text" name="value" value="{VALUE}" class="input" /></dd>
-			</dl>
-			<dl>
-				<dt><label>{L_attendees}:</label></dt>
-				<dd>{NEW_MEM_SEL}
-			<input type="button" name="addmem" class="liteoption bi_new" id="r_add_mem" value="{L_add_member}" /></dd>
-			</dl>
-</fieldset>
+<script type="text/javascript">
+	function loadEventValue(event_id){
+		$.get("manage_raids.php{SID}", { raidvalue: "1", event: event_id }, function(data){
+			$("#raid_value").val(data);
+		});
+	}
+	<!-- IF S_EVENTVAL_ONLOAD -->
+	$(document).ready(function(){
+		loadEventValue($("#event").val());
+	});
+	<!-- ENDIF -->
+	
+	function delete_row(obj){
+		$(obj).parent().parent().remove();
+	}
+	
+	function delete_adj(obj, id){
+		$(obj).parent().find("input[type='checkbox']").attr("checked", "checked");
+		$(obj).parent().parent().hide();
+		var value = $("#del_adjustments").val();
+		$("#del_adjustments").val(value+","+id);
+	}
+	
+	function delete_item(obj, id){
+		$(obj).parent().find("input[type='checkbox']").attr("checked", "checked");
+		$(obj).parent().parent().hide();
+		var value = $("#del_items").val();
+		$("#del_items").val(value+","+id);
+	}
+	
+	var auto_adj_reason = {ADJ_REASON_AUTOCOMPLETE};
+	var adj_key = {ADJ_KEY};
+	$(document).ready(function(){
+		$('#add-adjustment-btn').on('click', function(){
+			var event = $('#event').val();
+			$('#event_KEY').val(event);
+			
+			var new_row = $('#template-adjustments>tbody').html()+"";
+			new_row = new_row.replace(/KEY/g, adj_key);
 
-<table width="100%" border="0" cellpadding="2" cellspacing="1" class="colorswitch">
-	<tr>
-		<th colspan="6"><span style="float:left;">{L_adjustments}</span><span style="float:right"><input type="submit" name="refresh" value="{L_add_aadjustment}" class="mainoption bi_new" /></span></th>
-	</tr>
-	<tr>
-		<th width="25">&nbsp;</th><th width="200">{L_member}</th><th colspan="2">{L_reason}</th><th width="170">{L_event}</th><th width="120">{L_value}</th>
-	</tr>
-	<!-- BEGIN adjs -->
-	<tr>
-		<td><input type="checkbox" name="adjs[{adjs.KEY}][delete]" value="true" class="input" /><input type="hidden" name="adjs[{adjs.KEY}][group_key]" value="{adjs.GK}" /></td>
-		<td>{adjs.MEMBER}</td>
-		<td colspan="2"><input type="text" name="adjs[{adjs.KEY}][reason]" value="{adjs.REASON}" class="input" size="80" id="adjs_{adjs.KEY}" /></td>
-		<td>{adjs.EVENT}</td>
-		<td><input type="text" name="adjs[{adjs.KEY}][value]" value="{adjs.VALUE}" class="input" /></td>
-	</tr>
-	<!-- END adjs -->
-  <tr>
-		<th colspan="6"><span style="float:left;">{L_items}</span><span style="float:right"><input type="submit" name="refresh" value="{L_add_aitem}" class="mainoption bi_new" /></span></th>
-	</tr>
-	<tr>
-		<th width="25">&nbsp;</th><th>{L_item}</th><th>{L_item_id}</th><th>{L_itempool}</th><th>{L_member}</th><th>{L_value}</th>
-	</tr>
-	<!-- BEGIN items -->
-	<tr>
-		<td><input type="checkbox" name="items[{items.KEY}][delete]" value="true" class="input" /><input type="hidden" name="items[{items.KEY}][group_key]" value="{items.GK}" /></td>
-		<td><input type="text" name="items[{items.KEY}][name]" value="{items.NAME}" class="input" size="40" id="items_{items.KEY}"/></td>
-		<td><input type="text" name="items[{items.KEY}][itemid]" value="{items.ITEMID}" class="input" /></td>
-		<td>{items.ITEMPOOL}</td>
-		<td>{items.MEMBER}</td>
-		<td><input type="text" name="items[{items.KEY}][value]" value="{items.VALUE}" class="input" /></td>
-	</tr>
-	<!-- END items -->
-	<tr>
-		<th colspan="6"><input type="hidden" name="raid_id" value="{RAID_ID}" />
-						<input type="submit" name="itemadj_del" value="{L_adjitem_del}" class="liteoption bi_delete" />
-						<!-- IF S_RAID_UPD -->
-						<input type="button" name="del" value="{L_delete_raid}" class="mainoption bi_delete" onclick="delete_warning();" />
-						<input type="reset" name="reset" value="{L_reset}" class="mainoption bi_reset" />
-						<!-- ENDIF -->
-						<input type="submit" name="save" value="{L_RAID_SAVE}" class="mainoption bi_ok" id="save_button"/>
-						<input type="submit" name="refresh" class="mainoption bi_ok" id="refresh_button" style="display:none;"/>
-		</th>
-	</tr>
-</table>
+			$('.add_adjustment_container').append(new_row);
+			$('#event_'+adj_key).val(event);
+			$('#adjs_'+adj_key+'_members').parent().find('.ui-multiselect').remove();
+			$("#adjs_"+adj_key+"_members").multiselect({height: 200,minWidth: 250,selectedList: 5,multiple: true}).multiselectfilter({label: "{L_filter}"});
+
+			$("#adjs_"+adj_key).autocomplete({
+				source: auto_adj_reason
+			});
+
+			adj_key++;
+		});
+	});
+	
+	var auto_itemname = {ITEM_AUTOCOMPLETE};
+	var item_key = {ITEM_KEY};
+	$(document).ready(function(){
+		$('#add-item-btn').on('click', function(){			
+			var new_row = $('#template-items>tbody').html()+"";
+			new_row = new_row.replace(/KEY/g, item_key);
+
+			$('.add_item_container').append(new_row);
+
+			$('#items_'+item_key+'_members').parent().find('.ui-multiselect').remove();
+			$("#items_"+item_key+"_members").multiselect({height: 200,minWidth: 250,selectedList: 5,multiple: true}).multiselectfilter({label: "{L_filter}"});
+
+			$("#items_"+item_key).autocomplete({
+				source: auto_itemname
+			});
+
+			item_key++;
+		});
+	});
+	
+	var show_additional = {ADDITIONAL_INFOS};
+	$(document).ready(function(){
+		if(show_additional){
+			$('.additional-note-btn').hide();
+		} else {
+			$('.additional-note-container').hide();
+		}
+		
+		$('.additional-note-btn').on('click', function(){
+			$('.additional-note-container').show();
+			$(this).hide();
+		});
+	});
+	
+</script>
+<form action='{ACTION}' method='post' name='post'>
+<div id="toggleRaidInfos">
+	<fieldset class="settings smallsettings">
+	<legend><!-- IF S_RAID_UPD -->{L_editing_raid} <!-- ELSE -->{L_addraid_title}<!-- ENDIF --><span class="toggle_button"></span></legend>
+	<div class="clear"></div>
+	<div class="toggle_container">
+	<!-- IF not S_RAID_UPD -->
+				<dl>
+					<dt><label>{L_select_raid_draft}:</label></dt>
+					<dd>{RAID_DROPDOWN}</dd>
+				</dl>
+	<!-- ENDIF -->
+				<dl>
+					<dt><label>{L_date}:</label></dt>
+					<dd>{DATE}</dd>
+				</dl>
+				<dl>
+					<dt><label>{L_note}:</label></dt>
+					<dd><input type="text" name="rnote" value="{NOTE}" class="input" size="55" id="note" /><button type="button" class="additional-note-btn"><i class="fa fa-plus"></i> {L_additional_infos}</button>
+						<div class="additional-note-container">
+						{ADDITIONAL_INFOS_EDITOR}
+						</div>
+					</dd>
+				</dl>
+				<dl>
+					<dt><label>{L_event}:</label></dt>
+					<dd>{EVENT}
+					<button class="liteoption" type="button" name="addevent" id="r_add_event"><i class="fa fa-plus"></i>{L_add_event}</button></dd>
+				</dl>
+				<!-- IF not S_POINTS_DISABLED -->
+				<dl>
+					<dt><label>{L_value}:</label></dt>
+					<dd><input type="text" name="value" value="{VALUE}" class="input" id="raid_value" /></dd>
+				</dl>
+				<!-- ENDIF -->
+				<dl>
+					<dt><label>{L_attendees}:</label></dt>
+					<dd>{NEW_MEM_SEL}
+						<button class="liteoption" type="button" name="addmem" id="r_add_mem"><i class="fa fa-plus"></i>{L_add_member}</button>
+					</dd>
+				</dl>
+		</div>
+	</fieldset>
+</div>
+<!-- IF not S_POINTS_DISABLED -->
+<div id="toggleAdjustments" class="panel">
+	<div class="panel-heading">
+		<h3><i class="fa fa-tag fa-lg"></i> {L_adjustments}<span class="toggle_button"></span></h3>
+	</div>
+	<div class="toggle_container">
+		<div class="tableHeader floatRight">
+			<button type="button" name="refresh" class="mainoption" value="{L_add_aadjustment}" id="add-adjustment-btn"><i class="fa fa-plus"></i>{L_add_aadjustment}</button>
+		</div>
+		<div class="clear"></div>
+		<table class="table fullwidth colorswitch">
+			<thead>
+				<tr>
+					<th width="25">&nbsp;</th>
+					<th colspan="2">{L_reason}</th>
+					<th width="20%">{L_event}</th>
+					<th width="200">{L_member}</th>
+					<th width="120">{L_value}</th>
+				</tr>
+			</thead>
+			<tbody class="add_adjustment_container">
+				<!-- BEGIN adjs -->
+				<tr>
+					<td style="text-align:center;"><i class="fa fa-trash fa-lg hand" onclick="delete_adj(this, {adjs.KEY})"></i><input type="checkbox" name="adjs[{adjs.KEY}][delete]" value="true" class="input" style="display:none;"/><input type="hidden" name="adjs[{adjs.KEY}][group_key]" value="{adjs.GK}" /></td>
+					<td colspan="2"><input type="text" name="adjs[{adjs.KEY}][reason]" value="{adjs.REASON}" class="input" style="width: 97%" id="adjs_{adjs.KEY}" /></td>
+					<td>{adjs.EVENT}</td>
+					<td>{adjs.MEMBER}</td>
+					<td><input type="text" name="adjs[{adjs.KEY}][value]" value="{adjs.VALUE}" class="input" /></td>
+				</tr>
+				<!-- END adjs -->
+			</tbody>
+		</table>	
+	</div>
+		
+</div>
+<br />
+<!-- ENDIF -->
+<div id="toggleItems" class="panel">
+	<div class="panel-heading">
+		<h3><i class="fa fa-gift fa-lg"></i> {L_items}<span class="toggle_button"></span></h3>
+	</div>
+	<div class="toggle_container">
+
+		<div class="tableHeader floatRight">
+			<button type="button" name="refresh" class="mainoption" value="{L_add_aitem}" id="add-item-btn"><i class="fa fa-plus"></i>{L_add_aitem}</button>
+		</div>
+		<div class="clear"></div>
+		<table class="table fullwidth colorswitch">
+			<thead>
+				<tr>
+					<th width="25">&nbsp;</th>
+					<th>{L_item}</th>
+					<th>{L_item_id}</th>
+					<th width="20%">{L_itempool}</th>
+					<th width="200">{L_member}</th>
+					<!-- IF not S_POINTS_DISABLED -->
+					<th width="120">{L_value}</th>
+					<!-- ENDIF -->
+				</tr>
+			</thead>
+			<tbody class="add_item_container">
+				<!-- BEGIN items -->
+				<tr>
+					<td style="text-align:center;"><i class="fa fa-trash fa-lg hand" onclick="delete_item(this, {items.KEY})"></i> <input type="checkbox" name="items[{items.KEY}][delete]" value="true" class="input" style="display:none;"/><input type="hidden" name="items[{items.KEY}][group_key]" value="{items.GK}" /></td>
+					<td><input type="text" name="items[{items.KEY}][name]" value="{items.NAME}" class="input" id="items_{items.KEY}" style="width: 95%"/></td>
+					<td><input type="text" name="items[{items.KEY}][itemid]" value="{items.ITEMID}" class="input" style="width: 95%" /></td>
+					<td>{items.ITEMPOOL}</td>
+					<td>{items.MEMBER}</td>
+					<!-- IF not S_POINTS_DISABLED -->
+					<td><input type="text" name="items[{items.KEY}][value]" value="{items.VALUE}" class="input" /></td>
+					<!-- ENDIF -->
+				</tr>
+				<!-- END items -->
+			</tbody>
+		</table>
+			
+	</div>
+</div>
+<br />
+<div class="contentFooter">
+	<input type="hidden" name="raid_id" value="{RAID_ID}" />
+	<button class="mainoption" type="submit" name="save" id="save_button"><i class="fa fa-check"></i>{L_RAID_SAVE}</button>
+	<!-- IF S_RAID_UPD -->
+	<button class="mainoption" type="button" name="del" onclick="delete_warning();"><i class="fa fa-times"></i>{L_delete_raid}</button>
+	<!-- ENDIF -->
+	<!-- IF S_NORMAL_HEADER -->
+	<button class="mainoption" type="submit" name="cancel"><i class="fa fa-chevron-left"></i>{L_cancel}</button>
+	<!-- ENDIF -->
+	<input type="submit" name="refresh" class="mainoption bi_ok" id="refresh_button" style="display:none;"/>
+	
+</div>
 {CSRF_TOKEN}
 </form>
+
+<table id="template-adjustments" style="display:none;">
+	<tr>
+		<td style="text-align:center;"><i class="fa fa-trash fa-lg hand" onclick="delete_row(this)"></i> <input type="hidden" name="adjs[KEY][group_key]" value="new" /></td>
+		<td colspan="2"><input type="text" name="adjs[KEY][reason]" value="" class="input" style="width: 97%" id="adjs_KEY" /></td>
+		<td>{EVENT_DROPDOWN}</td>
+		<td>{MEMBER_DROPDOWN}</td>
+		<td><input type="text" name="adjs[KEY][value]" value="" class="input" /></td>
+	</tr>
+</table>
+
+<table id="template-items" style="display:none;">
+	<tr>				
+		<td style="text-align:center;"><i class="fa fa-trash fa-lg hand" onclick="delete_row(this)"></i> <input type="hidden" name="items[KEY][group_key]" value="new" /></td>
+		<td><input type="text" name="items[KEY][name]" value="" class="input" style="width: 95%" id="items_KEY"/></td>
+		<td><input type="text" name="items[KEY][itemid]" value="" class="input" style="width: 95%" /></td>
+		<td>{ITEMPOOL_DROPDOWN}</td>
+		<td>{MEMBER_ITEM_DROPDOWN}</td>
+		<!-- IF not S_POINTS_DISABLED -->
+		<td><input type="text" name="items[KEY][value]" value="" class="input" /></td>
+		<!-- ENDIF -->
+	</tr>
+</table>

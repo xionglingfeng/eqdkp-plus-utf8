@@ -1,20 +1,23 @@
 <?php
-/*
-* Project:		EQdkp-Plus
-* License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
-* Link:			http://creativecommons.org/licenses/by-nc-sa/3.0/
-* -----------------------------------------------------------------------
-* Began:		2007
-* Date:			$Date$
-* -----------------------------------------------------------------------
-* @author		$Author$
-* @copyright	2006-2011 EQdkp-Plus Developer Team
-* @link			http://eqdkp-plus.com
-* @package		eqdkpplus
-* @version		$Rev$
-*
-* $Id$
-*/
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 if(!defined('EQDKP_INC')) {
 	die('Do not access this file directly.');
@@ -22,28 +25,23 @@ if(!defined('EQDKP_INC')) {
 
 if(!class_exists('pdh_w_calendars')) {
 	class pdh_w_calendars extends pdh_w_generic {
-		public static function __shortcuts() {
-		$shortcuts = array('pdh', 'db'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
-
-		public function __construct() {
-			parent::__construct();
-		}
 
 		public function reset() {
 			$this->db->query("TRUNCATE TABLE __calendars;");
-			$this->db->query("INSERT INTO __calendars (id,name,color,private,feed,system, type) VALUES ('1','Raids','00628c','0',NULL,'1', '1');");
-			$this->db->query("INSERT INTO __calendars (id,name,color,private,feed,system, type) VALUES ('2','Standard','ba1e1e','0',NULL,'0', '2');");
+			$this->add_calendar(0, 'Raids',		'#00628c', '', 0, 1, 1, 'core', 1);
+			$this->add_calendar(0, 'Userraids',	'#0cb20f', '', 0, 1, 0, 'core', 0);
+			$this->add_calendar(0, 'Raids',		'#ba1e1e', '', 0, 2, 0, 'core', 0);
 			$this->pdh->enqueue_hook('calendar_update');
 		}
 
-		public function update_calendar($id, $name, $color, $feed, $private, $type){
-			$old['name']	= $this->pdh->get('calendars', 'name', array($id));
-			$old['feed']	= $this->pdh->get('calendars', 'feed', array($id));
-			$old['private']	= $this->pdh->get('calendars', 'private', array($id));
-			$old['color']	= $this->pdh->get('calendars', 'color', array($id));
-			$old['type']	= $this->pdh->get('calendars', 'type', array($id));
+		public function update_calendar($id, $name, $color, $feed, $private, $type, $restricted, $affiliation=false){
+			$old['name']		= $this->pdh->get('calendars', 'name', array($id));
+			$old['feed']		= $this->pdh->get('calendars', 'feed', array($id));
+			$old['private']		= $this->pdh->get('calendars', 'private', array($id));
+			$old['color']		= $this->pdh->get('calendars', 'color', array($id));
+			$old['type']		= $this->pdh->get('calendars', 'type', array($id));
+			$old['restricted']	= $this->pdh->get('calendars', 'restricted', array($id));
+			$old['affiliation']	= $this->pdh->get('calendars', 'affiliation', array($id));
 			$changes		= false;
 			foreach($old as $varname => $value) {
 				if(${$varname} != $value) {
@@ -51,14 +49,17 @@ if(!class_exists('pdh_w_calendars')) {
 				}
 			}
 			if($changes) {
-				$statt = $this->db->query("UPDATE __calendars SET :params WHERE id=?", array(
-					'name'		=> $this->db->escape($name),
-					'feed'		=> $this->db->escape($feed),
-					'private'	=> ($private) ? 1 : 0,
-					'color'		=> $color,
-					'type'		=> $type
-				), $id);
-				if(!$statt) {
+				$objQuery = $this->db->prepare("UPDATE __calendars :p WHERE id=?")->set(array(
+					'name'			=> $name,
+					'feed'			=> $feed,
+					'private'		=> ($private) ? 1 : 0,
+					'color'			=> $color,
+					'type'			=> $type,
+					'restricted'	=> ($restricted) ? 1 : 0,
+					'affiliation'	=> $affiliation
+				))->execute($id);
+				
+				if(!$objQuery) {
 					return false;
 				}
 			}
@@ -66,27 +67,41 @@ if(!class_exists('pdh_w_calendars')) {
 			return true;
 		}
 
-		public function add_calendar($id, $name, $color, $feed, $private, $type){;
-			$result = $this->db->query('INSERT INTO __calendars :params', array(
-				'feed'		=> ($feed) ? $feed : '',
-				'name'		=> $name,
-				'color'		=> $color,
-				'private'	=> ($private) ? 1 : 0,
-				'type'		=> $type
-			));
-			$id = $this->db->insert_id();
-			$this->pdh->enqueue_hook('calendar_update', array($id));
-			return $id;
+		public function add_calendar($id, $name, $color, $feed, $private, $type, $restricted, $affiliation = 'user', $system=0){
+			$objQuery = $this->db->prepare('INSERT INTO __calendars :p')->set(array(
+				'feed'			=> ($feed) ? $feed : '',
+				'name'			=> $name,
+				'system'		=> $system,
+				'color'			=> $color,
+				'private'		=> ($private) ? 1 : 0,
+				'type'			=> $type,
+				'restricted'	=> ($restricted) ? 1 : 0,
+				'affiliation'	=> $affiliation,
+			))->execute();
+			
+			if($objQuery){
+				$id = $objQuery->insertId;
+				$this->pdh->enqueue_hook('calendar_update', array($id));
+				return $id;
+			}
+			return false;
 		}
 
 		public function delete_calendar($id){
 			if(!$this->pdh->get('calendars', 'system', array($id))){
-				$this->db->query("DELETE FROM __calendars WHERE id=?", false, $id);
+				$objQuery = $this->db->prepare("DELETE FROM __calendars WHERE id=?")->execute($id);
 				$this->pdh->enqueue_hook('calendar_update', array($id));
+				return true;
+			}
+		}
+		
+		public function delete_calendar_byaffiliation($affiliation){
+			if($affiliation != 'core' && $affiliation != ''){
+				$objQuery = $this->db->prepare("DELETE FROM __calendars WHERE affiliation=?")->execute($affiliation);
+				$this->pdh->enqueue_hook('calendar_update');
 				return true;
 			}
 		}
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_w_calendars', pdh_w_calendars::__shortcuts());
 ?>

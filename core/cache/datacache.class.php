@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if( !defined( 'EQDKP_INC' ) ) {
@@ -22,7 +25,6 @@ if( !defined( 'EQDKP_INC' ) ) {
 
 if( !class_exists( "datacache" ) ) {
 	class datacache extends gen_class {
-		public static $shortcuts = array('pdl', 'pfh', 'config');
 	
 		private $cache			= null;
 
@@ -177,9 +179,10 @@ if( !class_exists( "datacache" ) ) {
 			$this->pdl->log( 'pdc_query', 'CLEANUP', $key );
 			$ctime = time();
 			foreach($this->expiry_dates[$global_prefix] as $key => $expiry_date){
-				if(!isset($this->expiry_dates[$global_prefix][$key]) || $this->expiry_dates[$global_prefix][$key] < $ctime)
+				if(!isset($this->expiry_dates[$global_prefix][$key]) || $this->expiry_dates[$global_prefix][$key] < $ctime) {
 					$this->cache->del( $key, $global_prefix );
-				unset($this->expiry_dates[$global_prefix][$key]);
+					unset($this->expiry_dates[$global_prefix][$key]);
+				}
 			}
 			$this->save_expiry_dates();
 		}
@@ -218,5 +221,305 @@ if( !class_exists( "datacache" ) ) {
 		}
 	}//end interface
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_datacache', datacache::$shortcuts);
+
+if( !class_exists( "cachePagination" ) ) {
+	/**
+	 * This Cache tries to load big Data into Chunks and handles the access to save memory and execution time, because it let's to the Database some Operations like Sorting and Searching
+	 * 
+	 * @author GodMod
+	 */
+	class cachePagination extends gen_class {
+		
+		protected $strCacheKey = "";
+		protected $intItemsPerChunk = 50;
+		protected $arrQuerys;
+		protected $strID;
+		protected $strTablename = "";
+		
+		protected $index = array();
+		protected $data = array();
+		
+		/**
+		 * Constructor
+		 * 
+		 * @param string $strCacheKey - Name of the Cache Key
+		 * @param string $strID - Name of the Primary Key
+		 * @param string $strTableName - Name of the Table, e.g. __items
+		 * @param string $arrQuerys - Array with specific Querys, if the generic Query won't work
+		 * @param number $intItemsPerChunk - Items per Chunk, Default 50
+		 */
+		public function __construct($strCacheKey, $strID, $strTableName, $arrQuerys=array('index' => '', 'chunk' => '', 'direct' => '', 'tag_direct' => ''), $intItemsPerChunk=50){
+			$this->strCacheKey = $strCacheKey;
+			$this->intItemsPerChunk = $intItemsPerChunk;
+			$this->arrQuerys = $arrQuerys;
+			$this->strID = $strID;
+			$this->strTablename = $strTableName;
+		}
+				
+		/**
+		 * Builds the Index-File with all Primary IDs
+		 * 
+		 * @return boolean
+		 */
+		public function initIndex(){
+			$this->index = $this->pdc->get('pdh_'.$this->strCacheKey.'_index');
+			if ($this->index == null){
+				$strQuery = (isset($this->arrQuerys['index']) && strlen($this->arrQuerys['index'])) ? $this->arrQuerys['index'] : "SELECT ".$this->strID." FROM ".$this->strTablename;
+				
+				$objQuery = $this->db->query($strQuery);
+				if($objQuery){
+					while($row = $objQuery->fetchAssoc()){
+						$this->index[$row[$this->strID]] = $row[$this->strID];
+					}
+				}
+				
+				$this->pdc->put('pdh_'.$this->strCacheKey.'_index', $this->index, null);
+			}
+			return true;
+		}
+		
+		/**
+		 * Returns an array with all Primary IDs 
+		 * 
+		 * @return array: IDs
+		 */
+		public function getIndex(){
+			return $this->index;
+		}
+		
+		/**
+		 * Gets a Object from the Database, saves it to the Cache-Chunks
+		 * 
+		 * @param integer $intObjectID
+		 * @return boolean
+		 */
+		public function initObject($intObjectID){
+			$intChunkID = $this->calculateChunkID($intObjectID);
+
+			if (!isset($this->index[$intObjectID])) return false;
+			
+			if (!isset($this->data[$intChunkID])){
+				//Load Chunk
+				$arrCacheData = $this->pdc->get('pdh_'.$this->strCacheKey.'_chunk_'.$intChunkID);
+				if ($arrCacheData == null){
+					$strQuery = (isset($this->arrQuerys['chunk']) && strlen($this->arrQuerys['chunk'])) ? $this->arrQuerys['chunk'] : "SELECT * FROM ".$this->strTablename." WHERE ".$this->strID." >= ? AND ".$this->strID." < ?";
+					$objQuery = $this->db->prepare($strQuery)->execute($intChunkID*$this->intItemsPerChunk, ($intChunkID+1)*$this->intItemsPerChunk);
+					if($objQuery){
+						while($drow = $objQuery->fetchAssoc()){
+							$cache_result[$drow[$this->strID]] = $drow;
+						}
+					}
+					
+					//Additional Cache Data
+					if (isset($this->arrQuerys['additionalData']) && strlen($this->arrQuerys['additionalData'])){
+						$objQuery = $this->db->prepare($this->arrQuerys['additionalData'])->execute($intChunkID*$this->intItemsPerChunk, ($intChunkID+1)*$this->intItemsPerChunk);
+
+						if($objQuery){
+							while($drow = $objQuery->fetchAssoc()){
+								if (isset($cache_result[$drow['object_key']])){
+									$cache_result[$drow['object_key']]['additional'][] = $drow; 
+								}
+							}
+						}
+					}
+					
+					$this->pdc->put('pdh_'.$this->strCacheKey.'_chunk_'.$intChunkID, $cache_result, null);
+					$this->data[$intChunkID] = $cache_result;
+					unset($cache_result);
+					if (isset($this->data[$intChunkID][$intObjectID])) return true;
+				} else {
+					$this->data[$intChunkID] = $arrCacheData;
+					if (isset($this->data[$intChunkID][$intObjectID])) return true;
+				}
+			} else {
+				if (isset($this->data[$intChunkID][$intObjectID])) return true;			
+			}
+			return false;
+		}
+		
+		
+		/**
+		 * Internal function for getting Object from Cache
+		 * 
+		 * @param integer $intObjectID
+		 * @return array/boolean Data
+		 */
+		private function getObject($intObjectID){
+			$blnResult = $this->initObject($intObjectID);
+			if (!$blnResult) return false;
+			$intChunkID = $this->calculateChunkID($intObjectID);
+			if (isset($this->data[$intChunkID][$intObjectID])) return $this->data[$intChunkID][$intObjectID];
+			
+			return false;
+		}
+		
+		/**
+		 * Returns an Object; You can filter the returned data for a specific Column
+		 * 
+		 * @param integer $intObjectID
+		 * @param string $strObjectTag
+		 * @return array/boolean Data
+		 */
+		public function get($intObjectID, $strObjectTag = false){
+			$dataSet = $this->getObject($intObjectID);
+			if ($dataSet){
+				if ($strObjectTag){
+					if (isset($dataSet[$strObjectTag])) return $dataSet[$strObjectTag];
+				} else return $dataSet;
+			}
+			return false;
+		}
+		
+		
+		/**
+		 * Returns an Object direct from the Database; You can filter the returned data for a specific Column
+		 * 
+		 * @param integer $intObjectID
+		 * @param string $strObjectTag
+		 * @return array/boolean Data
+		 */
+		public function getDirect($intObjectID, $strObjectTag = false){
+			$strQuery = (isset($this->arrQuerys['direct']) && strlen($this->arrQuerys['direct'])) ? $this->arrQuerys['direct'] : "SELECT * FROM ".$this->strTablename." WHERE ".$this->strID." = ?";
+			$objQuery = $this->db->prepare($strQuery)->execute($intObjectID);
+			if($objQuery){
+				$row = $objQuery->fetchAssoc();
+				if($strObjectTag){
+					if (isset($row[$strObjectTag])) return $row[$strObjectTag];
+				} else return $row;
+			}
+			return false;
+		}
+		
+		/**
+		 * Returns an Array where the Index is the ObjectID, and the Value is the ObjectTag Value
+		 * E.g. getAssocTagDirect("item_name") returns array(1 => 'Axt', 2 => 'Handschuhe', ...)
+		 * 
+		 * @param string $strObjectTag
+		 * @return array IDs
+		 */
+		public function getAssocTag($strObjectTag){
+			$arrOut = array();
+			foreach($this->index as $id){
+				$tag = $this->get($id, $strObjectTag);
+				if ($tag) $arrOut[$id] = $tag;
+			}
+			return $arrOut;
+		}
+		
+
+		/**
+		 * Returns an Array directly from the Database where the Index is the ObjectID, and the Value is the ObjectTag Value
+		 * E.g. getAssocTagDirect("item_name") returns array(1 => 'Axt', 2 => 'Handschuhe', ...)
+		 * 
+		 * @param string $strObjectTag
+		 * @return array IDs
+		 */
+		public function getAssocTagDirect($strObjectTag){
+			$strQuery = (isset($this->arrQuerys['tag_direct']) && strlen($this->arrQuerys['tag_direct'])) ? $this->arrQuerys['tag_direct'] : "SELECT ".$this->strID.",".$strObjectTag." FROM ".$this->strTablename;
+			
+			$objQuery = $this->db->prepare($strQuery)->execute($strObjectTag);
+			$arrOut = array();
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$arrOut[$row[$this->strID]] = $row[$strObjectTag];
+				}
+			}
+			return $arrOut;
+		}
+		
+
+		/**
+		 * Calculates the Chunk-ID for a ObjectID
+		 * 
+		 * @param integer $intObjectID
+		 * @return number
+		 */
+		private function calculateChunkID($intObjectID){
+			return ($intObjectID-($intObjectID%$this->intItemsPerChunk))/$this->intItemsPerChunk;
+		}
+		
+
+		/**
+		 * Reset Cache and Index
+		 * 
+		 * @param array $mixedIDs
+		 * @return boolean
+		 */
+		public function reset($mixedIDs = false){
+			//Delete Everything
+			if ($mixedIDs === false) {
+				$this->pdc->del_prefix('pdh_'.$this->strCacheKey);
+				return true;
+			}
+			
+			//Delete specific Objects
+			$this->pdc->del('pdh_'.$this->strCacheKey.'_index'); //Delete Index
+			if(!is_array($mixedIDs)) $mixedIDs = array($mixedIDs);
+			foreach($mixedIDs as $id) {
+				if(!is_numeric($id)) return $this->reset();
+				$intChunkID = $this->calculateChunkID($id);
+				$this->pdc->del('pdh_'.$this->strCacheKey.'_chunk_'.$intChunkID);
+				if (isset($this->data[$intChunkID])) unset($this->data[$intChunkID]);
+			}
+			return true;
+		}
+		
+
+		/**
+		 * Sort for a specific column
+		 * 
+		 * @param string $strObjectTag Column
+		 * @param string $strSortDirection Sort-direction
+		 * @return array IDs
+		 */
+		public function sort($strObjectTag, $strSortDirection = "asc"){
+			$strSortDirection = (strtolower($strSortDirection) == "asc") ? "ASC" : "DESC";
+			$strQuery = (isset($this->arrQuerys['sort']) && strlen($this->arrQuerys['sort'])) ? $this->arrQuerys['sort'] : "SELECT ".$this->strID." FROM ".$this->strTablename." ORDER BY ";
+			$strQuery .= $strObjectTag." ".$strSortDirection;
+			
+			$objQuery = $this->db->prepare($strQuery)->execute();
+			$arrOut = array();
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$arrOut[] = $row[$this->strID]; 
+				}
+			}
+			return $arrOut;
+		}
+		
+		
+
+
+		/**
+		 * Search for a specific Tag-Value
+		 * 
+		 * @param string $strObjectTag Column
+		 * @param string $strSearchValue SearchValue
+		 * @param boolean $allowParts False if Result must be identical with SearchValue, True if SearchValue can be a part of result
+		 * @return array IDs
+		 */
+		public function search($strObjectTag, $strSearchValue, $allowParts=false){
+			$strSearchValue = utf8_strtolower($strSearchValue);
+			
+			if ($allowParts){
+				$escapedString = $this->db->escapeString('%'.$strSearchValue.'%');
+				$strQuery = (isset($this->arrQuerys['search']) && strlen($this->arrQuerys['search'])) ? $this->arrQuerys['search'] : "SELECT ".$this->strID." FROM ".$this->strTablename." WHERE LOWER(".$strObjectTag.") LIKE ".$escapedString;	
+			} else {
+				$escapedString = $this->db->escapeString($strSearchValue);
+				$strQuery = (isset($this->arrQuerys['search']) && strlen($this->arrQuerys['search'])) ? $this->arrQuerys['search'] : "SELECT ".$this->strID." FROM ".$this->strTablename." WHERE LOWER(".$strObjectTag.") = ".$escapedString;
+			}
+
+			$objQuery = $this->db->query($strQuery);
+			$arrOut = array();
+			if($objQuery){
+				while($row = $objQuery->fetchAssoc()){
+					$arrOut[] = $row[$this->strID];
+				}
+			}
+			return $arrOut;
+			
+		}
+
+	}
+}
 ?>

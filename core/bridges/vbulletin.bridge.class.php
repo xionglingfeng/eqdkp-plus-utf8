@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: myHTML
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		bridges
- * @version		$Rev$
- * 
- * $Id$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
+ *
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,7 +25,7 @@ if ( !defined('EQDKP_INC') ){
 
 class vbulletin_bridge extends bridge_generic {
 	
-	public $name = 'vBulletin';
+	public static $name = 'vBulletin';
 	
 	public $data = array(
 		//Data
@@ -47,19 +50,8 @@ class vbulletin_bridge extends bridge_generic {
 		),
 	);
 	
-	public $functions = array(
-		'login'	=> array(
-			'callbefore'	=> '',
-			'function' 		=> '',
-			'callafter'		=> '',
-		),
-		'logout' 	=> '',
-		'autologin' => '',	
-		'sync'		=> '',
-	);
-	
 	//Needed function
-	public function check_password($password, $hash, $strSalt = '', $boolUseHash){
+	public function check_password($password, $hash, $strSalt = '', $boolUseHash = false, $strUsername = "", $arrUserdata=array()){
 		if ((md5(md5($password).$strSalt)) == $hash){
 			return true;
 		}
@@ -67,19 +59,23 @@ class vbulletin_bridge extends bridge_generic {
 		return false;
 	}
 	
-	public function vb_get_user_groups($intUserID, $arrGroups){
-		$query = $this->db->query("SELECT usergroupid, membergroupids FROM ".$this->prefix."user WHERE userid='".$this->db->escape($intUserID)."'");
-		$result = $this->db->fetch_row($query);
-		if (in_array((int)$result['usergroupid'], $arrGroups)) return true;
-		$arrAditionalGroups = explode(',', $result['membergroupids']);
-		if (is_array($arrAditionalGroups)){
-			foreach ($arrAditionalGroups as $group){
-				if (in_array((int)$group, $arrGroups)) return true;
+	public function vb_get_user_groups($intUserID){
+		$query = $this->bridgedb->prepare("SELECT usergroupid, membergroupids FROM ".$this->prefix."user WHERE userid=?")->execute($intUserID);
+		$arrReturn = array();
+		if ($query){
+			$result = $query->fetchAssoc();
+			
+			$arrReturn[] = (int)$result['usergroupid'];
+			
+			$arrAditionalGroups = explode(',', $result['membergroupids']);
+			if (is_array($arrAditionalGroups)){
+				foreach ($arrAditionalGroups as $group){
+					$arrReturn[] = (int)$group;
+				}
 			}
 		}
 		
-		return false;
+		return $arrReturn;
 	}
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_vbulletin_bridge',vbulletin_bridge::$shortcuts);
 ?>

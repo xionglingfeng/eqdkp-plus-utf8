@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		EQdkp-Plus
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2007
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		eqdkp-plus
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -22,10 +25,6 @@ if ( !defined('EQDKP_INC') ){
 
 if ( !class_exists( "pdh_r_event_attendance" ) ) {
 	class pdh_r_event_attendance extends pdh_r_generic{
-		public static function __shortcuts() {
-		$shortcuts = array('pdc', 'pdh', 'jquery', 'time'	);
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
 		public $default_lang = 'english';
 
@@ -39,7 +38,7 @@ if ( !class_exists( "pdh_r_event_attendance" ) ) {
 		);
 
 		public $presets = array(
-			'event_attendance'	=> array('attendance', array('%member_id%', '%event_id%', 'LT'), array('LT')),
+			'event_attendance'	=> array('attendance', array('%member_id%', '%event_id%', 'LT', '%with_twinks%'), array('LT')),
 		);
 
 		public $detail_twink = array(
@@ -65,7 +64,7 @@ if ( !class_exists( "pdh_r_event_attendance" ) ) {
 
 			//cached data not outdated?
 			$this->attendance[$time_period][$member_id] = $this->pdc->get('pdh_event_attendance_'.$time_period.'_'.$member_id);
-			if($this->attendance[$time_period][$member_id] != null || is_array($this->attendance[$time_period][$member_id])){
+			if($this->attendance[$time_period][$member_id] != null || is_array($this->attendance[$time_period][$member_id])) {
 				return true;
 			}
 			$main_id = $this->pdh->get('member', 'mainid', array($member_id));
@@ -76,7 +75,6 @@ if ( !class_exists( "pdh_r_event_attendance" ) ) {
 				//midnight of x days before
 				$first_date = $this->time->time-($time_period*86400);
 				$first_date -= 3600*$this->time->date('H')+60*$this->time->date('i')+$this->time->date('s');
-				
 				$first_date = array('member' => $first_date, 'main' => $first_date);
 			} else {
 				$first_date['member'] = $this->pdh->get('member_dates', 'first_raid', array($member_id, null, false));
@@ -88,11 +86,11 @@ if ( !class_exists( "pdh_r_event_attendance" ) ) {
 				foreach($raids as $raid_id => $raid) {
 					$date = $raid['date'];
 					$event_id = $raid['event'];
-					if($date >= $first_date['member']) {
-						if(!isset($this->counts[$first_date['member']][$event_id])) $this->counts[$first_date['member']][$event_id] = 0;
-						$this->counts[$first_date['member']][$event_id]++;
-					}
-					if($date >= $first_date['main'] && $first_date['main'] != $first_date['member']) {
+						if($date >= $first_date['member']) {
+							if(!isset($this->counts[$first_date['member']][$event_id])) $this->counts[$first_date['member']][$event_id] = 0;
+							$this->counts[$first_date['member']][$event_id]++;
+						}
+						if($date >= $first_date['main'] && $first_date['main'] != $first_date['member']) {
 						if(!isset($this->counts[$first_date['main']][$event_id])) $this->counts[$first_date['main']][$event_id] = 0;
 						$this->counts[$first_date['main']][$event_id]++;
 					}
@@ -153,8 +151,7 @@ if ( !class_exists( "pdh_r_event_attendance" ) ) {
 		public function get_html_attendance($member_id, $event_id, $time_period, $with_twinks=true){
 			$data = $this->get_attendance($member_id, $event_id, $time_period, $with_twinks, true);
 			$percent = round($data['member_attendance']*100);
-			return $this->jquery->ProgressBar('evatt_'.$member_id.'_'.$event_id, $percent, $percent.'% ('.$data['member_raidcount'].'/'.$data['total_raidcount'].')', 'center', true);
-			return '<span class="'.color_item($percent*100, true).'">'.$percent*100 .'% ('.$data['member_raidcount'].'/'.$data['total_raidcount'].')</span>';
+			return $this->jquery->progressbar('evatt_'.$member_id.'_'.$event_id, $percent, array('text' => '%percentage% ('.$data['member_raidcount'].'/'.$data['total_raidcount'].')', 'directout' => true));
 		}
 
 		public function get_caption_attendance($period){
@@ -166,5 +163,4 @@ if ( !class_exists( "pdh_r_event_attendance" ) ) {
 		}
 	}//end class
 }//end if
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_pdh_r_event_attendance', pdh_r_event_attendance::__shortcuts());
 ?>

@@ -1,19 +1,22 @@
 <?php
- /*
- * Project:		eqdkpPLUS Libraries: myHTML
- * License:		Creative Commons - Attribution-Noncommercial-Share Alike 3.0 Unported
- * Link:		http://creativecommons.org/licenses/by-nc-sa/3.0/
- * -----------------------------------------------------------------------
- * Began:		2008
- * Date:		$Date$
- * -----------------------------------------------------------------------
- * @author		$Author$
- * @copyright	2006-2011 EQdkp-Plus Developer Team
- * @link		http://eqdkp-plus.com
- * @package		libraries:myHTML
- * @version		$Rev$
+/*	Project:	EQdkp-Plus
+ *	Package:	EQdkp-plus
+ *	Link:		http://eqdkp-plus.eu
  *
- * $Id$
+ *	Copyright (C) 2006-2015 EQdkp-Plus Developer Team
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU Affero General Public License as published
+ *	by the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU Affero General Public License for more details.
+ *
+ *	You should have received a copy of the GNU Affero General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 if ( !defined('EQDKP_INC') ){
@@ -21,12 +24,8 @@ if ( !defined('EQDKP_INC') ){
 }
 
 class mybb_bridge extends bridge_generic {
-	public static function __shortcuts() {
-		$shortcuts = array('config', 'user', 'env', 'time');
-		return array_merge(parent::$shortcuts, $shortcuts);
-	}
 
-	public $name = 'MyBB';
+	public static $name = 'MyBB';
 
 	public $data = array(
 		//Data
@@ -36,10 +35,7 @@ class mybb_bridge extends bridge_generic {
 			'name'	=> 'title',
 			'QUERY'	=> '',
 		),
-		'user_group' => array( //Zuordnung User zu Gruppe
-			'table'	=> 'user_to_groups',
-			'group'	=> 'groupID',
-			'user'	=> 'userID',
+		'user_group' => array( //Zuordnung User zu Gruppe,
 			'QUERY'	=> '',
 			'FUNCTION'	=> 'mybb_get_user_groups',
 		),
@@ -55,38 +51,17 @@ class mybb_bridge extends bridge_generic {
 		),
 	);
 
-	public $functions = array(
-		'login'	=> array(
-			'callbefore'	=> '',
-			'function' 		=> '',
-			'callafter'		=> 'mybb_callafter',
-		),
-		'logout' 	=> 'mybb_logout',
-		'autologin' => '',
-		'sync'		=> 'mybb_sync',
-	);
-
 	public $settings = array(
 		'cmsbridge_disable_sso'	=> array(
-			'fieldtype'		=> 'checkbox',
-			'name'			=> 'cmsbridge_disable_sso',
+			'type'	=> 'radio',
 		),
 		'cmsbridge_disable_sync' => array(
-			'fieldtype'		=> 'checkbox',
-			'name'			=> 'cmsbridge_disable_sync',
+			'type'	=> 'radio',
 		),
 	);
 
-	public $sync_fields = array(
-		'icq',
-		'birthday',
-		'msn',
-		'user_email',
-		'username',
-	);
 
-	//Needed function
-	public function check_password($password, $hash, $strSalt = '', $boolUseHash){
+	public function check_password($password, $hash, $strSalt = '', $boolUseHash = false, $strUsername = "", $arrUserdata=array()){
 
 		if($this->salt_password(md5($password), $strSalt) == $hash){
 			return true;
@@ -95,26 +70,29 @@ class mybb_bridge extends bridge_generic {
 		return false;
 	}
 
-	public function mybb_get_user_groups($intUserID, $arrGroups){
-		$query = $this->db->query("SELECT usergroup, additionalgroups FROM ".$this->prefix."users WHERE uid='".$this->db->escape($intUserID)."'");
-		$result = $this->db->fetch_row($query);
-
-		if (in_array((int)$result['usergroup'], $arrGroups)) return true;
-		$arrAditionalGroups = explode(',', $result['additionalgroups']);
-		if (is_array($arrAditionalGroups)){
-			foreach ($arrAditionalGroups as $group){
-				if (in_array((int)$group, $arrGroups)) return true;
+	public function mybb_get_user_groups($intUserID){
+		$objQuery = $this->bridgedb->prepare("SELECT usergroup, additionalgroups FROM ".$this->prefix."users WHERE uid=?")->execute($intUserID);
+		$arrReturn = array();
+		if ($objQuery){
+			$result = $objQuery->fetchAssoc();
+			$arrReturn[] = (int)$result['usergroup'];
+	
+			$arrAditionalGroups = explode(',', $result['additionalgroups']);
+			if (is_array($arrAditionalGroups)){
+				foreach ($arrAditionalGroups as $group){
+					$arrReturn[] = (int)$group;
+				}
 			}
-		}
+		}		
 
-		return false;
+		return $arrReturn;
 	}
 
 	private function salt_password($password, $salt) {
 		return md5(md5($salt).$password);
 	}
 
-	public function mybb_callafter($strUsername, $strPassword, $boolAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash){
+	public function after_login($strUsername, $strPassword, $boolSetAutoLogin, $arrUserdata, $boolLoginResult, $boolUseHash=false){
 		//Is user active?
 		if ($boolLoginResult){
 			if ($arrUserdata['usergroup'] == '5') {
@@ -122,22 +100,30 @@ class mybb_bridge extends bridge_generic {
 			}
 			//Single Sign On
 			if ($this->config->get('cmsbridge_disable_sso') != '1'){
-				$this->mybb_sso($arrUserdata, $boolAutoLogin);
+				$this->sso($arrUserdata, $boolSetAutoLogin);
 			}
+			
+			return true;
 		}
-		return true;
+		return false;
 	}
 
-	public function mybb_sync($arrUserdata){
+	public function sync($arrUserdata){
 		if ($this->config->get('cmsbridge_disable_sync') == '1'){
 			return false;
 		}
 		$sync_array = array(
 			'icq' 			=> $arrUserdata['icq'],
 			'birthday'		=> $this->_handle_birthday($arrUserdata['birthday']),
-			'msn'			=> $arrUserdata['msn'],
 		);
 		return $sync_array;
+	}
+	
+	public function sync_fields(){
+		return array(
+			'icq'		=> 'ICQ',
+			'birthday'	=> 'Birthday'
+		);
 	}
 
 	private function _handle_birthday($date){
@@ -148,25 +134,27 @@ class mybb_bridge extends bridge_generic {
 		return 0;
 	}
 
-	public function mybb_sso($arrUserdata, $boolAutoLogin = false){
+	public function sso($arrUserdata, $boolAutoLogin = false){
 		$user_id = $arrUserdata['id'];
-		$strSessionID = md5(rand().rand());
-		$this->db->query("DELETE FROM ".$this->prefix."sessions WHERE uid='".$this->db->escape($user_id)."'");
+		$strSessionID = md5(generateRandomBytes(55));
+		$this->bridgedb->prepare("DELETE FROM ".$this->prefix."sessions WHERE uid=?")->execute($user_id);
 
-		$query = $this->db->query("SELECT name,value FROM ".$this->prefix."settings");
-		$result = $this->db->fetch_rowset($query);
-		if (is_array($result)){
-			foreach ($result as $row){
-				$arrConfig[$row['name']] = $row['value'];
+		$query = $this->bridgedb->query("SELECT name,value FROM ".$this->prefix."settings");
+		if ($query){
+			$result = $query->fetchAllAssoc();
+			if (is_array($result)){
+				foreach ($result as $row){
+					$arrConfig[$row['name']] = $row['value'];
+				}
 			}
-		}
+		} else return false;		
 
 		//PW is true, logg the user into our Forum
 		$arrSet = array(
-			'sid'	=> $strSessionID,
-			'uid'	=> (int) $user_id,
-			'ip'	=> $this->get_ip(),
-			'time'	=> (int) $this->time->time,
+			'sid'		=> $strSessionID,
+			'uid'		=> (int) $user_id,
+			'ip'		=> $this->get_ip(),
+			'time'		=> (int) $this->time->time,
 			'location'	=> '',
 			'useragent'	=> (string) trim(substr($this->env->useragent, 0, 149)),
 			'anonymous'	=> 0,
@@ -174,9 +162,9 @@ class mybb_bridge extends bridge_generic {
 			'location1'	=> 0,
 			'location2'	=> 0,
 		);
-
-		$this->db->query("INSERT INTO ".$this->prefix."sessions :params", $arrSet);
-
+		
+		$this->bridgedb->prepare("INSERT INTO ".$this->prefix."sessions :p")->set($arrSet)->execute();
+		
 		$logincredentials = $user_id.'_'.$arrUserdata['loginkey'];
 		
 		if($arrConfig['cookiedomain'] == '') {
@@ -199,7 +187,7 @@ class mybb_bridge extends bridge_generic {
 		return true;
 	}
 
-	function get_ip()
+	private function get_ip()
 	{
 		if(isset($_SERVER['REMOTE_ADDR']))
 		{
@@ -236,18 +224,20 @@ class mybb_bridge extends bridge_generic {
 		return $ip;
 	}
 
-	public function mybb_logout(){
-		$query = $this->db->query("SELECT name,value FROM ".$this->prefix."settings");
-		$result = $this->db->fetch_rowset($query);
-		if (is_array($result)){
-			foreach ($result as $row){
-				$arrConfig[$row['name']] = $row['value'];
+	public function logout(){
+		$query = $this->bridgedb->query("SELECT name,value FROM ".$this->prefix."settings");
+		if ($query){
+			$result = $query->fetchAllAssoc();
+			if (is_array($result)){
+				foreach ($result as $row){
+					$arrConfig[$row['name']] = $row['value'];
+				}
 			}
-		}
+		} else return false;
 
-		$arrUserdata = $this->get_userdata($this->user->data['username']);
+		$arrUserdata = $this->bridge->get_userdata($this->user->data['username']);
 		if (isset($arrUserdata['id'])){
-			$this->db->query("DELETE FROM ".$this->prefix."sessions WHERE uid='".$this->db->escape($arrUserdata['id'])."'");
+			$this->bridgedb->prepare("DELETE FROM ".$this->prefix."sessions WHERE uid=?")->execute($arrUserdata['id']);
 		}
 		setcookie($arrConfig['cookieprefix'].'sid', '', $expire, $arrConfig['cookiepath'], $arrConfig['cookiedomain']);
 		//User-Cookie
@@ -256,5 +246,4 @@ class mybb_bridge extends bridge_generic {
 	}
 
 }
-if(version_compare(PHP_VERSION, '5.3.0', '<')) registry::add_const('short_mybb_bridge', mybb_bridge::__shortcuts());
 ?>
